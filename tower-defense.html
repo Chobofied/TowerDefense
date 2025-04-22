@@ -68,6 +68,7 @@
             margin: 8px 0;
             cursor: pointer;
             transition: background 0.2s;
+            pointer-events: auto;
         }
         #start-btn:hover, #end-btn:hover, #next-wave-btn:hover {
             background: #6e8fde;
@@ -144,7 +145,7 @@ let pathGrid = [];
 let startTile = {x: 0, y: Math.floor(GRID_SIZE/2)};
 let endTile = {x: GRID_SIZE-1, y: Math.floor(GRID_SIZE/2)};
 let flyingBypass = true;
-let endlessMode = false;
+let endlessMode = true; // Always endless mode
 
 // --- UI Setup ---
 const towerSelect = document.getElementById('tower-select');
@@ -431,18 +432,10 @@ function gameLoop(delta) {
         startBtn.style.display = 'none';
         nextWaveBtn.style.display = 'none';
         showGameOver('Game Over!');
-    } else if (isGameRunning && enemies.length === 0 && projectiles.length === 0) {
-        if (!endlessMode && wave < MAX_WAVES) {
-            wave++;
-            updateUI();
-            setTimeout(spawnWave, 1200);
-        } else {
-            isGameRunning = false;
-            endBtn.style.display = '';
-            startBtn.style.display = 'none';
-            nextWaveBtn.style.display = '';
-            showGameOver('Victory!');
-        }
+    } else if (enemies.length === 0 && projectiles.length === 0 && isGameRunning) {
+        // Endless mode: show next wave button, do not auto-start
+        nextWaveBtn.style.display = '';
+        isGameRunning = false;
     }
     updateUI();
 }
@@ -567,22 +560,12 @@ function showGameOver(msg) {
     over.style.borderRadius = '16px';
     over.style.fontSize = '2em';
     over.style.boxShadow = '0 2px 24px #000a';
-    over.innerHTML = `<b>${msg}</b><br><button id="restart-btn">Restart</button>` + (msg === 'Victory!' ? '<br><button id="endless-btn">Endless Mode</button>' : '');
+    over.innerHTML = `<b>${msg}</b><br><button id="restart-btn">Restart</button>`;
     document.body.appendChild(over);
     over.querySelector('#restart-btn').onclick = () => {
         document.body.removeChild(over);
         restartGame();
     };
-    if (msg === 'Victory!') {
-        over.querySelector('#endless-btn').onclick = () => {
-            document.body.removeChild(over);
-            endlessMode = true;
-            isGameRunning = true;
-            endBtn.style.display = '';
-            startBtn.style.display = 'none';
-            nextWaveBtn.style.display = '';
-        };
-    }
 }
 function restartGame() {
     towers = [];
@@ -608,7 +591,7 @@ startBtn.onclick = () => {
     gold = 500;
     wave = 1;
     lives = 20;
-    endlessMode = false;
+    endlessMode = true;
     updatePathGrid();
     updateUI();
     spawnWave();
@@ -621,10 +604,8 @@ endBtn.onclick = () => {
     showGameOver('Game Ended');
 };
 nextWaveBtn.onclick = () => {
-    if (!isGameRunning) {
-        isGameRunning = true;
-        nextWaveBtn.style.display = 'none';
-    }
+    nextWaveBtn.style.display = 'none';
+    isGameRunning = true;
     wave++;
     updateUI();
     spawnWave();
