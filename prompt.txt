@@ -1,0 +1,15 @@
+New prompts
+Create a tower defense game in a single html fiiles (js and css included in that html file) with the following requiredments
+
+1) Use PixiJS to make it look good (<script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.2.4/pixi.min.js"></script>)
+2) The enemies goal is to make it from the start of  a  blank map to the end spot
+3) Have the user be able to place towers anywhere on the map, enemies have to go around towers and calculate a new direct path to the end when users place a tower. THe intent is to almost make a maze like tower structure for the enemies to go through. If there is no path possible to the end, the enemies should attack and destroy the towers, but only if there is no solution
+4) Create multiple enemy types (be sure to include flying type) and towers
+5) Create Multiple waves
+6) Have curreny in the game when defeating enemies or completing a wave to be able to buy better towers
+7) Make a great UI in the game, that is visually stunning
+8) Be able to upgrade and sell towers
+9) Have a Boss wave show up every 5th wave
+10) We should be able to click on enemies in teh game and see stats and infromation about them
+11) Have hotkeys in place to select the towers before you place them (QWERT ect.)
+12) Be Sure to include UI so the users can actually start and end the game 
