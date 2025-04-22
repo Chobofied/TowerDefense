@@ -15,35 +15,35 @@
         }
         #game-ui {
             position: absolute;
-            top: 0; left: 0; width: 100vw; height: 100vh;
+            width: 100vw; height: 100vh;
             pointer-events: none;
         }
-        .ui-panel {
+        #live-stats {
+            position: absolute;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
             background: rgba(30,34,44,0.95);
             border-radius: 12px;
             box-shadow: 0 2px 16px #0008;
             color: #fff;
-            padding: 18px 24px;
-            margin: 16px;
+            padding: 10px 32px;
+            font-size: 1.2em;
+            z-index: 10;
             pointer-events: auto;
         }
         #tower-select {
+            position: absolute;
+            left: 50%;
+            bottom: 16px;
+            transform: translateX(-50%);
             display: flex;
             gap: 12px;
+            z-index: 10;
+            pointer-events: auto;
         }
-        .tower-btn {
-            background: #2e3a4e;
-            border: 2px solid #4e6fae;
-            border-radius: 8px;
-            color: #fff;
-            font-size: 1.1em;
-            padding: 8px 16px;
-            cursor: pointer;
-            transition: background 0.2s, border 0.2s;
-        }
-        .tower-btn.selected, .tower-btn:hover {
-            background: #4e6fae;
-            border-color: #fff;
+        .ui-panel {
+            pointer-events: auto;
         }
         #stats-panel {
             position: absolute;
@@ -76,14 +76,16 @@
 </head>
 <body>
     <div id="game-ui">
-        <div class="ui-panel" id="tower-select"></div>
-        <div class="ui-panel" id="wave-panel">
-            <div>Wave: <span id="wave-num">1</span></div>
-            <div>Gold: <span id="gold">100</span></div>
-            <button id="start-btn">Start Game</button>
-            <button id="end-btn" style="display:none;">End Game</button>
-        </div>
         <div class="ui-panel" id="stats-panel" style="display:none;"></div>
+        <div class="ui-panel" id="live-stats">
+            <span>Wave: <span id="wave-num">1</span></span> |
+            <span>Gold: <span id="gold">500</span></span> |
+            <span>Lives: <span id="lives">20</span></span> |
+            <span>Enemies Left: <span id="enemies-left">0</span></span>
+        </div>
+        <div class="ui-panel" id="tower-select"></div>
+        <button id="start-btn" style="position:absolute;left:50%;top:60%;transform:translate(-50%,0);z-index:20;">Start Game</button>
+        <button id="end-btn" style="position:absolute;left:50%;top:68%;transform:translate(-50%,0);z-index:20;display:none;">End Game</button>
     </div>
     <script>
 // --- Game Constants ---
@@ -130,9 +132,9 @@ app.view.style.transform = 'translate(-50%, -50%)';
 let towers = [];
 let enemies = [];
 let projectiles = [];
-let gold = 100000;
+let gold = 500; // Start with more gold
 let wave = 1;
-let lives = 200;
+let lives = 20;
 let placingTower = null;
 let selectedTowerType = 0;
 let selectedEnemy = null;
@@ -154,6 +156,8 @@ const endBtn = document.getElementById('end-btn');
 function updateUI() {
     waveNum.textContent = wave;
     goldSpan.textContent = gold;
+    document.getElementById('lives').textContent = lives;
+    document.getElementById('enemies-left').textContent = enemies.filter(e => e.alive).length;
 }
 
 function showStats(enemy) {
@@ -568,7 +572,7 @@ function restartGame() {
     towers = [];
     enemies = [];
     projectiles = [];
-    gold = 100;
+    gold = 500;
     wave = 1;
     lives = 20;
     isGameRunning = false;
@@ -584,7 +588,7 @@ startBtn.onclick = () => {
     towers = [];
     enemies = [];
     projectiles = [];
-    gold = 100;
+    gold = 500;
     wave = 1;
     lives = 20;
     updatePathGrid();
