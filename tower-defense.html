@@ -264,7 +264,7 @@ function aStar(start, end) {
 
 // --- Tower Placement ---
 app.view.addEventListener('click', e => {
-    if (!isGameRunning) return;
+    // Remove isGameRunning check so towers can be placed anytime
     const rect = app.view.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
@@ -384,7 +384,8 @@ function gameLoop(delta) {
     for (let tower of towers) {
         tower.cooldown -= delta/60;
         if (tower.cooldown <= 0) {
-            let targets = enemies.filter(e => e.alive && (!e.flying || tower.type.name==='Missile') && Math.hypot(e.x-(tower.x*TILE_SIZE+TILE_SIZE/2), e.y-(tower.y*TILE_SIZE+TILE_SIZE/2)) < tower.type.range);
+            // Remove flying restriction so all towers can hit flying enemies
+            let targets = enemies.filter(e => e.alive && Math.hypot(e.x-(tower.x*TILE_SIZE+TILE_SIZE/2), e.y-(tower.y*TILE_SIZE+TILE_SIZE/2)) < tower.type.range);
             if (targets.length) {
                 let target = targets[0];
                 projectiles.push({
