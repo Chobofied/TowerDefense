@@ -58,7 +58,7 @@
             min-width: 200px;
             text-align: center;
         }
-        #start-btn, #end-btn {
+        #start-btn, #end-btn, #next-wave-btn {
             background: #4e6fae;
             border: none;
             border-radius: 8px;
@@ -69,7 +69,7 @@
             cursor: pointer;
             transition: background 0.2s;
         }
-        #start-btn:hover, #end-btn:hover {
+        #start-btn:hover, #end-btn:hover, #next-wave-btn:hover {
             background: #6e8fde;
         }
     </style>
@@ -77,15 +77,16 @@
 <body>
     <div id="game-ui">
         <div class="ui-panel" id="stats-panel" style="display:none;"></div>
-        <div class="ui-panel" id="live-stats">
+        <div class="ui-panel" id="live-stats" style="right: 16px; left: auto; top: 16px; transform: none;">
             <span>Wave: <span id="wave-num">1</span></span> |
             <span>Gold: <span id="gold">500</span></span> |
             <span>Lives: <span id="lives">20</span></span> |
             <span>Enemies Left: <span id="enemies-left">0</span></span>
         </div>
-        <div class="ui-panel" id="tower-select"></div>
-        <button id="start-btn" style="position:absolute;left:50%;top:60%;transform:translate(-50%,0);z-index:20;">Start Game</button>
-        <button id="end-btn" style="position:absolute;left:50%;top:68%;transform:translate(-50%,0);z-index:20;display:none;">End Game</button>
+        <div class="ui-panel" id="tower-select" style="right: 16px; left: auto; bottom: 16px; top: auto; transform: none; flex-direction: column; gap: 16px;"></div>
+        <button id="start-btn" style="position:absolute;right:32px;top:60%;left:auto;transform:none;z-index:20;">Start Game</button>
+        <button id="end-btn" style="position:absolute;right:32px;top:68%;left:auto;transform:none;z-index:20;display:none;">End Game</button>
+        <button id="next-wave-btn" style="position:absolute;right:32px;top:76%;left:auto;transform:none;z-index:20;display:none;">Next Wave</button>
     </div>
     <script>
 // --- Game Constants ---
@@ -143,6 +144,7 @@ let pathGrid = [];
 let startTile = {x: 0, y: Math.floor(GRID_SIZE/2)};
 let endTile = {x: GRID_SIZE-1, y: Math.floor(GRID_SIZE/2)};
 let flyingBypass = true;
+let endlessMode = false;
 
 // --- UI Setup ---
 const towerSelect = document.getElementById('tower-select');
@@ -152,6 +154,7 @@ const waveNum = document.getElementById('wave-num');
 const goldSpan = document.getElementById('gold');
 const startBtn = document.getElementById('start-btn');
 const endBtn = document.getElementById('end-btn');
+const nextWaveBtn = document.getElementById('next-wave-btn');
 
 function updateUI() {
     waveNum.textContent = wave;
@@ -319,6 +322,7 @@ function spawnWave() {
             enemies.push(createEnemy(type));
         }, i*700);
     }
+    nextWaveBtn.style.display = 'none';
 }
 function createEnemy(type) {
     let path = type.flying ? null : aStar(startTile, endTile);
@@ -425,9 +429,10 @@ function gameLoop(delta) {
         isGameRunning = false;
         endBtn.style.display = '';
         startBtn.style.display = 'none';
+        nextWaveBtn.style.display = 'none';
         showGameOver('Game Over!');
     } else if (isGameRunning && enemies.length === 0 && projectiles.length === 0) {
-        if (wave < MAX_WAVES) {
+        if (!endlessMode && wave < MAX_WAVES) {
             wave++;
             updateUI();
             setTimeout(spawnWave, 1200);
@@ -435,6 +440,7 @@ function gameLoop(delta) {
             isGameRunning = false;
             endBtn.style.display = '';
             startBtn.style.display = 'none';
+            nextWaveBtn.style.display = '';
             showGameOver('Victory!');
         }
     }
@@ -561,12 +567,22 @@ function showGameOver(msg) {
     over.style.borderRadius = '16px';
     over.style.fontSize = '2em';
     over.style.boxShadow = '0 2px 24px #000a';
-    over.innerHTML = `<b>${msg}</b><br><button id="restart-btn">Restart</button>`;
+    over.innerHTML = `<b>${msg}</b><br><button id="restart-btn">Restart</button>` + (msg === 'Victory!' ? '<br><button id="endless-btn">Endless Mode</button>' : '');
     document.body.appendChild(over);
     over.querySelector('#restart-btn').onclick = () => {
         document.body.removeChild(over);
         restartGame();
     };
+    if (msg === 'Victory!') {
+        over.querySelector('#endless-btn').onclick = () => {
+            document.body.removeChild(over);
+            endlessMode = true;
+            isGameRunning = true;
+            endBtn.style.display = '';
+            startBtn.style.display = 'none';
+            nextWaveBtn.style.display = '';
+        };
+    }
 }
 function restartGame() {
     towers = [];
@@ -585,12 +601,14 @@ startBtn.onclick = () => {
     isGameRunning = true;
     startBtn.style.display = 'none';
     endBtn.style.display = '';
+    nextWaveBtn.style.display = 'none';
     towers = [];
     enemies = [];
     projectiles = [];
     gold = 500;
     wave = 1;
     lives = 20;
+    endlessMode = false;
     updatePathGrid();
     updateUI();
     spawnWave();
@@ -599,7 +617,17 @@ endBtn.onclick = () => {
     isGameRunning = false;
     endBtn.style.display = 'none';
     startBtn.style.display = '';
+    nextWaveBtn.style.display = 'none';
     showGameOver('Game Ended');
+};
+nextWaveBtn.onclick = () => {
+    if (!isGameRunning) {
+        isGameRunning = true;
+        nextWaveBtn.style.display = 'none';
+    }
+    wave++;
+    updateUI();
+    spawnWave();
 };
 
 // --- Main Loop ---
