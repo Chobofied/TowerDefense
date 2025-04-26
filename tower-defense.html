@@ -283,6 +283,13 @@ app.view.addEventListener('click', e => {
     });
     gold -= TOWER_TYPES[selectedTowerType].cost;
     updatePathGrid();
+    // Recalculate path for all non-flying, alive enemies
+    enemies.forEach(e => {
+        if (!e.flying && e.alive) {
+            e.path = aStar({x: Math.round((e.x-TILE_SIZE/2)/TILE_SIZE), y: Math.round((e.y-TILE_SIZE/2)/TILE_SIZE)}, endTile);
+            e.pathIdx = 0;
+        }
+    });
     let path = aStar(startTile, endTile);
     if (!path) {
         let t = towers.pop();
