@@ -266,13 +266,46 @@ function aStar(start, end) {
 }
 
 // --- Tower Placement ---
-app.view.addEventListener('click', e => {
-    // Allow tower placement at any time (remove isGameRunning check)
+let previewTile = null;
+let selectedTower = null;
+app.view.addEventListener('mousemove', e => {
     const rect = app.view.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
     const tx = Math.floor(mx / TILE_SIZE);
     const ty = Math.floor(my / TILE_SIZE);
+    // Only show preview if in bounds and not on start/end/tower
+    if (
+        tx >= 0 && tx < GRID_SIZE && ty >= 0 && ty < GRID_SIZE &&
+        !(tx === startTile.x && ty === startTile.y) &&
+        !(tx === endTile.x && ty === endTile.y) &&
+        !towers.some(t => t.x === tx && t.y === ty)
+    ) {
+        previewTile = {x: tx, y: ty};
+    } else {
+        previewTile = null;
+    }
+});
+app.view.addEventListener('mouseleave', () => {
+    previewTile = null;
+});
+// --- Tower Select on Click ---
+app.view.addEventListener('click', e => {
+    const rect = app.view.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const tx = Math.floor(mx / TILE_SIZE);
+    const ty = Math.floor(my / TILE_SIZE);
+    // If clicking on a tower, select it for radius display
+    let tower = towers.find(t => t.x === tx && t.y === ty);
+    if (tower) {
+        selectedTower = tower;
+        updateUI();
+        return;
+    } else {
+        selectedTower = null;
+    }
+    // Allow tower placement at any time (remove isGameRunning check)
     if (tx < 0 || tx >= GRID_SIZE || ty < 0 || ty >= GRID_SIZE) return;
     if (towers.some(t => t.x === tx && t.y === ty)) return;
     if (tx === startTile.x && ty === startTile.y) return;
@@ -474,11 +507,20 @@ function draw() {
     // Draw start/end
     graphics.beginFill(0x6ede8a).drawRect(startTile.x*TILE_SIZE, startTile.y*TILE_SIZE, TILE_SIZE, TILE_SIZE).endFill();
     graphics.beginFill(0xde6e6e).drawRect(endTile.x*TILE_SIZE, endTile.y*TILE_SIZE, TILE_SIZE, TILE_SIZE).endFill();
+    // Draw preview tower
+    if (previewTile) {
+        graphics.beginFill(TOWER_TYPES[selectedTowerType].color, 0.35)
+            .drawCircle(previewTile.x*TILE_SIZE+TILE_SIZE/2, previewTile.y*TILE_SIZE+TILE_SIZE/2, TILE_SIZE/2.2)
+            .endFill();
+    }
     // Draw towers
     for (let t of towers) {
         graphics.beginFill(t.type.color).drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, TILE_SIZE/2.2).endFill();
-        graphics.lineStyle(2, 0xffffff, 0.2);
-        graphics.drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, t.type.range);
+        // Only show radius if this tower is selected
+        if (selectedTower === t) {
+            graphics.lineStyle(2, 0xffffff, 0.2);
+            graphics.drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, t.type.range);
+        }
     }
     // Draw enemies
     for (let e of enemies) {
