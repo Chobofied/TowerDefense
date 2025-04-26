@@ -868,13 +868,15 @@ function createDamageNumber(x, y, damage, isCritical = false) {
 
 // --- Game Loop ---
 function gameLoop(delta) {
+    // These updates should run regardless of game state
+    
     // Update boost cooldown
     if (!boostActive && boostCooldown > 0) {
         boostCooldown -= delta / 60;
         if (boostCooldown <= 0) {
             boostCooldown = 0;
-            updateUI();
         }
+        updateUI(); // Always update UI when boost timer changes
     }
     
     // Update active effects
@@ -906,7 +908,21 @@ function gameLoop(delta) {
         }
     }
     
+    // --- Update damage numbers (regardless of game state) ---
+    for (let i = damageNumbers.length - 1; i >= 0; i--) {
+        let d = damageNumbers[i];
+        d.life--;
+        d.y -= 1; // Move upward
+        d.alpha = d.life / 30;
+        
+        if (d.life <= 0) {
+            damageNumbers.splice(i, 1);
+        }
+    }
+    
+    // Skip game logic if not running
     if (!isGameRunning) {
+        // Still draw to ensure damage numbers and other visual elements update
         draw();
         return;
     }
@@ -1040,18 +1056,6 @@ function gameLoop(delta) {
     }
     
     projectiles = projectiles.filter(p => !p.hit);
-    
-    // --- Update damage numbers ---
-    for (let i = damageNumbers.length - 1; i >= 0; i--) {
-        let d = damageNumbers[i];
-        d.life--;
-        d.y -= 1; // Move upward
-        d.alpha = d.life / 30;
-        
-        if (d.life <= 0) {
-            damageNumbers.splice(i, 1);
-        }
-    }
     
     // --- Remove Dead Enemies ---
     enemies = enemies.filter(e => e.alive);
@@ -1200,7 +1204,7 @@ function draw() {
         graphics.beginFill(p.color).drawCircle(p.x, p.y, 7).endFill();
     }
     
-    // Draw damage numbers
+    // Draw damage numbers - make sure to properly clean up
     for (let d of damageNumbers) {
         const fontSize = d.isCritical ? 20 : 14;
         const color = d.isCritical ? 0xff5500 : 0xFFFFFF;
@@ -1220,9 +1224,11 @@ function draw() {
         text.position.set(d.x, d.y);
         app.stage.addChild(text);
         
-        // Schedule removal of text after rendering
+        // Schedule removal of text after rendering - guaranteed cleanup
         setTimeout(() => {
-            app.stage.removeChild(text);
+            if (app.stage.children.includes(text)) {
+                app.stage.removeChild(text);
+            }
         }, 50);
     }
 }
