@@ -1,0 +1,146 @@
+{
+  "gameSettings": {
+    "gridSize": 16,
+    "tileSize": 48,
+    "startingGold": 500,
+    "startingLives": 20,
+    "waveCompleteGold": 50,
+    "itemDropChance": 0.15
+  },
+  "towers": [
+    {
+      "name": "Cannon",
+      "key": "Q",
+      "color": "0x4e6fae",
+      "cost": 50,
+      "range": 120,
+      "fireRate": 0.8,
+      "damage": 18,
+      "damageVariation": 0.2,
+      "critChance": 0.1,
+      "critMultiplier": 2.0
+    },
+    {
+      "name": "Laser",
+      "key": "W",
+      "color": "0xde6e6e",
+      "cost": 70,
+      "range": 100,
+      "fireRate": 0.4,
+      "damage": 10,
+      "damageVariation": 0.15,
+      "critChance": 0.15,
+      "critMultiplier": 1.8
+    },
+    {
+      "name": "Missile",
+      "key": "E",
+      "color": "0x6ede8a",
+      "cost": 90,
+      "range": 160,
+      "fireRate": 1.2,
+      "damage": 30,
+      "damageVariation": 0.25,
+      "critChance": 0.08,
+      "critMultiplier": 2.5
+    },
+    {
+      "name": "Tesla",
+      "key": "R",
+      "color": "0xf2e96d",
+      "cost": 120,
+      "range": 90,
+      "fireRate": 0.2,
+      "damage": 5,
+      "damageVariation": 0.1,
+      "critChance": 0.2,
+      "critMultiplier": 1.5
+    }
+  ],
+  "enemies": [
+    {
+      "name": "Walker",
+      "baseSpeed": 1.2,
+      "baseHp": 40,
+      "reward": 10,
+      "color": "0xde6e6e",
+      "waveScaling": {
+        "hp": 0.1,
+        "speed": 0.03
+      }
+    },
+    {
+      "name": "Runner",
+      "baseSpeed": 2.2,
+      "baseHp": 20,
+      "reward": 8,
+      "color": "0x6ede8a",
+      "waveScaling": {
+        "hp": 0.07,
+        "speed": 0.05
+      }
+    },
+    {
+      "name": "Tank",
+      "baseSpeed": 0.7,
+      "baseHp": 120,
+      "reward": 25,
+      "color": "0x6e9ede",
+      "waveScaling": {
+        "hp": 0.15,
+        "speed": 0.02
+      }
+    },
+    {
+      "name": "Flying",
+      "baseSpeed": 1.7,
+      "baseHp": 30,
+      "reward": 12,
+      "color": "0xcccccc",
+      "flying": true,
+      "waveScaling": {
+        "hp": 0.09,
+        "speed": 0.04
+      }
+    }
+  ],
+  "boss": {
+    "name": "Boss",
+    "baseSpeed": 1.1,
+    "baseHp": 400,
+    "reward": 100,
+    "color": "0xf2e96d",
+    "waveScaling": {
+      "hp": 0.25,
+      "speed": 0.03
+    }
+  },
+  "items": [
+    {
+      "name": "Gold",
+      "value": 25,
+      "color": "0xffd700",
+      "weight": 50
+    },
+    {
+      "name": "Damage Boost",
+      "value": 0.3,
+      "duration": 10,
+      "color": "0xff4500",
+      "weight": 25
+    },
+    {
+      "name": "Speed Boost",
+      "value": 0.5,
+      "duration": 8,
+      "color": "0x00ffff",
+      "weight": 25
+    }
+  ],
+  "boost": {
+    "key": "B",
+    "speedMultiplier": 2.0,
+    "duration": 5,
+    "cooldown": 30
+  }
+}

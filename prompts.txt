@@ -10,3 +10,21 @@
 10) Gain gold at the end of each wave.
 11) Have the enemies drop items ocassionally that benefit the player (For example, extra gold, or increased damage ect.)
 12) Have the enemies increase in speed and life each wave (Have these settings defined as )
+
+
+
+
+1) add some randomness to the attack damage of the towers, also give it a chance for critical hits
+2) Have all the enemies spawn at the same time
+12) Have the enemies increase in speed and life each wave (Have these settings defined as )
+3) visually show a difference in tower upgrades
+11) Have the enemies drop items ocassionally that benefit the player (For example, extra gold, or increased damage ect.)
+
+1) when I refresh the webpage enemies start spawning before I'm ready for the first wave, I want to be able to place towers before the first wave starts,
+2) move all the game variables into a json file that the .html loads from (For example starting gold, enemy health, enemy speed, tower strength, ect.) so that I more easily balanace the game manually myself.
+3) when a tower is upgraded, it now visually is larger than the square its on so the towers can appear to be overlapping, make it so it cant be larger thant he square when upgrading
+4) add a boost button 'b' that can be periodically pressed to shoot faster
+5) move the end game button further out somewhere else so its less likely to be pushed, and make it red, and are you sure button
+6) Be able to purchase new types of buildings that I can eventually place.
+7) Gain gold at the end of each wave.
+

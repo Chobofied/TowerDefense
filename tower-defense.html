@@ -75,24 +75,44 @@
             right: 0; top: 0;
             min-width: 220px;
         }
-        /* Add message container for dropped items */
+        #boost-btn {
+            background: #6ede8a;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1.1em;
+            font-weight: bold;
+            width: 180px;
+        }
+        #boost-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        #boost-btn:hover:not(:disabled) {
+            background: #8eeda6;
+        }
         #message-container {
             position: fixed;
             top: 20px;
             left: 50%;
             transform: translateX(-50%);
+            z-index: 100;
+            pointer-events: none;
             display: flex;
             flex-direction: column;
             align-items: center;
-            z-index: 100;
+            gap: 10px;
         }
         .game-message {
+            padding: 10px 20px;
             background: rgba(0,0,0,0.7);
             color: white;
-            padding: 8px 16px;
-            border-radius: 4px;
-            margin: 4px 0;
-            opacity: 1;
+            border-radius: 8px;
+            font-size: 1.2em;
             transition: opacity 0.5s;
         }
     </style>
@@ -108,83 +128,139 @@
                 <span>Enemies Left: <span id="enemies-left">0</span></span>
             </div>
             <div class="ui-panel" id="tower-select"></div>
-            <button id="start-btn">Start Game</button>
+            <button id="boost-btn">Boost [B]</button>
+            <button id="start-btn">Start Wave</button>
             <button id="end-btn" style="display:none;">End Game</button>
             <button id="next-wave-btn" style="display:none;">Next Wave</button>
         </div>
         <div class="ui-panel" id="stats-panel" style="display:none;"></div>
     </div>
     <script>
-// --- Game Constants ---
-const GRID_SIZE = 16;
-const TILE_SIZE = 48;
-const MAP_WIDTH = GRID_SIZE * TILE_SIZE;
-const MAP_HEIGHT = GRID_SIZE * TILE_SIZE;
-const ENEMY_PATH_COLOR = 0x4e6fae;
-const TOWER_COLORS = [0x4e6fae, 0x6ede8a, 0xde6e6e, 0xf2e96d];
-const ENEMY_COLORS = [0xde6e6e, 0x6ede8a, 0x6e9ede, 0xf2e96d, 0xcccccc];
-const FLYING_COLOR = 0xcccccc;
-const BOSS_COLOR = 0xf2e96d;
-const TOWER_TYPES = [
-    {name: 'Cannon', key: 'Q', color: 0x4e6fae, cost: 50, range: 120, fireRate: 0.8, damage: 18, 
-     damageVariation: 0.2, critChance: 0.1, critMultiplier: 2.0},
-    {name: 'Laser', key: 'W', color: 0xde6e6e, cost: 70, range: 100, fireRate: 0.4, damage: 10, 
-     damageVariation: 0.15, critChance: 0.15, critMultiplier: 1.8},
-    {name: 'Missile', key: 'E', color: 0x6ede8a, cost: 90, range: 160, fireRate: 1.2, damage: 30, 
-     damageVariation: 0.25, critChance: 0.08, critMultiplier: 2.5},
-    {name: 'Tesla', key: 'R', color: 0xf2e96d, cost: 120, range: 90, fireRate: 0.2, damage: 5, 
-     damageVariation: 0.1, critChance: 0.2, critMultiplier: 1.5}
-];
-const ENEMY_TYPES = [
-    {name: 'Walker', baseSpeed: 1.2, baseHp: 40, reward: 10, color: ENEMY_COLORS[0], waveScaling: {hp: 0.1, speed: 0.03}},
-    {name: 'Runner', baseSpeed: 2.2, baseHp: 20, reward: 8, color: ENEMY_COLORS[1], waveScaling: {hp: 0.07, speed: 0.05}},
-    {name: 'Tank', baseSpeed: 0.7, baseHp: 120, reward: 25, color: ENEMY_COLORS[2], waveScaling: {hp: 0.15, speed: 0.02}},
-    {name: 'Flying', baseSpeed: 1.7, baseHp: 30, reward: 12, color: FLYING_COLOR, flying: true, waveScaling: {hp: 0.09, speed: 0.04}}
-];
-const BOSS_TYPE = {name: 'Boss', baseSpeed: 1.1, baseHp: 400, reward: 100, color: BOSS_COLOR, waveScaling: {hp: 0.25, speed: 0.03}};
-const MAX_WAVES = 15;
-const ITEM_DROP_CHANCE = 0.15; // 15% chance for enemies to drop items
-const ITEM_TYPES = [
-    {name: "Gold", value: 25, color: 0xffd700, weight: 50},
-    {name: "Damage Boost", value: 0.3, duration: 10, color: 0xff4500, weight: 25}, // 30% damage boost for 10 seconds
-    {name: "Speed Boost", value: 0.5, duration: 8, color: 0x00ffff, weight: 25}    // 50% fire rate boost for 8 seconds
-];
+// --- Load Game Configuration ---
+let CONFIG; // Will hold the loaded configuration
+let GRID_SIZE;
+let TILE_SIZE;
+let MAP_WIDTH;
+let MAP_HEIGHT;
+let TOWER_TYPES;
+let ENEMY_TYPES;
+let BOSS_TYPE;
+let ITEM_TYPES;
+let BOOST_CONFIG;
 
-// --- PixiJS Setup ---
-const app = new PIXI.Application({
-    width: MAP_WIDTH,
-    height: MAP_HEIGHT,
-    backgroundColor: 0x23273a,
-    antialias: true
-});
-document.body.appendChild(app.view);
-app.view.style.display = 'block';
-app.view.style.margin = '0 auto';
-app.view.style.position = 'absolute';
-app.view.style.left = '50%';
-app.view.style.top = '50%';
-app.view.style.transform = 'translate(-50%, -50%)';
+async function loadConfig() {
+    try {
+        const response = await fetch('game-config.json');
+        if (!response.ok) {
+            throw new Error(`Failed to load configuration: ${response.status}`);
+        }
+        
+        CONFIG = await response.json();
+        
+        // Set all configuration variables
+        GRID_SIZE = CONFIG.gameSettings.gridSize;
+        TILE_SIZE = CONFIG.gameSettings.tileSize;
+        MAP_WIDTH = GRID_SIZE * TILE_SIZE;
+        MAP_HEIGHT = GRID_SIZE * TILE_SIZE;
+        
+        TOWER_TYPES = CONFIG.towers.map(tower => ({
+            name: tower.name,
+            key: tower.key,
+            color: parseInt(tower.color),
+            cost: tower.cost,
+            range: tower.range,
+            fireRate: tower.fireRate,
+            damage: tower.damage,
+            damageVariation: tower.damageVariation,
+            critChance: tower.critChance,
+            critMultiplier: tower.critMultiplier
+        }));
+        
+        ENEMY_TYPES = CONFIG.enemies.map(enemy => ({
+            name: enemy.name,
+            baseSpeed: enemy.baseSpeed,
+            baseHp: enemy.baseHp,
+            reward: enemy.reward,
+            color: parseInt(enemy.color),
+            flying: !!enemy.flying,
+            waveScaling: enemy.waveScaling
+        }));
+        
+        BOSS_TYPE = {
+            name: CONFIG.boss.name,
+            baseSpeed: CONFIG.boss.baseSpeed,
+            baseHp: CONFIG.boss.baseHp,
+            reward: CONFIG.boss.reward,
+            color: parseInt(CONFIG.boss.color),
+            waveScaling: CONFIG.boss.waveScaling
+        };
+        
+        ITEM_TYPES = CONFIG.items;
+        BOOST_CONFIG = CONFIG.boost;
+        
+        // Initialize the game
+        initGame();
+        
+    } catch (error) {
+        console.error("Error loading configuration:", error);
+        alert("Failed to load game configuration! Check the console for details.");
+    }
+}
 
-// --- Game State ---
+// --- Game State Variables ---
 let towers = [];
 let enemies = [];
 let projectiles = [];
 let damageNumbers = [];
-let items = []; // For dropped items
-let activeEffects = []; // Track active item effects
-let gold = 500; // Start with more gold
-let wave = 1;
-let lives = 20;
+let items = []; 
+let activeEffects = [];
+let gold;
+let wave;
+let lives;
 let placingTower = null;
-let selectedTowerType = -1; // Changed from 0 to -1 to represent "no tower selected"
+let selectedTowerType = -1;
 let selectedEnemy = null;
 let isGameRunning = false;
 let pathGrid = [];
-let startTile = {x: 0, y: Math.floor(GRID_SIZE/2)};
-let endTile = {x: GRID_SIZE-1, y: Math.floor(GRID_SIZE/2)};
+let startTile;
+let endTile;
 let flyingBypass = true;
-let towerStatsWindow = null; // Add this to track the tower stats window
-let messageContainer = document.getElementById('message-container');
+let towerStatsWindow = null;
+let boostActive = false;
+let boostCooldown = 0;
+
+// --- PixiJS Setup ---
+const app = new PIXI.Application({
+    backgroundColor: 0x23273a,
+    antialias: true
+});
+document.body.appendChild(app.view);
+
+function initGame() {
+    // Set canvas dimensions from configuration
+    app.renderer.resize(MAP_WIDTH, MAP_HEIGHT);
+    app.view.style.display = 'block';
+    app.view.style.margin = '0 auto';
+    app.view.style.position = 'absolute';
+    app.view.style.left = '50%';
+    app.view.style.top = '50%';
+    app.view.style.transform = 'translate(-50%, -50%)';
+    
+    // Initialize game state
+    gold = CONFIG.gameSettings.startingGold;
+    lives = CONFIG.gameSettings.startingLives;
+    wave = 1;
+    startTile = {x: 0, y: Math.floor(GRID_SIZE/2)};
+    endTile = {x: GRID_SIZE-1, y: Math.floor(GRID_SIZE/2)};
+    
+    // Apply UI updates
+    updateUI();
+    renderTowerSelect();
+    updatePathGrid();
+    
+    // Set up all game event handlers and logic
+    setupGameHandlers();
+}
 
 // --- UI Setup ---
 const towerSelect = document.getElementById('tower-select');
@@ -195,33 +271,52 @@ const goldSpan = document.getElementById('gold');
 const startBtn = document.getElementById('start-btn');
 const endBtn = document.getElementById('end-btn');
 const nextWaveBtn = document.getElementById('next-wave-btn');
-
-// Show game messages function
-function showMessage(text, color = "#ffffff") {
-    const message = document.createElement('div');
-    message.className = 'game-message';
-    message.textContent = text;
-    message.style.color = color;
-    messageContainer.appendChild(message);
-    
-    // Remove after 3 seconds
-    setTimeout(() => {
-        message.style.opacity = "0";
-        setTimeout(() => messageContainer.removeChild(message), 500);
-    }, 3000);
-}
+const boostBtn = document.getElementById('boost-btn');
+const messageContainer = document.getElementById('message-container');
 
 function updateUI() {
     waveNum.textContent = wave;
     goldSpan.textContent = gold;
     document.getElementById('lives').textContent = lives;
     document.getElementById('enemies-left').textContent = enemies.filter(e => e.alive).length;
+    
+    // Update boost button
+    if (boostActive) {
+        boostBtn.textContent = 'Boosting...';
+        boostBtn.disabled = true;
+    } else if (boostCooldown > 0) {
+        boostBtn.textContent = `Boost [${Math.ceil(boostCooldown)}s]`;
+        boostBtn.disabled = true;
+    } else {
+        boostBtn.textContent = 'Boost [B]';
+        boostBtn.disabled = false;
+    }
+}
+
+function showMessage(text, color = "#ffffff") {
+    const message = document.createElement('div');
+    message.className = 'game-message';
+    message.textContent = text;
+    message.style.color = color;
+    
+    messageContainer.appendChild(message);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        message.style.opacity = '0';
+        setTimeout(() => {
+            if (messageContainer.contains(message)) {
+                messageContainer.removeChild(message);
+            }
+        }, 500);
+    }, 3000);
 }
 
 function showStats(enemy) {
     statsPanel.style.display = 'block';
     statsPanel.innerHTML = `<b>${enemy.type.name}</b><br>HP: ${Math.ceil(enemy.hp)}/${enemy.maxHp}<br>Speed: ${enemy.speed.toFixed(1)}<br>Reward: ${enemy.type.reward}`;
 }
+
 function hideStats() {
     statsPanel.style.display = 'none';
 }
@@ -245,18 +340,79 @@ function renderTowerSelect() {
         towerSelect.appendChild(btn);
     });
 }
-renderTowerSelect();
 
-// --- Hotkeys for Tower Selection ---
-document.addEventListener('keydown', e => {
-    const idx = TOWER_TYPES.findIndex(t => t.key.toLowerCase() === e.key.toLowerCase());
-    if (idx !== -1) {
-        selectedTowerType = idx;
-        renderTowerSelect();
-    }
-});
+function setupGameHandlers() {
+    // --- Boost Button Handler ---
+    boostBtn.addEventListener('click', activateBoost);
+    
+    // --- Key Handlers ---
+    document.addEventListener('keydown', e => {
+        // Boost key
+        if (e.key.toLowerCase() === BOOST_CONFIG.key.toLowerCase()) {
+            if (!boostActive && boostCooldown <= 0) {
+                activateBoost();
+            }
+            return;
+        }
+        
+        // Tower selection via keys
+        const idx = TOWER_TYPES.findIndex(t => t.key.toLowerCase() === e.key.toLowerCase());
+        if (idx !== -1) {
+            selectedTowerType = idx;
+            renderTowerSelect();
+        }
+    });
+    
+    // --- Button Handlers ---
+    startBtn.onclick = startWave;
+    endBtn.onclick = endGame;
+    nextWaveBtn.onclick = nextWave;
+    
+    // Set up other event handlers
+    setupPlacementHandlers();
+    
+    // Start the game loop
+    app.ticker.add(gameLoop);
+}
 
-// --- Pathfinding (A*) ---
+function activateBoost() {
+    if (boostActive || boostCooldown > 0) return;
+    
+    boostActive = true;
+    showMessage("BOOST ACTIVATED!", "#6ede8a");
+    updateUI();
+    
+    // End boost after duration
+    setTimeout(() => {
+        boostActive = false;
+        boostCooldown = BOOST_CONFIG.cooldown;
+        updateUI();
+    }, BOOST_CONFIG.duration * 1000);
+}
+
+function startWave() {
+    isGameRunning = true;
+    startBtn.style.display = 'none';
+    endBtn.style.display = '';
+    spawnWave();
+}
+
+function endGame() {
+    isGameRunning = false;
+    endBtn.style.display = 'none';
+    startBtn.style.display = '';
+    showGameOver('Game Ended');
+}
+
+function nextWave() {
+    isGameRunning = true;
+    nextWaveBtn.style.display = 'none';
+    wave++;
+    updateUI();
+    spawnWave();
+}
+
+// --- Pathfinding ---
 function createGrid() {
     let grid = [];
     for (let y = 0; y < GRID_SIZE; y++) {
@@ -268,15 +424,18 @@ function createGrid() {
     }
     return grid;
 }
+
 function updatePathGrid() {
     pathGrid = createGrid();
     towers.forEach(t => {
         pathGrid[t.y][t.x].blocked = true;
     });
 }
+
 function heuristic(a, b) {
     return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 }
+
 function neighbors(node) {
     let dirs = [[1,0],[-1,0],[0,1],[0,-1]];
     let result = [];
@@ -288,6 +447,7 @@ function neighbors(node) {
     }
     return result;
 }
+
 function aStar(start, end) {
     let open = [pathGrid[start.y][start.x]];
     let cameFrom = new Map();
@@ -295,9 +455,11 @@ function aStar(start, end) {
     gScore[start.y][start.x] = 0;
     let fScore = Array(GRID_SIZE).fill().map(()=>Array(GRID_SIZE).fill(Infinity));
     fScore[start.y][start.x] = heuristic(start, end);
+    
     while (open.length) {
         open.sort((a,b)=>fScore[a.y][a.x]-fScore[b.y][b.x]);
         let current = open.shift();
+        
         if (current.x === end.x && current.y === end.y) {
             let path = [];
             let node = current;
@@ -308,6 +470,7 @@ function aStar(start, end) {
             path.push(pathGrid[start.y][start.x]);
             return path.reverse();
         }
+        
         for (let neighbor of neighbors(current)) {
             let tentative = gScore[current.y][current.x] + 1;
             if (tentative < gScore[neighbor.y][neighbor.x]) {
@@ -324,127 +487,125 @@ function aStar(start, end) {
 // --- Tower Placement ---
 let previewTile = null;
 let selectedTower = null;
-app.view.addEventListener('mousemove', e => {
-    const rect = app.view.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-    const tx = Math.floor(mx / TILE_SIZE);
-    const ty = Math.floor(my / TILE_SIZE);
-    // Only show preview if in bounds and not on start/end/tower and a tower type is selected
-    if (
-        selectedTowerType >= 0 && 
-        tx >= 0 && tx < GRID_SIZE && ty >= 0 && ty < GRID_SIZE &&
-        !(tx === startTile.x && ty === startTile.y) &&
-        !(tx === endTile.x && ty === endTile.y) &&
-        !towers.some(t => t.x === tx && t.y === ty)
-    ) {
-        previewTile = {x: tx, y: ty};
-    } else {
+
+function setupPlacementHandlers() {
+    app.view.addEventListener('mousemove', e => {
+        const rect = app.view.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        const tx = Math.floor(mx / TILE_SIZE);
+        const ty = Math.floor(my / TILE_SIZE);
+        
+        // Only show preview if in bounds and not on start/end/tower and a tower type is selected
+        if (
+            selectedTowerType >= 0 && 
+            tx >= 0 && tx < GRID_SIZE && ty >= 0 && ty < GRID_SIZE &&
+            !(tx === startTile.x && ty === startTile.y) &&
+            !(tx === endTile.x && ty === endTile.y) &&
+            !towers.some(t => t.x === tx && t.y === ty)
+        ) {
+            previewTile = {x: tx, y: ty};
+        } else {
+            previewTile = null;
+        }
+    });
+    
+    app.view.addEventListener('mouseleave', () => {
         previewTile = null;
-    }
-});
-app.view.addEventListener('mouseleave', () => {
-    previewTile = null;
-});
-// --- Tower Click Handler ---
-app.view.addEventListener('click', e => {
-    const rect = app.view.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-    const tx = Math.floor(mx / TILE_SIZE);
-    const ty = Math.floor(my / TILE_SIZE);
+    });
     
-    // Close any existing tower stats window
-    if (towerStatsWindow) {
-        document.body.removeChild(towerStatsWindow);
-        towerStatsWindow = null;
-    }
-    
-    // Check if clicking on an item
-    let clickedItem = null;
-    for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        if (Math.hypot(item.x - mx, item.y - my) < 20) {
-            clickedItem = items[i];
-            break;
+    app.view.addEventListener('click', e => {
+        const rect = app.view.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        const tx = Math.floor(mx / TILE_SIZE);
+        const ty = Math.floor(my / TILE_SIZE);
+        
+        // Close any existing tower stats window
+        if (towerStatsWindow) {
+            document.body.removeChild(towerStatsWindow);
+            towerStatsWindow = null;
         }
-    }
-    
-    // Handle item collection
-    if (clickedItem) {
-        collectItem(clickedItem);
-        items = items.filter(item => item !== clickedItem);
-        return;
-    }
-    
-    // If clicking on a tower, select it and show stats
-    let tower = towers.find(t => t.x === tx && t.y === ty);
-    if (tower) {
-        selectedTower = tower;
-        showTowerStats(tower, e.clientX, e.clientY);
-        selectedTowerType = -1; // Deselect tower type when selecting a placed tower
-        renderTowerSelect();
-        updateUI();
-        return;
-    } else {
-        selectedTower = null;
-    }
-    
-    // Only place tower if a tower type is selected (selectedTowerType >= 0)
-    if (selectedTowerType >= 0) {
-        if (tx < 0 || tx >= GRID_SIZE || ty < 0 || ty >= GRID_SIZE) return;
-        if (towers.some(t => t.x === tx && t.y === ty)) return;
-        if (tx === startTile.x && ty === startTile.y) return;
-        if (tx === endTile.x && ty === endTile.y) return;
-        if (gold < TOWER_TYPES[selectedTowerType].cost) return;
         
-        towers.push({
-            x: tx, y: ty, type: TOWER_TYPES[selectedTowerType], level: 1, cooldown: 0
-        });
-        gold -= TOWER_TYPES[selectedTowerType].cost;
-        updatePathGrid();
+        // If clicking on a tower, select it and show stats
+        let tower = towers.find(t => t.x === tx && t.y === ty);
+        if (tower) {
+            selectedTower = tower;
+            showTowerStats(tower, e.clientX, e.clientY);
+            selectedTowerType = -1; // Deselect tower type when selecting a placed tower
+            renderTowerSelect();
+            updateUI();
+            return;
+        } else {
+            selectedTower = null;
+        }
         
-        // Recalculate path for all non-flying, alive enemies
-        enemies.forEach(e => {
-            if (!e.flying && e.alive) {
-                e.path = aStar({x: Math.round((e.x-TILE_SIZE/2)/TILE_SIZE), y: Math.round((e.y-TILE_SIZE/2)/TILE_SIZE)}, endTile);
-                e.pathIdx = 0;
+        // Check for item collection
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (Math.hypot(item.x - mx, item.y - my) < 20) {
+                collectItem(item);
+                items.splice(i, 1);
+                return;
             }
-        });
+        }
         
-        let path = aStar(startTile, endTile);
-        if (!path) {
-            let t = towers.pop();
-            gold += TOWER_TYPES[selectedTowerType].cost;
-            updatePathGrid();
-            let blocking = towers.filter(tw => {
-                towers = towers.filter(tt => tt !== tw);
-                updatePathGrid();
-                let p = aStar(startTile, endTile);
-                towers.push(tw);
-                updatePathGrid();
-                return !p;
+        // Only place tower if a tower type is selected
+        if (selectedTowerType >= 0) {
+            if (tx < 0 || tx >= GRID_SIZE || ty < 0 || ty >= GRID_SIZE) return;
+            if (towers.some(t => t.x === tx && t.y === ty)) return;
+            if (tx === startTile.x && ty === startTile.y) return;
+            if (tx === endTile.x && ty === endTile.y) return;
+            if (gold < TOWER_TYPES[selectedTowerType].cost) return;
+            
+            towers.push({
+                x: tx, y: ty, type: TOWER_TYPES[selectedTowerType], level: 1, cooldown: 0
             });
-            if (blocking.length) {
-                let destroyed = blocking[Math.floor(Math.random()*blocking.length)];
-                towers = towers.filter(tw => tw !== destroyed);
+            gold -= TOWER_TYPES[selectedTowerType].cost;
+            updatePathGrid();
+            
+            // Recalculate path for all non-flying, alive enemies
+            enemies.forEach(e => {
+                if (!e.flying && e.alive) {
+                    e.path = aStar({x: Math.round((e.x-TILE_SIZE/2)/TILE_SIZE), y: Math.round((e.y-TILE_SIZE/2)/TILE_SIZE)}, endTile);
+                    e.pathIdx = 0;
+                }
+            });
+            
+            let path = aStar(startTile, endTile);
+            if (!path) {
+                let t = towers.pop();
+                gold += TOWER_TYPES[selectedTowerType].cost;
                 updatePathGrid();
-                let g = new PIXI.Graphics();
-                g.beginFill(0xde6e6e).drawRect(destroyed.x*TILE_SIZE, destroyed.y*TILE_SIZE, TILE_SIZE, TILE_SIZE).endFill();
-                app.stage.addChild(g);
-                setTimeout(()=>app.stage.removeChild(g), 500);
+                let blocking = towers.filter(tw => {
+                    towers = towers.filter(tt => tt !== tw);
+                    updatePathGrid();
+                    let p = aStar(startTile, endTile);
+                    towers.push(tw);
+                    updatePathGrid();
+                    return !p;
+                });
+                if (blocking.length) {
+                    let destroyed = blocking[Math.floor(Math.random()*blocking.length)];
+                    towers = towers.filter(tw => tw !== destroyed);
+                    updatePathGrid();
+                    let g = new PIXI.Graphics();
+                    g.beginFill(0xde6e6e).drawRect(destroyed.x*TILE_SIZE, destroyed.y*TILE_SIZE, TILE_SIZE, TILE_SIZE).endFill();
+                    app.stage.addChild(g);
+                    setTimeout(()=>app.stage.removeChild(g), 500);
+                }
             }
+            
+            selectedTowerType = -1;
+            renderTowerSelect();
+            updateUI();
         }
-        
-        // Deselect tower type after placement
-        selectedTowerType = -1;
-        renderTowerSelect();
-        updateUI();
-    }
-});
+    });
+}
 
 // --- Enemy Spawning ---
 let spawningWave = false;
+
 function spawnWave() {
     spawningWave = true;
     let count = 8 + wave * 2;
@@ -462,7 +623,7 @@ function spawnWave() {
         };
     });
     
-    // Scale boss on boss waves
+    // Scale boss stats for boss waves
     if (wave % 5 === 0) {
         const hpScale = 1 + (wave - 1) * BOSS_TYPE.waveScaling.hp;
         const speedScale = 1 + (wave - 1) * BOSS_TYPE.waveScaling.speed;
@@ -474,7 +635,7 @@ function spawnWave() {
         });
     }
     
-    // Create all enemies at once with slight position offsets
+    // Create all enemies at once with slight position offsets to prevent overlap
     for (let i = 0; i < count; i++) {
         let type = types[Math.floor(Math.random()*types.length)];
         
@@ -483,14 +644,13 @@ function spawnWave() {
             type = types.find(t => t.name === "Boss");
         }
         
-        // Add offset to x position to prevent complete overlap
-        const xOffset = i * 10;
+        const xOffset = i * 10; // Offset to prevent enemies stacking
         enemies.push({
             type,
             x: startTile.x * TILE_SIZE + TILE_SIZE/2 - xOffset,
             y: startTile.y * TILE_SIZE + TILE_SIZE/2,
             hp: type.hp,
-            maxHp: type.hp, // Store max HP for health bar calculation
+            maxHp: type.hp,
             speed: type.speed,
             path: type.flying ? null : aStar(startTile, endTile),
             pathIdx: 0,
@@ -508,7 +668,7 @@ function calculateDamage(tower) {
     const baseDamage = tower.type.damage * tower.level;
     const variation = tower.type.damageVariation;
     
-    // Random damage variation (e.g., ±20%)
+    // Random damage variation
     const randomFactor = 1 + (Math.random() * variation * 2 - variation);
     let damage = baseDamage * randomFactor;
     
@@ -518,242 +678,11 @@ function calculateDamage(tower) {
         damage *= tower.type.critMultiplier;
     }
     
-    return {
+    return { 
         damage: Math.round(damage * 10) / 10, // Round to 1 decimal
-        isCritical
+        isCritical 
     };
 }
-
-// --- Item Drops ---
-function tryDropItem(x, y) {
-    if (Math.random() < ITEM_DROP_CHANCE) {
-        // Weighted random selection of item type
-        const totalWeight = ITEM_TYPES.reduce((sum, item) => sum + item.weight, 0);
-        let roll = Math.random() * totalWeight;
-        let selectedItem = null;
-        
-        for (const item of ITEM_TYPES) {
-            roll -= item.weight;
-            if (roll <= 0) {
-                selectedItem = {...item};
-                break;
-            }
-        }
-        
-        if (selectedItem) {
-            items.push({
-                x, y,
-                type: selectedItem,
-                pulseDirection: 1,
-                pulseValue: 0,
-                lifetime: 300 // Item disappears after 5 seconds (60 frames/sec)
-            });
-        }
-    }
-}
-
-// --- Collect Item ---
-function collectItem(item) {
-    if (item.type.name === "Gold") {
-        gold += item.type.value;
-        showMessage(`+${item.type.value} Gold!`, "#ffd700");
-    }
-    else if (item.type.name === "Damage Boost") {
-        activeEffects.push({
-            type: "damage",
-            multiplier: item.type.value,
-            duration: item.type.duration * 60 // Convert to frames
-        });
-        showMessage(`Damage Boost +${Math.round(item.type.value * 100)}% for ${item.type.duration}s!`, "#ff4500");
-    }
-    else if (item.type.name === "Speed Boost") {
-        activeEffects.push({
-            type: "fireRate",
-            multiplier: item.type.value,
-            duration: item.type.duration * 60 // Convert to frames
-        });
-        showMessage(`Fire Rate Boost +${Math.round(item.type.value * 100)}% for ${item.type.duration}s!`, "#00ffff");
-    }
-}
-
-// --- Game Loop ---
-let endlessMode = true;
-function gameLoop(delta) {
-    // Update item lifetimes and animations
-    for (let i = items.length - 1; i >= 0; i--) {
-        const item = items[i];
-        item.lifetime--;
-        
-        // Pulse animation
-        item.pulseValue += 0.05 * item.pulseDirection;
-        if (item.pulseValue > 1) {
-            item.pulseValue = 1;
-            item.pulseDirection = -1;
-        } else if (item.pulseValue < 0) {
-            item.pulseValue = 0;
-            item.pulseDirection = 1;
-        }
-        
-        // Remove expired items
-        if (item.lifetime <= 0) {
-            items.splice(i, 1);
-        }
-    }
-    
-    // Update active effects
-    for (let i = activeEffects.length - 1; i >= 0; i--) {
-        const effect = activeEffects[i];
-        effect.duration--;
-        if (effect.duration <= 0) {
-            showMessage(`${effect.type === 'damage' ? 'Damage' : 'Fire Rate'} boost expired`, "#aaaaaa");
-            activeEffects.splice(i, 1);
-        }
-    }
-    
-    // --- Move Enemies ---
-    for (let enemy of enemies) {
-        if (!enemy.alive) continue;
-        if (enemy.flying) {
-            // Flying: straight line
-            let dx = (endTile.x*TILE_SIZE+TILE_SIZE/2) - enemy.x;
-            let dy = (endTile.y*TILE_SIZE+TILE_SIZE/2) - enemy.y;
-            let dist = Math.sqrt(dx*dx+dy*dy);
-            if (dist < 6) {
-                enemy.alive = false;
-                lives--;
-                showMessage("Life lost!", "#ff6666");
-                continue;
-            }
-            let spd = enemy.speed * delta * 2.2;
-            enemy.x += dx/dist * spd;
-            enemy.y += dy/dist * spd;
-        } else {
-            if (!enemy.path || enemy.pathIdx >= enemy.path.length) {
-                enemy.alive = false;
-                lives--;
-                showMessage("Life lost!", "#ff6666");
-                continue;
-            }
-            let node = enemy.path[enemy.pathIdx];
-            let tx = node.x*TILE_SIZE+TILE_SIZE/2;
-            let ty = node.y*TILE_SIZE+TILE_SIZE/2;
-            let dx = tx - enemy.x;
-            let dy = ty - enemy.y;
-            let dist = Math.sqrt(dx*dx+dy*dy);
-            let spd = enemy.speed * delta * 2.2;
-            if (dist < spd) {
-                enemy.x = tx;
-                enemy.y = ty;
-                enemy.pathIdx++;
-            } else {
-                enemy.x += dx/dist * spd;
-                enemy.y += dy/dist * spd;
-            }
-        }
-    }
-    // --- Towers Attack ---
-    for (let tower of towers) {
-        // Apply fire rate boost if active
-        let fireRateMultiplier = 1;
-        const fireRateEffect = activeEffects.find(e => e.type === "fireRate");
-        if (fireRateEffect) {
-            fireRateMultiplier = 1 + fireRateEffect.multiplier;
-        }
-        
-        tower.cooldown -= (delta/60) * fireRateMultiplier;
-        if (tower.cooldown <= 0) {
-            // All towers can hit flying enemies now
-            let targets = enemies.filter(e => e.alive && Math.hypot(e.x-(tower.x*TILE_SIZE+TILE_SIZE/2), e.y-(tower.y*TILE_SIZE+TILE_SIZE/2)) < tower.type.range);
-            if (targets.length) {
-                let target = targets[0];
-                
-                // Calculate damage with randomness and critical hits
-                const { damage, isCritical } = calculateDamage(tower);
-                
-                // Apply damage boost if active
-                let finalDamage = damage;
-                const damageEffect = activeEffects.find(e => e.type === "damage");
-                if (damageEffect) {
-                    finalDamage *= (1 + damageEffect.multiplier);
-                }
-                
-                projectiles.push({
-                    x: tower.x*TILE_SIZE+TILE_SIZE/2,
-                    y: tower.y*TILE_SIZE+TILE_SIZE/2,
-                    tx: target.x,
-                    ty: target.y,
-                    target,
-                    damage: finalDamage,
-                    color: tower.type.color,
-                    isCritical, // Track if this was a critical hit
-                    speed: 7 + tower.level*2
-                });
-                tower.cooldown = tower.type.fireRate;
-            }
-        }
-    }
-    // --- Projectiles ---
-    for (let p of projectiles) {
-        let dx = p.tx - p.x;
-        let dy = p.ty - p.y;
-        let dist = Math.sqrt(dx*dx+dy*dy);
-        let spd = p.speed;
-        if (dist < spd) {
-            p.x = p.tx; p.y = p.ty;
-            if (p.target && p.target.alive) {
-                p.target.hp -= p.damage;
-                // Create damage number when projectile hits
-                createDamageNumber(p.target.x, p.target.y - 20, p.damage, p.isCritical);
-                if (p.target.hp <= 0) {
-                    p.target.alive = false;
-                    gold += p.target.type.reward;
-                    // Try to drop an item
-                    tryDropItem(p.target.x, p.target.y);
-                }
-            }
-            p.hit = true;
-        } else {
-            p.x += dx/dist * spd;
-            p.y += dy/dist * spd;
-        }
-    }
-    projectiles = projectiles.filter(p => !p.hit);
-    // --- Update damage numbers ---
-    for (let i = damageNumbers.length - 1; i >= 0; i--) {
-        let d = damageNumbers[i];
-        d.life--;
-        d.y -= 1; // Move upward
-        d.alpha = d.life / 30;
-        if (d.life <= 0) {
-            damageNumbers.splice(i, 1);
-        }
-    }
-    // --- Remove Dead Enemies ---
-    enemies = enemies.filter(e => e.alive);
-    // --- Win/Lose ---
-    if (lives <= 0) {
-        isGameRunning = false;
-        endBtn.style.display = '';
-        startBtn.style.display = 'none';
-        nextWaveBtn.style.display = 'none';
-        showGameOver('Game Over!');
-    } else if (!spawningWave && enemies.length === 0 && projectiles.length === 0 && isGameRunning) {
-        // Wave complete
-        showMessage(`Wave ${wave} complete!`, "#6ede8a");
-        
-        // Endless mode: show next wave button, do not auto-start
-        nextWaveBtn.style.display = '';
-        isGameRunning = false;
-    }
-    updateUI();
-}
-nextWaveBtn.onclick = () => {
-    isGameRunning = true;
-    nextWaveBtn.style.display = 'none';
-    wave++;
-    updateUI();
-    spawnWave();
-};
 
 // --- Tower Stats Window ---
 function showTowerStats(tower, x, y) {
@@ -836,9 +765,6 @@ function showTowerStats(tower, x, y) {
             // Update the stats window with new values
             document.body.removeChild(statsWindow);
             showTowerStats(tower, x, y);
-            showMessage(`Tower upgraded to level ${tower.level}`, "#6ede8a");
-        } else {
-            showMessage("Not enough gold!", "#ff6666");
         }
     };
     
@@ -876,6 +802,58 @@ function showTowerStats(tower, x, y) {
     });
 }
 
+// --- Handle item collection ---
+function collectItem(item) {
+    if (item.type.name === "Gold") {
+        gold += item.type.value;
+        showMessage(`+${item.type.value} Gold!`, "#ffd700");
+    }
+    else if (item.type.name === "Damage Boost") {
+        activeEffects.push({
+            type: "damage",
+            multiplier: item.type.value,
+            duration: item.type.duration * 60 // Convert to frames
+        });
+        showMessage(`Damage Boost +${Math.round(item.type.value * 100)}% for ${item.type.duration}s!`, "#ff4500");
+    }
+    else if (item.type.name === "Speed Boost") {
+        activeEffects.push({
+            type: "fireRate",
+            multiplier: item.type.value,
+            duration: item.type.duration * 60 // Convert to frames
+        });
+        showMessage(`Fire Rate Boost +${Math.round(item.type.value * 100)}% for ${item.type.duration}s!`, "#00ffff");
+    }
+}
+
+// --- Try to drop an item from defeated enemy ---
+function tryDropItem(x, y) {
+    if (Math.random() < CONFIG.gameSettings.itemDropChance) {
+        // Weighted random selection of item type
+        const totalWeight = ITEM_TYPES.reduce((sum, item) => sum + item.weight, 0);
+        let roll = Math.random() * totalWeight;
+        let selectedItem = null;
+        
+        for (const item of ITEM_TYPES) {
+            roll -= item.weight;
+            if (roll <= 0) {
+                selectedItem = item;
+                break;
+            }
+        }
+        
+        if (selectedItem) {
+            items.push({
+                x, y,
+                type: selectedItem,
+                pulseDirection: 1,
+                pulseValue: 0,
+                lifetime: 300 // Item disappears after 5 seconds (60 frames/sec)
+            });
+        }
+    }
+}
+
 // --- Damage Numbers ---
 function createDamageNumber(x, y, damage, isCritical = false) {
     damageNumbers.push({
@@ -888,11 +866,223 @@ function createDamageNumber(x, y, damage, isCritical = false) {
     });
 }
 
+// --- Game Loop ---
+function gameLoop(delta) {
+    // Update boost cooldown
+    if (!boostActive && boostCooldown > 0) {
+        boostCooldown -= delta / 60;
+        if (boostCooldown <= 0) {
+            boostCooldown = 0;
+            updateUI();
+        }
+    }
+    
+    // Update active effects
+    for (let i = activeEffects.length - 1; i >= 0; i--) {
+        const effect = activeEffects[i];
+        effect.duration -= delta;
+        if (effect.duration <= 0) {
+            activeEffects.splice(i, 1);
+        }
+    }
+    
+    // Update items
+    for (let i = items.length - 1; i >= 0; i--) {
+        const item = items[i];
+        item.lifetime -= delta;
+        
+        // Animate items
+        item.pulseValue += 0.05 * item.pulseDirection;
+        if (item.pulseValue > 1) {
+            item.pulseValue = 1;
+            item.pulseDirection = -1;
+        } else if (item.pulseValue < 0) {
+            item.pulseValue = 0;
+            item.pulseDirection = 1;
+        }
+        
+        if (item.lifetime <= 0) {
+            items.splice(i, 1);
+        }
+    }
+    
+    if (!isGameRunning) {
+        draw();
+        return;
+    }
+    
+    // --- Move Enemies ---
+    for (let enemy of enemies) {
+        if (!enemy.alive) continue;
+        
+        if (enemy.flying) {
+            // Flying: straight line
+            let dx = (endTile.x*TILE_SIZE+TILE_SIZE/2) - enemy.x;
+            let dy = (endTile.y*TILE_SIZE+TILE_SIZE/2) - enemy.y;
+            let dist = Math.sqrt(dx*dx+dy*dy);
+            
+            if (dist < 6) {
+                enemy.alive = false;
+                lives--;
+                showMessage("Life Lost!", "#ff6666");
+                continue;
+            }
+            
+            let spd = enemy.speed * delta * 2.2;
+            enemy.x += dx/dist * spd;
+            enemy.y += dy/dist * spd;
+        } else {
+            if (!enemy.path || enemy.pathIdx >= enemy.path.length) {
+                enemy.alive = false;
+                lives--;
+                showMessage("Life Lost!", "#ff6666");
+                continue;
+            }
+            
+            let node = enemy.path[enemy.pathIdx];
+            let tx = node.x*TILE_SIZE+TILE_SIZE/2;
+            let ty = node.y*TILE_SIZE+TILE_SIZE/2;
+            let dx = tx - enemy.x;
+            let dy = ty - enemy.y;
+            let dist = Math.sqrt(dx*dx+dy*dy);
+            let spd = enemy.speed * delta * 2.2;
+            
+            if (dist < spd) {
+                enemy.x = tx;
+                enemy.y = ty;
+                enemy.pathIdx++;
+            } else {
+                enemy.x += dx/dist * spd;
+                enemy.y += dy/dist * spd;
+            }
+        }
+    }
+    
+    // --- Towers Attack ---
+    for (let tower of towers) {
+        // Apply boost if active
+        let fireRateMultiplier = 1;
+        if (boostActive) {
+            fireRateMultiplier *= BOOST_CONFIG.speedMultiplier;
+        }
+        
+        // Apply active effects
+        const fireRateEffect = activeEffects.find(e => e.type === "fireRate");
+        if (fireRateEffect) {
+            fireRateMultiplier *= (1 + fireRateEffect.multiplier);
+        }
+        
+        tower.cooldown -= (delta/60) * fireRateMultiplier;
+        
+        if (tower.cooldown <= 0) {
+            let targets = enemies.filter(e => 
+                e.alive && 
+                Math.hypot(e.x-(tower.x*TILE_SIZE+TILE_SIZE/2), e.y-(tower.y*TILE_SIZE+TILE_SIZE/2)) < tower.type.range
+            );
+            
+            if (targets.length) {
+                let target = targets[0];
+                
+                // Calculate damage with randomness and critical hits
+                const { damage, isCritical } = calculateDamage(tower);
+                
+                // Apply damage boost if active
+                let finalDamage = damage;
+                const damageEffect = activeEffects.find(e => e.type === "damage");
+                if (damageEffect) {
+                    finalDamage *= (1 + damageEffect.multiplier);
+                }
+                
+                projectiles.push({
+                    x: tower.x*TILE_SIZE+TILE_SIZE/2,
+                    y: tower.y*TILE_SIZE+TILE_SIZE/2,
+                    tx: target.x,
+                    ty: target.y,
+                    target,
+                    damage: finalDamage,
+                    color: tower.type.color,
+                    isCritical,
+                    speed: 7 + tower.level*2
+                });
+                
+                tower.cooldown = tower.type.fireRate;
+            }
+        }
+    }
+    
+    // --- Projectiles ---
+    for (let p of projectiles) {
+        let dx = p.tx - p.x;
+        let dy = p.ty - p.y;
+        let dist = Math.sqrt(dx*dx+dy*dy);
+        let spd = p.speed;
+        
+        if (dist < spd) {
+            p.x = p.tx;
+            p.y = p.ty;
+            
+            if (p.target && p.target.alive) {
+                p.target.hp -= p.damage;
+                createDamageNumber(p.target.x, p.target.y - 20, p.damage, p.isCritical);
+                
+                if (p.target.hp <= 0) {
+                    p.target.alive = false;
+                    gold += p.target.type.reward;
+                    tryDropItem(p.target.x, p.target.y);
+                }
+            }
+            
+            p.hit = true;
+        } else {
+            p.x += dx/dist * spd;
+            p.y += dy/dist * spd;
+        }
+    }
+    
+    projectiles = projectiles.filter(p => !p.hit);
+    
+    // --- Update damage numbers ---
+    for (let i = damageNumbers.length - 1; i >= 0; i--) {
+        let d = damageNumbers[i];
+        d.life--;
+        d.y -= 1; // Move upward
+        d.alpha = d.life / 30;
+        
+        if (d.life <= 0) {
+            damageNumbers.splice(i, 1);
+        }
+    }
+    
+    // --- Remove Dead Enemies ---
+    enemies = enemies.filter(e => e.alive);
+    
+    // --- Win/Lose ---
+    if (lives <= 0) {
+        isGameRunning = false;
+        endBtn.style.display = '';
+        startBtn.style.display = 'none';
+        nextWaveBtn.style.display = 'none';
+        showGameOver('Game Over!');
+    } else if (!spawningWave && enemies.length === 0 && projectiles.length === 0 && isGameRunning) {
+        isGameRunning = false;
+        nextWaveBtn.style.display = '';
+        
+        // Award completion gold
+        gold += CONFIG.gameSettings.waveCompleteGold;
+        showMessage(`Wave ${wave} complete! +${CONFIG.gameSettings.waveCompleteGold} gold`, "#6ede8a");
+    }
+    
+    updateUI();
+    draw();
+}
+
 // --- Drawing ---
-let graphics = new PIXI.Graphics();
+const graphics = new PIXI.Graphics();
 app.stage.addChild(graphics);
+
 function draw() {
     graphics.clear();
+    
     // Draw grid
     graphics.lineStyle(1, 0x2e3a4e, 0.5);
     for (let x = 0; x <= GRID_SIZE; x++) {
@@ -903,48 +1093,51 @@ function draw() {
         graphics.moveTo(0, y*TILE_SIZE);
         graphics.lineTo(MAP_WIDTH, y*TILE_SIZE);
     }
+    
     // Draw start/end
     graphics.beginFill(0x6ede8a).drawRect(startTile.x*TILE_SIZE, startTile.y*TILE_SIZE, TILE_SIZE, TILE_SIZE).endFill();
     graphics.beginFill(0xde6e6e).drawRect(endTile.x*TILE_SIZE, endTile.y*TILE_SIZE, TILE_SIZE, TILE_SIZE).endFill();
-    // Draw preview tower (only if a tower type is selected)
+    
+    // Draw preview tower
     if (previewTile && selectedTowerType >= 0) {
         graphics.beginFill(TOWER_TYPES[selectedTowerType].color, 0.35)
             .drawCircle(previewTile.x*TILE_SIZE+TILE_SIZE/2, previewTile.y*TILE_SIZE+TILE_SIZE/2, TILE_SIZE/2.2)
             .endFill();
     }
     
-    // Draw towers with visual upgrades
+    // Draw towers with visual upgrades (constrained to tile size)
     for (let t of towers) {
-        // Base tower shape - size increases with level
-        const levelScale = 0.9 + (t.level * 0.1); // Increase size by 10% per level
-        const baseSize = TILE_SIZE/2.2 * levelScale;
+        // Calculate size based on level (constrained to tile size)
+        const maxRadius = TILE_SIZE / 2.2; // Base radius
+        const levelBonus = Math.min(t.level - 1, 4) * 0.1; // Cap bonus at 40% (level 5)
+        const radius = maxRadius * (1 + levelBonus);
         
-        // Draw the base tower
+        // Draw base tower
         graphics.beginFill(t.type.color)
-               .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, baseSize)
-               .endFill();
+            .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius)
+            .endFill();
         
-        // Add visual indicators for levels
+        // Add visual features based on level
         if (t.level >= 2) {
-            // Add an outer ring for level 2+
-            graphics.lineStyle(2, 0xffffff, 0.7)
-                   .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, baseSize * 1.15);
+            // Inner circle for level 2+
+            graphics.beginFill(0xffffff, 0.3)
+                .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius * 0.6)
+                .endFill();
         }
         
         if (t.level >= 3) {
-            // Add inner detail for level 3+
-            graphics.beginFill(0xffffff, 0.5)
-                   .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, baseSize * 0.4)
-                   .endFill();
+            // Ring for level 3+
+            graphics.lineStyle(2, 0xffffff, 0.7)
+                .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius * 0.8);
         }
         
         if (t.level >= 4) {
-            // Add a second outer ring for level 4+
-            graphics.lineStyle(3, 0xffdd00, 0.8)
-                   .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, baseSize * 1.3);
+            // Extra detail for level 4+
+            graphics.lineStyle(2, 0xffdd00, 0.8)
+                .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius * 0.9);
         }
         
-        // Only show radius if this tower is selected
+        // Show range for selected tower
         if (selectedTower === t) {
             graphics.lineStyle(2, 0xffffff, 0.2);
             graphics.drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, t.type.range);
@@ -954,31 +1147,36 @@ function draw() {
     // Draw items
     for (let item of items) {
         const pulseSize = 5 + (item.pulseValue * 3);
-        graphics.beginFill(item.type.color, 0.8)
-               .drawCircle(item.x, item.y, pulseSize)
-               .endFill();
         
-        // Add a glow effect
-        graphics.beginFill(item.type.color, 0.3)
-               .drawCircle(item.x, item.y, pulseSize * 1.5)
-               .endFill();
+        // Main item
+        graphics.beginFill(parseInt(item.type.color), 0.8)
+            .drawCircle(item.x, item.y, pulseSize)
+            .endFill();
+        
+        // Glow effect
+        graphics.beginFill(parseInt(item.type.color), 0.3)
+            .drawCircle(item.x, item.y, pulseSize * 1.5)
+            .endFill();
     }
     
     // Draw enemies
     for (let e of enemies) {
         // Draw enemy
-        graphics.beginFill(e.type.color).drawCircle(e.x, e.y, e.type === BOSS_TYPE ? TILE_SIZE/1.7 : TILE_SIZE/2.5).endFill();
-        if (e.type === BOSS_TYPE) {
+        graphics.beginFill(e.type.color)
+            .drawCircle(e.x, e.y, e.type.name === "Boss" ? TILE_SIZE/1.7 : TILE_SIZE/2.5)
+            .endFill();
+        
+        if (e.type.name === "Boss") {
             graphics.lineStyle(3, 0xffffff, 0.7);
             graphics.drawCircle(e.x, e.y, TILE_SIZE/1.7);
         }
         
         // Draw health bar
-        let healthPercentage = e.hp / e.maxHp;
-        let barWidth = e.type === BOSS_TYPE ? TILE_SIZE * 1.5 : TILE_SIZE;
-        let barHeight = 6;
-        let barX = e.x - barWidth / 2;
-        let barY = e.y - (e.type === BOSS_TYPE ? TILE_SIZE/1.3 : TILE_SIZE/1.8);
+        const healthPercentage = e.hp / e.maxHp;
+        const barWidth = e.type.name === "Boss" ? TILE_SIZE * 1.5 : TILE_SIZE;
+        const barHeight = 6;
+        const barX = e.x - barWidth / 2;
+        const barY = e.y - (e.type.name === "Boss" ? TILE_SIZE/1.3 : TILE_SIZE/1.8);
         
         // Background (dark gray)
         graphics.beginFill(0x333333)
@@ -1029,14 +1227,14 @@ function draw() {
     }
 }
 
-// --- Enemy Click Stats ---
+// --- Enemy Stats Hover ---
 app.view.addEventListener('mousemove', e => {
     const rect = app.view.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
     let found = null;
     for (let enemy of enemies) {
-        let r = enemy.type === BOSS_TYPE ? TILE_SIZE/1.7 : TILE_SIZE/2.5;
+        let r = enemy.type.name === "Boss" ? TILE_SIZE/1.7 : TILE_SIZE/2.5;
         if (Math.hypot(enemy.x-mx, enemy.y-my) < r) {
             found = enemy;
             break;
@@ -1049,56 +1247,7 @@ app.view.addEventListener('mousemove', e => {
     }
 });
 
-// --- Tower Upgrade/Sell ---
-app.view.addEventListener('contextmenu', e => {
-    e.preventDefault();
-    if (!isGameRunning) return;
-    const rect = app.view.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-    const tx = Math.floor(mx / TILE_SIZE);
-    const ty = Math.floor(my / TILE_SIZE);
-    let tower = towers.find(t => t.x === tx && t.y === ty);
-    if (tower) {
-        // Show upgrade/sell UI
-        let menu = document.createElement('div');
-        menu.style.position = 'absolute';
-        menu.style.left = e.clientX+'px';
-        menu.style.top = e.clientY+'px';
-        menu.style.background = '#23273a';
-        menu.style.color = '#fff';
-        menu.style.padding = '10px 18px';
-        menu.style.borderRadius = '8px';
-        menu.style.boxShadow = '0 2px 12px #0008';
-        menu.style.zIndex = 1000;
-        menu.innerHTML = `<b>${tower.type.name} Lv.${tower.level}</b><br><button id="upgrade-btn">Upgrade (${Math.floor(tower.type.cost*0.7*tower.level)})</button> <button id="sell-btn">Sell (${Math.floor(tower.type.cost*0.5*tower.level)})</button>`;
-        document.body.appendChild(menu);
-        menu.querySelector('#upgrade-btn').onclick = () => {
-            let cost = Math.floor(tower.type.cost*0.7*tower.level);
-            if (gold >= cost) {
-                gold -= cost;
-                tower.level++;
-                updateUI();
-            }
-            document.body.removeChild(menu);
-        };
-        menu.querySelector('#sell-btn').onclick = () => {
-            gold += Math.floor(tower.type.cost*0.5*tower.level);
-            towers = towers.filter(t => t !== tower);
-            updatePathGrid();
-            document.body.removeChild(menu);
-            updateUI();
-        };
-        document.addEventListener('mousedown', function handler(ev) {
-            if (!menu.contains(ev.target)) {
-                document.body.removeChild(menu);
-                document.removeEventListener('mousedown', handler);
-            }
-        });
-    }
-});
-
-// --- Game Start/End ---
+// --- Game Start/End/Over ---
 function showGameOver(msg) {
     let over = document.createElement('div');
     over.style.position = 'fixed';
@@ -1118,6 +1267,7 @@ function showGameOver(msg) {
         restartGame();
     };
 }
+
 function restartGame() {
     towers = [];
     enemies = [];
@@ -1125,52 +1275,19 @@ function restartGame() {
     damageNumbers = [];
     items = [];
     activeEffects = [];
-    gold = 500;
+    gold = CONFIG.gameSettings.startingGold;
     wave = 1;
-    lives = 20;
+    lives = CONFIG.gameSettings.startingLives;
     isGameRunning = false;
     updatePathGrid();
     updateUI();
     startBtn.style.display = '';
     endBtn.style.display = 'none';
+    nextWaveBtn.style.display = 'none';
 }
-startBtn.onclick = () => {
-    isGameRunning = true;
-    startBtn.style.display = 'none';
-    endBtn.style.display = '';
-    towers = [];
-    enemies = [];
-    projectiles = [];
-    damageNumbers = [];
-    items = [];
-    activeEffects = [];
-    gold = 500;
-    wave = 1;
-    lives = 20;
-    updatePathGrid();
-    updateUI();
-    spawnWave();
-};
-endBtn.onclick = () => {
-    isGameRunning = false;
-    endBtn.style.display = 'none';
-    startBtn.style.display = '';
-    showGameOver('Game Ended');
-};
 
-// --- Main Loop ---
-updatePathGrid();
-updateUI();
-app.ticker.add((delta) => {
-    if (isGameRunning) gameLoop(delta);
-    draw();
-});
+// Load the game
+loadConfig();
     </script>
-<script>
-// Auto-start the game when the page loads
-window.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('start-btn').click();
-});
-</script>
 </body>
 </html>
