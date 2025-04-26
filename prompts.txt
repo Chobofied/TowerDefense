@@ -1,0 +1,12 @@
+1) add some randomness to the attack damage of the towers, also give it a chance for critical hits
+2) Have all the enemies spawn at the same time
+3) visually show a difference in tower upgrades
+4) move all the game variables into a json file that the .html loads from (For example starting gold, enemy health, enemy speed, tower strength, ect.) so that I more easily balanace the game manually myself.
+5) move the end game button further out somewhere else
+6) Be able to purchase new types of buildings that I eventually place.
+7) double clicking tower selection button (example Q) to have it be able to keep that tower selected
+8) add a boost button 'b' that can be periodically pressed to shoot faster
+9) Add system messages on the top of screen like "Life lost", or "Wave complete
+10) Gain gold at the end of each wave.
+11) Have the enemies drop items ocassionally that benefit the player (For example, extra gold, or increased damage ect.)
+12) Have the enemies increase in speed and life each wave (Have these settings defined as )
