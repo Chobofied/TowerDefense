@@ -138,6 +138,7 @@ app.view.style.transform = 'translate(-50%, -50%)';
 let towers = [];
 let enemies = [];
 let projectiles = [];
+let damageNumbers = []; // Add this for damage numbers
 let gold = 500; // Start with more gold
 let wave = 1;
 let lives = 20;
@@ -480,6 +481,8 @@ function gameLoop(delta) {
             p.x = p.tx; p.y = p.ty;
             if (p.target && p.target.alive) {
                 p.target.hp -= p.damage;
+                // Create damage number when projectile hits
+                createDamageNumber(p.target.x, p.target.y - 20, p.damage);
                 if (p.target.hp <= 0) {
                     p.target.alive = false;
                     gold += p.target.type.reward;
@@ -492,6 +495,16 @@ function gameLoop(delta) {
         }
     }
     projectiles = projectiles.filter(p => !p.hit);
+    // --- Update damage numbers ---
+    for (let i = damageNumbers.length - 1; i >= 0; i--) {
+        let d = damageNumbers[i];
+        d.life--;
+        d.y -= 1; // Move upward
+        d.alpha = d.life / 30;
+        if (d.life <= 0) {
+            damageNumbers.splice(i, 1);
+        }
+    }
     // --- Remove Dead Enemies ---
     enemies = enemies.filter(e => e.alive);
     // --- Win/Lose ---
@@ -532,28 +545,63 @@ function showTowerStats(tower, x, y) {
     statsWindow.style.minWidth = '200px';
     statsWindow.style.pointerEvents = 'auto';
     
-    // Tower stats content
+    // Add close button (X) in the top right
+    let closeBtn = document.createElement('div');
+    closeBtn.innerHTML = '×';
+    closeBtn.style.position = 'absolute';
+    closeBtn.style.top = '5px';
+    closeBtn.style.right = '10px';
+    closeBtn.style.fontSize = '24px';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.style.color = '#fff';
+    closeBtn.style.lineHeight = '20px';
+    closeBtn.onclick = () => {
+        document.body.removeChild(statsWindow);
+        towerStatsWindow = null;
+    };
+    statsWindow.appendChild(closeBtn);
+    
+    // Create content elements
     let damagePerSec = (tower.type.damage * tower.level) / tower.type.fireRate;
-    statsWindow.innerHTML = `
-        <h3 style="margin: 0 0 10px 0;">${tower.type.name} Tower</h3>
-        <div style="margin-bottom: 15px;">
-            <div>Level: ${tower.level}</div>
-            <div>Damage: ${tower.type.damage * tower.level}</div>
-            <div>Range: ${tower.type.range}</div>
-            <div>Fire Rate: ${(1 / tower.type.fireRate).toFixed(1)}/sec</div>
-            <div>DPS: ${damagePerSec.toFixed(1)}</div>
-        </div>
-        <div style="display: flex; justify-content: space-between; gap: 10px;">
-            <button id="upgrade-btn">Upgrade (${Math.floor(tower.type.cost*0.7*tower.level)})</button>
-            <button id="sell-btn">Sell (${Math.floor(tower.type.cost*0.5*tower.level)})</button>
-        </div>
-    `;
     
-    document.body.appendChild(statsWindow);
-    towerStatsWindow = statsWindow;
+    // Title
+    let title = document.createElement('h3');
+    title.style.margin = '0 0 10px 0';
+    title.textContent = `${tower.type.name} Tower`;
+    statsWindow.appendChild(title);
     
-    // Add event handlers for buttons
-    statsWindow.querySelector('#upgrade-btn').onclick = () => {
+    // Stats container
+    let statsContainer = document.createElement('div');
+    statsContainer.style.marginBottom = '15px';
+    
+    // Add stats
+    let stats = [
+        `Level: ${tower.level}`,
+        `Damage: ${tower.type.damage * tower.level}`,
+        `Range: ${tower.type.range}`,
+        `Fire Rate: ${(1 / tower.type.fireRate).toFixed(1)}/sec`,
+        `DPS: ${damagePerSec.toFixed(1)}`
+    ];
+    
+    stats.forEach(stat => {
+        let div = document.createElement('div');
+        div.textContent = stat;
+        statsContainer.appendChild(div);
+    });
+    
+    statsWindow.appendChild(statsContainer);
+    
+    // Buttons container
+    let buttonsContainer = document.createElement('div');
+    buttonsContainer.style.display = 'flex';
+    buttonsContainer.style.justifyContent = 'space-between';
+    buttonsContainer.style.gap = '10px';
+    
+    // Upgrade button
+    let upgradeBtn = document.createElement('button');
+    upgradeBtn.id = 'upgrade-btn';
+    upgradeBtn.textContent = `Upgrade (${Math.floor(tower.type.cost*0.7*tower.level)})`;
+    upgradeBtn.onclick = () => {
         let cost = Math.floor(tower.type.cost*0.7*tower.level);
         if (gold >= cost) {
             gold -= cost;
@@ -565,7 +613,11 @@ function showTowerStats(tower, x, y) {
         }
     };
     
-    statsWindow.querySelector('#sell-btn').onclick = () => {
+    // Sell button
+    let sellBtn = document.createElement('button');
+    sellBtn.id = 'sell-btn';
+    sellBtn.textContent = `Sell (${Math.floor(tower.type.cost*0.5*tower.level)})`;
+    sellBtn.onclick = () => {
         gold += Math.floor(tower.type.cost*0.5*tower.level);
         towers = towers.filter(t => t !== tower);
         updatePathGrid();
@@ -575,6 +627,13 @@ function showTowerStats(tower, x, y) {
         updateUI();
     };
     
+    buttonsContainer.appendChild(upgradeBtn);
+    buttonsContainer.appendChild(sellBtn);
+    statsWindow.appendChild(buttonsContainer);
+    
+    document.body.appendChild(statsWindow);
+    towerStatsWindow = statsWindow;
+    
     // Close the window when clicking outside
     document.addEventListener('mousedown', function closeStatsWindow(e) {
         if (!statsWindow.contains(e.target) && e.target !== statsWindow) {
@@ -582,6 +641,17 @@ function showTowerStats(tower, x, y) {
             towerStatsWindow = null;
             document.removeEventListener('mousedown', closeStatsWindow);
         }
+    });
+}
+
+// --- Damage Numbers ---
+function createDamageNumber(x, y, damage) {
+    damageNumbers.push({
+        x: x,
+        y: y,
+        damage: damage,
+        alpha: 1,
+        life: 30
     });
 }
 
@@ -620,15 +690,62 @@ function draw() {
     }
     // Draw enemies
     for (let e of enemies) {
+        // Draw enemy
         graphics.beginFill(e.type.color).drawCircle(e.x, e.y, e.type === BOSS_TYPE ? TILE_SIZE/1.7 : TILE_SIZE/2.5).endFill();
         if (e.type === BOSS_TYPE) {
             graphics.lineStyle(3, 0xffffff, 0.7);
             graphics.drawCircle(e.x, e.y, TILE_SIZE/1.7);
         }
+        
+        // Draw health bar
+        let healthPercentage = e.hp / e.type.hp;
+        let barWidth = e.type === BOSS_TYPE ? TILE_SIZE * 1.5 : TILE_SIZE;
+        let barHeight = 6;
+        let barX = e.x - barWidth / 2;
+        let barY = e.y - (e.type === BOSS_TYPE ? TILE_SIZE/1.3 : TILE_SIZE/1.8);
+        
+        // Background (dark gray)
+        graphics.beginFill(0x333333)
+            .drawRect(barX, barY, barWidth, barHeight)
+            .endFill();
+        
+        // Health color based on percentage
+        let healthColor;
+        if (healthPercentage > 0.6) healthColor = 0x66dd66; // Green
+        else if (healthPercentage > 0.3) healthColor = 0xdddd66; // Yellow
+        else healthColor = 0xdd6666; // Red
+        
+        // Health bar (colored)
+        graphics.beginFill(healthColor)
+            .drawRect(barX, barY, barWidth * healthPercentage, barHeight)
+            .endFill();
     }
+    
     // Draw projectiles
     for (let p of projectiles) {
         graphics.beginFill(p.color).drawCircle(p.x, p.y, 7).endFill();
+    }
+    
+    // Draw damage numbers
+    for (let d of damageNumbers) {
+        let text = new PIXI.Text(Math.floor(d.damage), {
+            fontFamily: "Arial",
+            fontSize: 14,
+            fill: 0xFFFFFF,
+            align: "center",
+            fontWeight: "bold",
+            strokeThickness: 3,
+            stroke: 0x000000
+        });
+        text.alpha = d.alpha;
+        text.anchor.set(0.5);
+        text.position.set(d.x, d.y);
+        app.stage.addChild(text);
+        
+        // Schedule removal of text after rendering
+        setTimeout(() => {
+            app.stage.removeChild(text);
+        }, 50);
     }
 }
 
