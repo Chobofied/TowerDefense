@@ -142,13 +142,14 @@ let gold = 500; // Start with more gold
 let wave = 1;
 let lives = 20;
 let placingTower = null;
-let selectedTowerType = 0;
+let selectedTowerType = -1; // Changed from 0 to -1 to represent "no tower selected"
 let selectedEnemy = null;
 let isGameRunning = false;
 let pathGrid = [];
 let startTile = {x: 0, y: Math.floor(GRID_SIZE/2)};
 let endTile = {x: GRID_SIZE-1, y: Math.floor(GRID_SIZE/2)};
 let flyingBypass = true;
+let towerStatsWindow = null; // Add this to track the tower stats window
 
 // --- UI Setup ---
 const towerSelect = document.getElementById('tower-select');
@@ -184,6 +185,11 @@ function renderTowerSelect() {
         btn.innerHTML = `<b>${t.name}</b><br><small>[${t.key}]</small><br>Cost: ${t.cost}`;
         btn.onclick = () => {
             selectedTowerType = i;
+            // Close tower stats window if one is open
+            if (towerStatsWindow) {
+                document.body.removeChild(towerStatsWindow);
+                towerStatsWindow = null;
+            }
             renderTowerSelect();
         };
         towerSelect.appendChild(btn);
@@ -274,8 +280,9 @@ app.view.addEventListener('mousemove', e => {
     const my = e.clientY - rect.top;
     const tx = Math.floor(mx / TILE_SIZE);
     const ty = Math.floor(my / TILE_SIZE);
-    // Only show preview if in bounds and not on start/end/tower
+    // Only show preview if in bounds and not on start/end/tower and a tower type is selected
     if (
+        selectedTowerType >= 0 && 
         tx >= 0 && tx < GRID_SIZE && ty >= 0 && ty < GRID_SIZE &&
         !(tx === startTile.x && ty === startTile.y) &&
         !(tx === endTile.x && ty === endTile.y) &&
@@ -289,64 +296,84 @@ app.view.addEventListener('mousemove', e => {
 app.view.addEventListener('mouseleave', () => {
     previewTile = null;
 });
-// --- Tower Select on Click ---
+// --- Tower Click Handler ---
 app.view.addEventListener('click', e => {
     const rect = app.view.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
     const tx = Math.floor(mx / TILE_SIZE);
     const ty = Math.floor(my / TILE_SIZE);
-    // If clicking on a tower, select it for radius display
+    
+    // Close any existing tower stats window
+    if (towerStatsWindow) {
+        document.body.removeChild(towerStatsWindow);
+        towerStatsWindow = null;
+    }
+    
+    // If clicking on a tower, select it and show stats
     let tower = towers.find(t => t.x === tx && t.y === ty);
     if (tower) {
         selectedTower = tower;
+        showTowerStats(tower, e.clientX, e.clientY);
+        selectedTowerType = -1; // Deselect tower type when selecting a placed tower
+        renderTowerSelect();
         updateUI();
         return;
     } else {
         selectedTower = null;
     }
-    // Allow tower placement at any time (remove isGameRunning check)
-    if (tx < 0 || tx >= GRID_SIZE || ty < 0 || ty >= GRID_SIZE) return;
-    if (towers.some(t => t.x === tx && t.y === ty)) return;
-    if (tx === startTile.x && ty === startTile.y) return;
-    if (tx === endTile.x && ty === endTile.y) return;
-    if (gold < TOWER_TYPES[selectedTowerType].cost) return;
-    towers.push({
-        x: tx, y: ty, type: TOWER_TYPES[selectedTowerType], level: 1, cooldown: 0
-    });
-    gold -= TOWER_TYPES[selectedTowerType].cost;
-    updatePathGrid();
-    // Recalculate path for all non-flying, alive enemies
-    enemies.forEach(e => {
-        if (!e.flying && e.alive) {
-            e.path = aStar({x: Math.round((e.x-TILE_SIZE/2)/TILE_SIZE), y: Math.round((e.y-TILE_SIZE/2)/TILE_SIZE)}, endTile);
-            e.pathIdx = 0;
-        }
-    });
-    let path = aStar(startTile, endTile);
-    if (!path) {
-        let t = towers.pop();
-        gold += TOWER_TYPES[selectedTowerType].cost;
-        updatePathGrid();
-        let blocking = towers.filter(tw => {
-            towers = towers.filter(tt => tt !== tw);
-            updatePathGrid();
-            let p = aStar(startTile, endTile);
-            towers.push(tw);
-            updatePathGrid();
-            return !p;
+    
+    // Only place tower if a tower type is selected (selectedTowerType >= 0)
+    if (selectedTowerType >= 0) {
+        if (tx < 0 || tx >= GRID_SIZE || ty < 0 || ty >= GRID_SIZE) return;
+        if (towers.some(t => t.x === tx && t.y === ty)) return;
+        if (tx === startTile.x && ty === startTile.y) return;
+        if (tx === endTile.x && ty === endTile.y) return;
+        if (gold < TOWER_TYPES[selectedTowerType].cost) return;
+        
+        towers.push({
+            x: tx, y: ty, type: TOWER_TYPES[selectedTowerType], level: 1, cooldown: 0
         });
-        if (blocking.length) {
-            let destroyed = blocking[Math.floor(Math.random()*blocking.length)];
-            towers = towers.filter(tw => tw !== destroyed);
+        gold -= TOWER_TYPES[selectedTowerType].cost;
+        updatePathGrid();
+        
+        // Recalculate path for all non-flying, alive enemies
+        enemies.forEach(e => {
+            if (!e.flying && e.alive) {
+                e.path = aStar({x: Math.round((e.x-TILE_SIZE/2)/TILE_SIZE), y: Math.round((e.y-TILE_SIZE/2)/TILE_SIZE)}, endTile);
+                e.pathIdx = 0;
+            }
+        });
+        
+        let path = aStar(startTile, endTile);
+        if (!path) {
+            let t = towers.pop();
+            gold += TOWER_TYPES[selectedTowerType].cost;
             updatePathGrid();
-            let g = new PIXI.Graphics();
-            g.beginFill(0xde6e6e).drawRect(destroyed.x*TILE_SIZE, destroyed.y*TILE_SIZE, TILE_SIZE, TILE_SIZE).endFill();
-            app.stage.addChild(g);
-            setTimeout(()=>app.stage.removeChild(g), 500);
+            let blocking = towers.filter(tw => {
+                towers = towers.filter(tt => tt !== tw);
+                updatePathGrid();
+                let p = aStar(startTile, endTile);
+                towers.push(tw);
+                updatePathGrid();
+                return !p;
+            });
+            if (blocking.length) {
+                let destroyed = blocking[Math.floor(Math.random()*blocking.length)];
+                towers = towers.filter(tw => tw !== destroyed);
+                updatePathGrid();
+                let g = new PIXI.Graphics();
+                g.beginFill(0xde6e6e).drawRect(destroyed.x*TILE_SIZE, destroyed.y*TILE_SIZE, TILE_SIZE, TILE_SIZE).endFill();
+                app.stage.addChild(g);
+                setTimeout(()=>app.stage.removeChild(g), 500);
+            }
         }
+        
+        // Deselect tower type after placement
+        selectedTowerType = -1;
+        renderTowerSelect();
+        updateUI();
     }
-    updateUI();
 });
 
 // --- Enemy Spawning ---
@@ -489,6 +516,75 @@ nextWaveBtn.onclick = () => {
     spawnWave();
 };
 
+// --- Tower Stats Window ---
+function showTowerStats(tower, x, y) {
+    // Create stats window
+    let statsWindow = document.createElement('div');
+    statsWindow.style.position = 'absolute';
+    statsWindow.style.left = (x + 20) + 'px';
+    statsWindow.style.top = (y - 20) + 'px';
+    statsWindow.style.background = '#23273a';
+    statsWindow.style.color = '#fff';
+    statsWindow.style.padding = '15px 20px';
+    statsWindow.style.borderRadius = '8px';
+    statsWindow.style.boxShadow = '0 2px 16px #0008';
+    statsWindow.style.zIndex = '1000';
+    statsWindow.style.minWidth = '200px';
+    statsWindow.style.pointerEvents = 'auto';
+    
+    // Tower stats content
+    let damagePerSec = (tower.type.damage * tower.level) / tower.type.fireRate;
+    statsWindow.innerHTML = `
+        <h3 style="margin: 0 0 10px 0;">${tower.type.name} Tower</h3>
+        <div style="margin-bottom: 15px;">
+            <div>Level: ${tower.level}</div>
+            <div>Damage: ${tower.type.damage * tower.level}</div>
+            <div>Range: ${tower.type.range}</div>
+            <div>Fire Rate: ${(1 / tower.type.fireRate).toFixed(1)}/sec</div>
+            <div>DPS: ${damagePerSec.toFixed(1)}</div>
+        </div>
+        <div style="display: flex; justify-content: space-between; gap: 10px;">
+            <button id="upgrade-btn">Upgrade (${Math.floor(tower.type.cost*0.7*tower.level)})</button>
+            <button id="sell-btn">Sell (${Math.floor(tower.type.cost*0.5*tower.level)})</button>
+        </div>
+    `;
+    
+    document.body.appendChild(statsWindow);
+    towerStatsWindow = statsWindow;
+    
+    // Add event handlers for buttons
+    statsWindow.querySelector('#upgrade-btn').onclick = () => {
+        let cost = Math.floor(tower.type.cost*0.7*tower.level);
+        if (gold >= cost) {
+            gold -= cost;
+            tower.level++;
+            updateUI();
+            // Update the stats window with new values
+            document.body.removeChild(statsWindow);
+            showTowerStats(tower, x, y);
+        }
+    };
+    
+    statsWindow.querySelector('#sell-btn').onclick = () => {
+        gold += Math.floor(tower.type.cost*0.5*tower.level);
+        towers = towers.filter(t => t !== tower);
+        updatePathGrid();
+        document.body.removeChild(statsWindow);
+        towerStatsWindow = null;
+        selectedTower = null;
+        updateUI();
+    };
+    
+    // Close the window when clicking outside
+    document.addEventListener('mousedown', function closeStatsWindow(e) {
+        if (!statsWindow.contains(e.target) && e.target !== statsWindow) {
+            document.body.removeChild(statsWindow);
+            towerStatsWindow = null;
+            document.removeEventListener('mousedown', closeStatsWindow);
+        }
+    });
+}
+
 // --- Drawing ---
 let graphics = new PIXI.Graphics();
 app.stage.addChild(graphics);
@@ -507,8 +603,8 @@ function draw() {
     // Draw start/end
     graphics.beginFill(0x6ede8a).drawRect(startTile.x*TILE_SIZE, startTile.y*TILE_SIZE, TILE_SIZE, TILE_SIZE).endFill();
     graphics.beginFill(0xde6e6e).drawRect(endTile.x*TILE_SIZE, endTile.y*TILE_SIZE, TILE_SIZE, TILE_SIZE).endFill();
-    // Draw preview tower
-    if (previewTile) {
+    // Draw preview tower (only if a tower type is selected)
+    if (previewTile && selectedTowerType >= 0) {
         graphics.beginFill(TOWER_TYPES[selectedTowerType].color, 0.35)
             .drawCircle(previewTile.x*TILE_SIZE+TILE_SIZE/2, previewTile.y*TILE_SIZE+TILE_SIZE/2, TILE_SIZE/2.2)
             .endFill();
