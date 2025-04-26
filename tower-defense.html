@@ -15,14 +15,25 @@
         }
         #game-ui {
             position: absolute;
+            top: 0; left: 0;
             width: 100vw; height: 100vh;
             pointer-events: none;
         }
-        #live-stats {
+        #ui-right-panel {
             position: absolute;
-            top: 16px;
-            left: 50%;
-            transform: translateX(-50%);
+            top: 0;
+            left: calc(50% + 384px); /* 16*48/2 = 384, grid centered */
+            width: 260px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 24px;
+            z-index: 20;
+            pointer-events: auto;
+        }
+        #live-stats {
+            position: static;
             background: rgba(30,34,44,0.95);
             border-radius: 12px;
             box-shadow: 0 2px 16px #0008;
@@ -30,33 +41,17 @@
             padding: 10px 32px;
             font-size: 1.2em;
             z-index: 10;
+            margin-top: 32px;
+            margin-bottom: 8px;
             pointer-events: auto;
         }
         #tower-select {
-            position: absolute;
-            left: 50%;
-            bottom: 16px;
-            transform: translateX(-50%);
+            position: static;
             display: flex;
-            gap: 12px;
+            flex-direction: column;
+            gap: 16px;
             z-index: 10;
             pointer-events: auto;
-        }
-        .ui-panel {
-            pointer-events: auto;
-        }
-        #stats-panel {
-            position: absolute;
-            right: 0; top: 0;
-            min-width: 220px;
-        }
-        #wave-panel {
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
-            top: 0;
-            min-width: 200px;
-            text-align: center;
         }
         #start-btn, #end-btn, #next-wave-btn {
             background: #4e6fae;
@@ -69,25 +64,34 @@
             cursor: pointer;
             transition: background 0.2s;
             pointer-events: auto;
+            width: 180px;
+            text-align: left;
         }
         #start-btn:hover, #end-btn:hover, #next-wave-btn:hover {
             background: #6e8fde;
+        }
+        #stats-panel {
+            position: absolute;
+            right: 0; top: 0;
+            min-width: 220px;
         }
     </style>
 </head>
 <body>
     <div id="game-ui">
-        <div class="ui-panel" id="stats-panel" style="display:none;"></div>
-        <div class="ui-panel" id="live-stats" style="right: 16px; left: auto; top: 16px; transform: none;">
-            <span>Wave: <span id="wave-num">1</span></span> |
-            <span>Gold: <span id="gold">500</span></span> |
-            <span>Lives: <span id="lives">20</span></span> |
-            <span>Enemies Left: <span id="enemies-left">0</span></span>
+        <div id="ui-right-panel">
+            <div class="ui-panel" id="live-stats">
+                <span>Wave: <span id="wave-num">1</span></span> |
+                <span>Gold: <span id="gold">500</span></span> |
+                <span>Lives: <span id="lives">20</span></span> |
+                <span>Enemies Left: <span id="enemies-left">0</span></span>
+            </div>
+            <div class="ui-panel" id="tower-select"></div>
+            <button id="start-btn">Start Game</button>
+            <button id="end-btn" style="display:none;">End Game</button>
+            <button id="next-wave-btn" style="display:none;">Next Wave</button>
         </div>
-        <div class="ui-panel" id="tower-select" style="right: 16px; left: auto; bottom: 16px; top: auto; transform: none; flex-direction: column; gap: 16px;"></div>
-        <button id="start-btn" style="position:absolute;right:32px;top:60%;left:auto;transform:none;z-index:20;">Start Game</button>
-        <button id="end-btn" style="position:absolute;right:32px;top:68%;left:auto;transform:none;z-index:20;display:none;">End Game</button>
-        <button id="next-wave-btn" style="position:absolute;right:32px;top:76%;left:auto;transform:none;z-index:20;display:none;">Next Wave</button>
+        <div class="ui-panel" id="stats-panel" style="display:none;"></div>
     </div>
     <script>
 // --- Game Constants ---
@@ -145,7 +149,6 @@ let pathGrid = [];
 let startTile = {x: 0, y: Math.floor(GRID_SIZE/2)};
 let endTile = {x: GRID_SIZE-1, y: Math.floor(GRID_SIZE/2)};
 let flyingBypass = true;
-let endlessMode = true; // Always endless mode
 
 // --- UI Setup ---
 const towerSelect = document.getElementById('tower-select');
@@ -264,7 +267,7 @@ function aStar(start, end) {
 
 // --- Tower Placement ---
 app.view.addEventListener('click', e => {
-    // Remove isGameRunning check so towers can be placed anytime
+    // Allow tower placement at any time (remove isGameRunning check)
     const rect = app.view.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
@@ -275,20 +278,16 @@ app.view.addEventListener('click', e => {
     if (tx === startTile.x && ty === startTile.y) return;
     if (tx === endTile.x && ty === endTile.y) return;
     if (gold < TOWER_TYPES[selectedTowerType].cost) return;
-    // Place tower
     towers.push({
         x: tx, y: ty, type: TOWER_TYPES[selectedTowerType], level: 1, cooldown: 0
     });
     gold -= TOWER_TYPES[selectedTowerType].cost;
     updatePathGrid();
-    // Check if path exists
     let path = aStar(startTile, endTile);
     if (!path) {
-        // No path, destroy a random tower in the way
         let t = towers.pop();
         gold += TOWER_TYPES[selectedTowerType].cost;
         updatePathGrid();
-        // Find blocking towers
         let blocking = towers.filter(tw => {
             towers = towers.filter(tt => tt !== tw);
             updatePathGrid();
@@ -301,7 +300,6 @@ app.view.addEventListener('click', e => {
             let destroyed = blocking[Math.floor(Math.random()*blocking.length)];
             towers = towers.filter(tw => tw !== destroyed);
             updatePathGrid();
-            // Visual effect
             let g = new PIXI.Graphics();
             g.beginFill(0xde6e6e).drawRect(destroyed.x*TILE_SIZE, destroyed.y*TILE_SIZE, TILE_SIZE, TILE_SIZE).endFill();
             app.stage.addChild(g);
@@ -312,7 +310,9 @@ app.view.addEventListener('click', e => {
 });
 
 // --- Enemy Spawning ---
+let spawningWave = false;
 function spawnWave() {
+    spawningWave = true;
     let count = 8 + wave * 2;
     let types = ENEMY_TYPES.slice();
     if (wave % 5 === 0) types.push(BOSS_TYPE);
@@ -321,9 +321,9 @@ function spawnWave() {
         if (wave % 5 === 0 && i === 0) type = BOSS_TYPE;
         setTimeout(()=>{
             enemies.push(createEnemy(type));
+            if (i === count - 1) spawningWave = false;
         }, i*700);
     }
-    nextWaveBtn.style.display = 'none';
 }
 function createEnemy(type) {
     let path = type.flying ? null : aStar(startTile, endTile);
@@ -340,6 +340,7 @@ function createEnemy(type) {
 }
 
 // --- Game Loop ---
+let endlessMode = true;
 function gameLoop(delta) {
     // --- Move Enemies ---
     for (let enemy of enemies) {
@@ -384,7 +385,7 @@ function gameLoop(delta) {
     for (let tower of towers) {
         tower.cooldown -= delta/60;
         if (tower.cooldown <= 0) {
-            // Remove flying restriction so all towers can hit flying enemies
+            // All towers can hit flying enemies now
             let targets = enemies.filter(e => e.alive && Math.hypot(e.x-(tower.x*TILE_SIZE+TILE_SIZE/2), e.y-(tower.y*TILE_SIZE+TILE_SIZE/2)) < tower.type.range);
             if (targets.length) {
                 let target = targets[0];
@@ -433,13 +434,20 @@ function gameLoop(delta) {
         startBtn.style.display = 'none';
         nextWaveBtn.style.display = 'none';
         showGameOver('Game Over!');
-    } else if (enemies.length === 0 && projectiles.length === 0 && isGameRunning) {
+    } else if (!spawningWave && enemies.length === 0 && projectiles.length === 0 && isGameRunning) {
         // Endless mode: show next wave button, do not auto-start
         nextWaveBtn.style.display = '';
         isGameRunning = false;
     }
     updateUI();
 }
+nextWaveBtn.onclick = () => {
+    isGameRunning = true;
+    nextWaveBtn.style.display = 'none';
+    wave++;
+    updateUI();
+    spawnWave();
+};
 
 // --- Drawing ---
 let graphics = new PIXI.Graphics();
@@ -585,14 +593,12 @@ startBtn.onclick = () => {
     isGameRunning = true;
     startBtn.style.display = 'none';
     endBtn.style.display = '';
-    nextWaveBtn.style.display = 'none';
     towers = [];
     enemies = [];
     projectiles = [];
     gold = 500;
     wave = 1;
     lives = 20;
-    endlessMode = true;
     updatePathGrid();
     updateUI();
     spawnWave();
@@ -601,15 +607,7 @@ endBtn.onclick = () => {
     isGameRunning = false;
     endBtn.style.display = 'none';
     startBtn.style.display = '';
-    nextWaveBtn.style.display = 'none';
     showGameOver('Game Ended');
-};
-nextWaveBtn.onclick = () => {
-    nextWaveBtn.style.display = 'none';
-    isGameRunning = true;
-    wave++;
-    updateUI();
-    spawnWave();
 };
 
 // --- Main Loop ---
