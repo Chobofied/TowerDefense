@@ -228,6 +228,7 @@ let flyingBypass = true;
 let towerStatsWindow = null;
 let boostActive = false;
 let boostCooldown = 0;
+let damageTextPool = []; // Pool of reusable text objects for damage numbers
 
 // --- PixiJS Setup ---
 const app = new PIXI.Application({
@@ -253,6 +254,9 @@ function initGame() {
     startTile = {x: 0, y: Math.floor(GRID_SIZE/2)};
     endTile = {x: GRID_SIZE-1, y: Math.floor(GRID_SIZE/2)};
     
+    // Initialize text object pool for damage numbers
+    createTextPool();
+    
     // Apply UI updates
     updateUI();
     renderTowerSelect();
@@ -260,6 +264,36 @@ function initGame() {
     
     // Set up all game event handlers and logic
     setupGameHandlers();
+}
+
+// Create a pool of reusable text objects for damage numbers
+function createTextPool() {
+    // Clean up any existing pool
+    damageTextPool.forEach(text => {
+        if (app.stage.children.includes(text)) {
+            app.stage.removeChild(text);
+        }
+    });
+    
+    damageTextPool = [];
+    
+    // Create pool of text objects (adjust pool size based on expected max concurrent numbers)
+    const poolSize = 50;
+    for (let i = 0; i < poolSize; i++) {
+        const text = new PIXI.Text('', {
+            fontFamily: "Arial",
+            fontSize: 14,
+            fill: 0xFFFFFF,
+            align: "center",
+            fontWeight: "bold",
+            strokeThickness: 3,
+            stroke: 0x000000
+        });
+        text.visible = false;
+        text.anchor.set(0.5);
+        app.stage.addChild(text);
+        damageTextPool.push(text);
+    }
 }
 
 // --- UI Setup ---
@@ -856,13 +890,20 @@ function tryDropItem(x, y) {
 
 // --- Damage Numbers ---
 function createDamageNumber(x, y, damage, isCritical = false) {
+    // Add random horizontal offset and velocity for bounce effect
+    const randX = (Math.random() - 0.5) * 30;
+    const randYVel = -2 - Math.random() * 2; // Initial upward velocity
+    
     damageNumbers.push({
-        x: x,
+        x: x + randX,
         y: y,
         damage: damage,
         alpha: 1,
-        life: 30,
-        isCritical
+        life: 45, // Increased lifetime slightly
+        isCritical,
+        xVel: (Math.random() - 0.5) * 1.5, // Horizontal velocity
+        yVel: randYVel, // Vertical velocity (upward)
+        textObj: null // Will be assigned from pool during rendering
     });
 }
 
@@ -912,10 +953,19 @@ function gameLoop(delta) {
     for (let i = damageNumbers.length - 1; i >= 0; i--) {
         let d = damageNumbers[i];
         d.life--;
-        d.y -= 1; // Move upward
-        d.alpha = d.life / 30;
         
+        // Apply physics to damage numbers for bouncing effect
+        d.y += d.yVel;
+        d.x += d.xVel;
+        d.yVel += 0.15; // Gravity
+        d.alpha = d.life / 45;
+        
+        // Release the text object back to pool if number is dead
         if (d.life <= 0) {
+            if (d.textObj) {
+                d.textObj.visible = false;
+                d.textObj = null;
+            }
             damageNumbers.splice(i, 1);
         }
     }
@@ -1204,33 +1254,34 @@ function draw() {
         graphics.beginFill(p.color).drawCircle(p.x, p.y, 7).endFill();
     }
     
-    // Draw damage numbers - make sure to properly clean up
+    // Draw damage numbers using text pool
     for (let d of damageNumbers) {
-        const fontSize = d.isCritical ? 20 : 14;
-        const color = d.isCritical ? 0xff5500 : 0xFFFFFF;
-        
-        let text = new PIXI.Text(Math.floor(d.damage), {
-            fontFamily: "Arial",
-            fontSize: fontSize,
-            fill: color,
-            align: "center",
-            fontWeight: "bold",
-            strokeThickness: 3,
-            stroke: 0x000000
-        });
-        
-        text.alpha = d.alpha;
-        text.anchor.set(0.5);
-        text.position.set(d.x, d.y);
-        app.stage.addChild(text);
-        
-        // Schedule removal of text after rendering - guaranteed cleanup
-        setTimeout(() => {
-            if (app.stage.children.includes(text)) {
-                app.stage.removeChild(text);
+        // Find available text object from pool
+        if (!d.textObj) {
+            for (let poolText of damageTextPool) {
+                if (!poolText.visible) {
+                    d.textObj = poolText;
+                    break;
+                }
             }
-        }, 50);
+            
+            // Skip if no text objects available
+            if (!d.textObj) continue;
+            
+            // Configure the text object
+            d.textObj.text = Math.floor(d.damage);
+            d.textObj.style.fontSize = d.isCritical ? 20 : 14;
+            d.textObj.style.fill = d.isCritical ? 0xff5500 : 0xFFFFFF;
+            d.textObj.visible = true;
+        }
+        
+        // Update text properties
+        d.textObj.position.set(d.x, d.y);
+        d.textObj.alpha = d.alpha;
     }
+    
+    // Remove the old damage number rendering code
+    // No need to create new text objects every frame anymore
 }
 
 // --- Enemy Stats Hover ---
@@ -1290,6 +1341,11 @@ function restartGame() {
     startBtn.style.display = '';
     endBtn.style.display = 'none';
     nextWaveBtn.style.display = 'none';
+    
+    // Reset the text pool when restarting
+    damageTextPool.forEach(text => {
+        text.visible = false;
+    });
 }
 
 // Load the game

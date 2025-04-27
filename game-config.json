@@ -93,7 +93,7 @@
     },
     {
       "name": "Flying",
-      "baseSpeed": 1.7,
+      "baseSpeed":0.5,
       "baseHp": 30,
       "reward": 12,
       "color": "0xcccccc",
