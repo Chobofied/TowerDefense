@@ -1614,8 +1614,27 @@ function restartGame() {
     wave = 1;
     lives = CONFIG.gameSettings.startingLives;
     isGameRunning = false;
+    
+    // Reset tower types to default towers from config
+    TOWER_TYPES = CONFIG.towers.map(tower => ({
+        name: tower.name,
+        key: tower.key,
+        color: parseInt(tower.color),
+        cost: tower.cost,
+        range: tower.range,
+        fireRate: tower.fireRate,
+        damage: tower.damage,
+        damageVariation: tower.damageVariation,
+        critChance: tower.critChance,
+        critMultiplier: tower.critMultiplier
+    }));
+    
+    // Reset purchased towers array
+    purchasedTowers = [];
+    
     updatePathGrid();
     updateUI();
+    renderTowerSelect();
     startBtn.style.display = '';
     endBtn.style.display = 'none';
     nextWaveBtn.style.display = 'none';
