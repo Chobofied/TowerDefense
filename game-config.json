@@ -57,6 +57,47 @@
       "critMultiplier": 1.5
     }
   ],
+  "shopTowers": [
+    {
+      "name": "Sniper",
+      "key": "S",
+      "color": "0x9e6ede",
+      "cost": 80,
+      "range": 250,
+      "fireRate": 1.8,
+      "damage": 45,
+      "damageVariation": 0.15,
+      "critChance": 0.25,
+      "critMultiplier": 2.2,
+      "shopPrice": 300
+    },
+    {
+      "name": "Frost",
+      "key": "F",
+      "color": "0x6ecede",
+      "cost": 100,
+      "range": 110,
+      "fireRate": 0.5,
+      "damage": 8,
+      "damageVariation": 0.1,
+      "critChance": 0.1,
+      "critMultiplier": 1.5,
+      "shopPrice": 250
+    },
+    {
+      "name": "Flame",
+      "key": "T",
+      "color": "0xff7700",
+      "cost": 140,
+      "range": 85,
+      "fireRate": 0.3,
+      "damage": 12,
+      "damageVariation": 0.2,
+      "critChance": 0.15,
+      "critMultiplier": 1.7,
+      "shopPrice": 400
+    }
+  ],
   "enemies": [
     {
       "name": "Walker",

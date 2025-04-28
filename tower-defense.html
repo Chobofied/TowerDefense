@@ -115,6 +115,110 @@
             font-size: 1.2em;
             transition: opacity 0.5s;
         }
+        
+        /* Shop Styles */
+        #shop-btn {
+            background: #9e6ede;
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 1.1em;
+            padding: 8px 24px;
+            margin: 8px 0;
+            cursor: pointer;
+            transition: background 0.2s;
+            pointer-events: auto;
+            width: 180px;
+            text-align: left;
+        }
+        #shop-btn:hover {
+            background: #b68ef2;
+        }
+        #shop-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #23273a;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            z-index: 1000;
+            width: 450px;
+            max-height: 80vh;
+            overflow-y: auto;
+            display: none;
+        }
+        #shop-modal-title {
+            color: white;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #3b405a;
+        }
+        .shop-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 24px;
+            color: white;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+        .shop-tower-item {
+            background: #2e3450;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+        }
+        .shop-tower-info {
+            flex-grow: 1;
+        }
+        .shop-tower-name {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .shop-tower-stats {
+            font-size: 0.9em;
+            color: #ccc;
+        }
+        .shop-tower-price {
+            background: #4e6fae;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            padding: 8px 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: bold;
+        }
+        .shop-tower-price:hover:not(:disabled) {
+            background: #6e8fde;
+        }
+        .shop-tower-price:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        .shop-tower-purchased {
+            background: #6ede8a;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            padding: 8px 15px;
+            cursor: default;
+        }
+        .tower-preview {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 15px;
+        }
     </style>
 </head>
 <body>
@@ -129,12 +233,21 @@
             </div>
             <div class="ui-panel" id="tower-select"></div>
             <button id="boost-btn">Boost [B]</button>
+            <button id="shop-btn">Shop [P]</button>
             <button id="start-btn">Start Wave</button>
             <button id="end-btn" style="display:none;">End Game</button>
             <button id="next-wave-btn" style="display:none;">Next Wave</button>
         </div>
         <div class="ui-panel" id="stats-panel" style="display:none;"></div>
     </div>
+    
+    <!-- Shop Modal -->
+    <div id="shop-modal">
+        <h2 id="shop-modal-title">Tower Shop</h2>
+        <button class="shop-close">×</button>
+        <div id="shop-content"></div>
+    </div>
+    
     <script>
 // --- Load Game Configuration ---
 let CONFIG; // Will hold the loaded configuration
@@ -147,6 +260,10 @@ let ENEMY_TYPES;
 let BOSS_TYPE;
 let ITEM_TYPES;
 let BOOST_CONFIG;
+let SHOP_TOWERS; // New variable for shop towers
+
+// Add purchased towers tracking
+let purchasedTowers = [];
 
 async function loadConfig() {
     try {
@@ -175,6 +292,24 @@ async function loadConfig() {
             critChance: tower.critChance,
             critMultiplier: tower.critMultiplier
         }));
+        
+        // Load shop towers
+        SHOP_TOWERS = CONFIG.shopTowers.map(tower => ({
+            name: tower.name,
+            key: tower.key,
+            color: parseInt(tower.color),
+            cost: tower.cost,
+            range: tower.range,
+            fireRate: tower.fireRate,
+            damage: tower.damage,
+            damageVariation: tower.damageVariation,
+            critChance: tower.critChance,
+            critMultiplier: tower.critMultiplier,
+            shopPrice: tower.shopPrice
+        }));
+        
+        // Load purchased towers from localStorage
+        loadPurchasedTowers();
         
         ENEMY_TYPES = CONFIG.enemies.map(enemy => ({
             name: enemy.name,
@@ -296,6 +431,110 @@ function createTextPool() {
     }
 }
 
+// --- Shop Functions ---
+function loadPurchasedTowers() {
+    const saved = localStorage.getItem('purchasedTowers');
+    if (saved) {
+        try {
+            purchasedTowers = JSON.parse(saved);
+            
+            // Add purchased towers to TOWER_TYPES
+            purchasedTowers.forEach(towerName => {
+                const shopTower = SHOP_TOWERS.find(t => t.name === towerName);
+                if (shopTower && !TOWER_TYPES.some(t => t.name === towerName)) {
+                    TOWER_TYPES.push({...shopTower});
+                }
+            });
+        } catch (e) {
+            console.error("Error loading purchased towers:", e);
+            purchasedTowers = [];
+        }
+    } else {
+        purchasedTowers = [];
+    }
+}
+
+function savePurchasedTowers() {
+    localStorage.setItem('purchasedTowers', JSON.stringify(purchasedTowers));
+}
+
+function purchaseTower(towerName) {
+    const tower = SHOP_TOWERS.find(t => t.name === towerName);
+    if (!tower) return false;
+    
+    if (gold >= tower.shopPrice) {
+        gold -= tower.shopPrice;
+        purchasedTowers.push(tower.name);
+        
+        // Add to available towers
+        if (!TOWER_TYPES.some(t => t.name === tower.name)) {
+            TOWER_TYPES.push({...tower});
+        }
+        
+        savePurchasedTowers();
+        updateUI();
+        renderTowerSelect();
+        renderShop(); // Update shop to show purchased status
+        
+        showMessage(`Purchased ${tower.name} Tower!`, "#6ede8a");
+        return true;
+    } else {
+        showMessage(`Not enough gold to buy ${tower.name} Tower!`, "#ff6666");
+        return false;
+    }
+}
+
+function renderShop() {
+    const shopContent = document.getElementById('shop-content');
+    shopContent.innerHTML = '';
+    
+    SHOP_TOWERS.forEach(tower => {
+        const isPurchased = purchasedTowers.includes(tower.name);
+        
+        const towerItem = document.createElement('div');
+        towerItem.className = 'shop-tower-item';
+        
+        // Tower preview circle with color
+        const towerPreview = document.createElement('div');
+        towerPreview.className = 'tower-preview';
+        towerPreview.style.background = '#' + tower.color.toString(16).padStart(6, '0');
+        
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'shop-tower-info';
+        
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'shop-tower-name';
+        nameDiv.textContent = `${tower.name} Tower [${tower.key}]`;
+        
+        const statsDiv = document.createElement('div');
+        statsDiv.className = 'shop-tower-stats';
+        statsDiv.innerHTML = `
+            Damage: ${tower.damage} | Range: ${tower.range} | Fire Rate: ${(1/tower.fireRate).toFixed(1)}/sec<br>
+            Critical: ${(tower.critChance*100).toFixed(0)}% chance (×${tower.critMultiplier})
+        `;
+        
+        const priceButton = document.createElement('button');
+        if (isPurchased) {
+            priceButton.className = 'shop-tower-purchased';
+            priceButton.textContent = 'Purchased';
+        } else {
+            priceButton.className = 'shop-tower-price';
+            priceButton.textContent = `Buy: ${tower.shopPrice} Gold`;
+            priceButton.disabled = gold < tower.shopPrice;
+            priceButton.onclick = () => purchaseTower(tower.name);
+        }
+        
+        infoDiv.appendChild(nameDiv);
+        infoDiv.appendChild(statsDiv);
+        
+        towerItem.appendChild(towerPreview);
+        towerItem.appendChild(infoDiv);
+        towerItem.appendChild(priceButton);
+        
+        shopContent.appendChild(towerItem);
+    });
+}
+
 // --- UI Setup ---
 const towerSelect = document.getElementById('tower-select');
 const wavePanel = document.getElementById('wave-panel');
@@ -306,6 +545,9 @@ const startBtn = document.getElementById('start-btn');
 const endBtn = document.getElementById('end-btn');
 const nextWaveBtn = document.getElementById('next-wave-btn');
 const boostBtn = document.getElementById('boost-btn');
+const shopBtn = document.getElementById('shop-btn');
+const shopModal = document.getElementById('shop-modal');
+const shopCloseBtn = document.querySelector('.shop-close');
 const messageContainer = document.getElementById('message-container');
 
 function updateUI() {
@@ -324,6 +566,17 @@ function updateUI() {
     } else {
         boostBtn.textContent = 'Boost [B]';
         boostBtn.disabled = false;
+    }
+    
+    // Update shop button price indicators
+    const numAvailable = SHOP_TOWERS.filter(t => 
+        !purchasedTowers.includes(t.name) && gold >= t.shopPrice
+    ).length;
+    
+    if (numAvailable > 0) {
+        shopBtn.textContent = `Shop [P] (${numAvailable} available)`;
+    } else {
+        shopBtn.textContent = 'Shop [P]';
     }
 }
 
@@ -379,12 +632,40 @@ function setupGameHandlers() {
     // --- Boost Button Handler ---
     boostBtn.addEventListener('click', activateBoost);
     
+    // --- Shop Button Handlers ---
+    shopBtn.addEventListener('click', () => {
+        shopModal.style.display = 'block';
+        renderShop();
+    });
+    
+    shopCloseBtn.addEventListener('click', () => {
+        shopModal.style.display = 'none';
+    });
+    
+    // Close shop when clicking outside
+    window.addEventListener('click', (e) => {
+        if (e.target === shopModal) {
+            shopModal.style.display = 'none';
+        }
+    });
+    
     // --- Key Handlers ---
     document.addEventListener('keydown', e => {
         // Boost key
         if (e.key.toLowerCase() === BOOST_CONFIG.key.toLowerCase()) {
             if (!boostActive && boostCooldown <= 0) {
                 activateBoost();
+            }
+            return;
+        }
+        
+        // Shop key (P)
+        if (e.key.toLowerCase() === 'p') {
+            if (shopModal.style.display === 'block') {
+                shopModal.style.display = 'none';
+            } else {
+                shopModal.style.display = 'block';
+                renderShop();
             }
             return;
         }
@@ -1279,9 +1560,6 @@ function draw() {
         d.textObj.position.set(d.x, d.y);
         d.textObj.alpha = d.alpha;
     }
-    
-    // Remove the old damage number rendering code
-    // No need to create new text objects every frame anymore
 }
 
 // --- Enemy Stats Hover ---
