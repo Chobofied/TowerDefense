@@ -1595,15 +1595,32 @@ function showGameOver(msg) {
     over.style.borderRadius = '16px';
     over.style.fontSize = '2em';
     over.style.boxShadow = '0 2px 24px #000a';
-    over.innerHTML = `<b>${msg}</b><br><button id="restart-btn">Restart</button>`;
+    
+    // Add both restart and new game buttons
+    over.innerHTML = `
+        <b>${msg}</b><br>
+        <button id="restart-btn" style="margin-top: 20px; margin-right: 10px;">Restart</button>
+        <button id="new-game-btn" style="margin-top: 20px; background: #de6e6e;">New Game</button>
+    `;
+    
     document.body.appendChild(over);
+    
+    // Restart button - keeps localStorage
     over.querySelector('#restart-btn').onclick = () => {
         document.body.removeChild(over);
-        restartGame();
+        restartGame(false);  // false = don't clear localStorage
+    };
+    
+    // New Game button - clears localStorage
+    over.querySelector('#new-game-btn').onclick = () => {
+        localStorage.removeItem('purchasedTowers');
+        document.body.removeChild(over);
+        restartGame(true);  // true = clear localStorage
     };
 }
 
-function restartGame() {
+// Updated restartGame function to accept a parameter
+function restartGame(clearStorage = true) {
     towers = [];
     enemies = [];
     projectiles = [];
@@ -1620,8 +1637,8 @@ function restartGame() {
         name: tower.name,
         key: tower.key,
         color: parseInt(tower.color),
-        cost: tower.cost,
         range: tower.range,
+        cost: tower.cost,
         fireRate: tower.fireRate,
         damage: tower.damage,
         damageVariation: tower.damageVariation,
@@ -1629,8 +1646,14 @@ function restartGame() {
         critMultiplier: tower.critMultiplier
     }));
     
-    // Reset purchased towers array
-    purchasedTowers = [];
+    // Reset purchased towers array if needed
+    if (clearStorage) {
+        purchasedTowers = [];
+        localStorage.removeItem('purchasedTowers');
+    } else {
+        // Reload purchased towers
+        loadPurchasedTowers();
+    }
     
     updatePathGrid();
     updateUI();
@@ -1644,6 +1667,18 @@ function restartGame() {
         text.visible = false;
     });
 }
+
+// Add this code right before the "Load the game" line
+window.addEventListener('load', function() {
+    // The game will be loaded by loadConfig()
+    // After loading, reset the game state as a true "New Game"
+    setTimeout(() => {
+        // Short delay to ensure config is loaded
+        if (CONFIG) {
+            restartGame(true); // true = clear localStorage and purchased towers
+        }
+    }, 100);
+});
 
 // Load the game
 loadConfig();
