@@ -70,6 +70,23 @@
         #start-btn:hover, #end-btn:hover, #next-wave-btn:hover {
             background: #6e8fde;
         }
+        #end-btn {
+            background: #de6e6e;
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 1.1em;
+            padding: 8px 24px;
+            margin: 48px 0 0 0; /* Move further down */
+            cursor: pointer;
+            transition: background 0.2s;
+            pointer-events: auto;
+            width: 180px;
+            text-align: left;
+        }
+        #end-btn:hover {
+            background: #ff4444;
+        }
         #stats-panel {
             position: absolute;
             right: 0; top: 0;
@@ -680,7 +697,12 @@ function setupGameHandlers() {
     
     // --- Button Handlers ---
     startBtn.onclick = startWave;
-    endBtn.onclick = endGame;
+    endBtn.onclick = () => {
+        // Show warning before ending the game
+        if (confirm("Warning: This will end your current game and you will lose all progress in this run. Are you sure you want to continue?")) {
+            endGame();
+        }
+    };
     nextWaveBtn.onclick = nextWave;
     
     // Set up other event handlers
@@ -1596,20 +1618,13 @@ function showGameOver(msg) {
     over.style.fontSize = '2em';
     over.style.boxShadow = '0 2px 24px #000a';
     
-    // Add both restart and new game buttons
+    // Only show New Game button (removed Restart)
     over.innerHTML = `
         <b>${msg}</b><br>
-        <button id="restart-btn" style="margin-top: 20px; margin-right: 10px;">Restart</button>
         <button id="new-game-btn" style="margin-top: 20px; background: #de6e6e;">New Game</button>
     `;
     
     document.body.appendChild(over);
-    
-    // Restart button - keeps localStorage
-    over.querySelector('#restart-btn').onclick = () => {
-        document.body.removeChild(over);
-        restartGame(false);  // false = don't clear localStorage
-    };
     
     // New Game button - clears localStorage
     over.querySelector('#new-game-btn').onclick = () => {
