@@ -30,3 +30,18 @@
 6) Be able to purchase new types of buildings that I can eventually place.
 7) Gain gold at the end of each wave.
 
+
+
+Ideas 5/2
+Be able to purchase bombs to manually place
+update the graphics for the towers
+have melee vs range towers
+have towers have elemental types, so there are weaknesses and strengths for specific enemies
+be able to select eenmies to read about them
+Rebalance the game, make bosses easier
+Save scoreboard,integrate with flask
+save state the game
+build profiles, be able to have currency build up in between waves
+
+
+

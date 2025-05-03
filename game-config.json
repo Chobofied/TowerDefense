@@ -183,5 +183,14 @@
     "speedMultiplier": 2.0,
     "duration": 5,
     "cooldown": 30
+  },
+  "bomb": {
+    "name": "Explosive Bomb",
+    "shopPrice": 150,
+    "damage": 80,
+    "radius": 120,
+    "explosionDuration": 0.5,
+    "key": "X",
+    "color": "0xff3300"
   }
 }

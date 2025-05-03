@@ -236,6 +236,70 @@
             border-radius: 50%;
             margin-right: 15px;
         }
+        
+        /* Bomb UI styles */
+        #bomb-ui {
+            background: rgba(30,34,44,0.95);
+            border-radius: 12px;
+            box-shadow: 0 2px 16px #0008;
+            color: #fff;
+            padding: 10px 20px;
+            margin: 16px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            pointer-events: auto;
+        }
+        
+        #bomb-count {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        #place-bomb-btn {
+            background: #ff3300;
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            padding: 8px 15px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        #place-bomb-btn:hover:not(:disabled) {
+            background: #ff5500;
+        }
+        
+        #place-bomb-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .shop-bomb-item {
+            background: #472a24;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            margin-top: 20px;
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+        }
+        
+        .bomb-preview {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #ff3300;
+            margin-right: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -248,12 +312,19 @@
                 <span>Lives: <span id="lives">20</span></span> |
                 <span>Enemies Left: <span id="enemies-left">0</span></span>
             </div>
+            
+            <!-- Add bomb UI section -->
+            <div id="bomb-ui">
+                <div id="bomb-count">Bombs: 0</div>
+                <button id="place-bomb-btn" disabled>Place [X]</button>
+            </div>
+            
             <div class="ui-panel" id="tower-select"></div>
             <button id="boost-btn">Boost [B]</button>
             <button id="shop-btn">Shop [P]</button>
             <button id="start-btn">Start Wave</button>
-            <button id="end-btn" style="display:none;">End Game</button>
             <button id="next-wave-btn" style="display:none;">Next Wave</button>
+            <button id="end-btn" style="display:none;">End Game</button>
         </div>
         <div class="ui-panel" id="stats-panel" style="display:none;"></div>
     </div>
@@ -277,10 +348,13 @@ let ENEMY_TYPES;
 let BOSS_TYPE;
 let ITEM_TYPES;
 let BOOST_CONFIG;
-let SHOP_TOWERS; // New variable for shop towers
+let SHOP_TOWERS; // Variable for shop towers
+let BOMB_CONFIG; // New variable for bomb configuration
 
 // Add purchased towers tracking
 let purchasedTowers = [];
+let bombCount = 0; // Track number of bombs
+let placingBomb = false; // Flag for bomb placement mode
 
 async function loadConfig() {
     try {
@@ -325,6 +399,17 @@ async function loadConfig() {
             shopPrice: tower.shopPrice
         }));
         
+        // Load bomb configuration
+        BOMB_CONFIG = {
+            name: CONFIG.bomb.name,
+            shopPrice: CONFIG.bomb.shopPrice,
+            damage: CONFIG.bomb.damage,
+            radius: CONFIG.bomb.radius,
+            explosionDuration: CONFIG.bomb.explosionDuration,
+            key: CONFIG.bomb.key,
+            color: parseInt(CONFIG.bomb.color)
+        };
+        
         // Load purchased towers from localStorage
         loadPurchasedTowers();
         
@@ -366,6 +451,7 @@ let projectiles = [];
 let damageNumbers = [];
 let items = []; 
 let activeEffects = [];
+let explosions = []; // Track active explosions
 let gold;
 let wave;
 let lives;
@@ -501,10 +587,64 @@ function purchaseTower(towerName) {
     }
 }
 
+function buyBomb() {
+    if (gold >= BOMB_CONFIG.shopPrice) {
+        gold -= BOMB_CONFIG.shopPrice;
+        bombCount++;
+        updateUI();
+        renderShop(); // Update shop UI
+        
+        showMessage(`Purchased a ${BOMB_CONFIG.name}!`, "#ff5500");
+        return true;
+    } else {
+        showMessage(`Not enough gold to buy a bomb!`, "#ff6666");
+        return false;
+    }
+}
+
 function renderShop() {
     const shopContent = document.getElementById('shop-content');
     shopContent.innerHTML = '';
     
+    // First add the bomb item to the shop
+    const bombItem = document.createElement('div');
+    bombItem.className = 'shop-bomb-item';
+    
+    // Bomb preview icon
+    const bombPreview = document.createElement('div');
+    bombPreview.className = 'bomb-preview';
+    bombPreview.textContent = '💣';
+    
+    const infoDiv = document.createElement('div');
+    infoDiv.className = 'shop-tower-info';
+    
+    const nameDiv = document.createElement('div');
+    nameDiv.className = 'shop-tower-name';
+    nameDiv.textContent = `${BOMB_CONFIG.name} [${BOMB_CONFIG.key}]`;
+    
+    const statsDiv = document.createElement('div');
+    statsDiv.className = 'shop-tower-stats';
+    statsDiv.innerHTML = `
+        Damage: Up to ${BOMB_CONFIG.damage} | Radius: ${BOMB_CONFIG.radius}px<br>
+        You have: ${bombCount} bombs
+    `;
+    
+    const buyButton = document.createElement('button');
+    buyButton.className = 'shop-tower-price';
+    buyButton.textContent = `Buy: ${BOMB_CONFIG.shopPrice} Gold`;
+    buyButton.disabled = gold < BOMB_CONFIG.shopPrice;
+    buyButton.onclick = buyBomb;
+    
+    infoDiv.appendChild(nameDiv);
+    infoDiv.appendChild(statsDiv);
+    
+    bombItem.appendChild(bombPreview);
+    bombItem.appendChild(infoDiv);
+    bombItem.appendChild(buyButton);
+    
+    shopContent.appendChild(bombItem);
+    
+    // Add tower items after the bomb
     SHOP_TOWERS.forEach(tower => {
         const isPurchased = purchasedTowers.includes(tower.name);
         
@@ -572,6 +712,19 @@ function updateUI() {
     goldSpan.textContent = gold;
     document.getElementById('lives').textContent = lives;
     document.getElementById('enemies-left').textContent = enemies.filter(e => e.alive).length;
+    document.getElementById('bomb-count').textContent = `Bombs: ${bombCount}`;
+    
+    // Update bomb button state
+    const bombBtn = document.getElementById('place-bomb-btn');
+    bombBtn.disabled = bombCount <= 0;
+    
+    if (placingBomb) {
+        bombBtn.textContent = 'Cancel [X]';
+        bombBtn.style.background = '#666';
+    } else {
+        bombBtn.textContent = 'Place [X]';
+        bombBtn.style.background = bombBtn.disabled ? '#666' : '#ff3300';
+    }
     
     // Update boost button
     if (boostActive) {
@@ -666,6 +819,22 @@ function setupGameHandlers() {
         }
     });
     
+    // --- Bomb Button Handler ---
+    const bombBtn = document.getElementById('place-bomb-btn');
+    bombBtn.addEventListener('click', () => {
+        if (bombCount <= 0) return;
+        
+        placingBomb = !placingBomb;
+        
+        // Cancel tower placement if active
+        if (placingBomb) {
+            selectedTowerType = -1;
+            renderTowerSelect();
+        }
+        
+        updateUI();
+    });
+    
     // --- Key Handlers ---
     document.addEventListener('keydown', e => {
         // Boost key
@@ -683,6 +852,22 @@ function setupGameHandlers() {
             } else {
                 shopModal.style.display = 'block';
                 renderShop();
+            }
+            return;
+        }
+        
+        // Bomb key (X)
+        if (e.key.toLowerCase() === BOMB_CONFIG.key.toLowerCase()) {
+            if (bombCount > 0) {
+                placingBomb = !placingBomb;
+                
+                // Cancel tower placement if active
+                if (placingBomb) {
+                    selectedTowerType = -1;
+                    renderTowerSelect();
+                }
+                
+                updateUI();
             }
             return;
         }
@@ -864,6 +1049,12 @@ function setupPlacementHandlers() {
             towerStatsWindow = null;
         }
         
+        // Check if placing bomb
+        if (placingBomb) {
+            placeBomb(mx, my);
+            return;
+        }
+        
         // If clicking on a tower, select it and show stats
         let tower = towers.find(t => t.x === tx && t.y === ty);
         if (tower) {
@@ -938,6 +1129,60 @@ function setupPlacementHandlers() {
             updateUI();
         }
     });
+}
+
+// --- Bomb Functions ---
+function placeBomb(x, y) {
+    if (bombCount <= 0) return;
+    
+    // Create explosion effect
+    const explosion = {
+        x: x,
+        y: y,
+        radius: 0,
+        maxRadius: BOMB_CONFIG.radius,
+        alpha: 1,
+        duration: BOMB_CONFIG.explosionDuration * 60, // Convert to frames
+        color: BOMB_CONFIG.color
+    };
+    explosions.push(explosion);
+    
+    // Apply damage to all enemies in radius
+    let enemiesHit = 0;
+    let totalDamage = 0;
+    
+    enemies.filter(e => e.alive).forEach(enemy => {
+        const distance = Math.hypot(enemy.x - x, enemy.y - y);
+        if (distance <= BOMB_CONFIG.radius) {
+            // Calculate damage with distance falloff
+            const damageRatio = 1 - (distance / BOMB_CONFIG.radius);
+            const damage = Math.round(BOMB_CONFIG.damage * damageRatio * 10) / 10;
+            totalDamage += damage;
+            
+            enemy.hp -= damage;
+            createDamageNumber(enemy.x, enemy.y - 20, damage);
+            enemiesHit++;
+            
+            if (enemy.hp <= 0) {
+                enemy.alive = false;
+                gold += enemy.type.reward;
+                tryDropItem(enemy.x, enemy.y);
+            }
+        }
+    });
+    
+    // Decrement bomb count
+    bombCount--;
+    updateUI();
+    
+    // Exit bomb placement mode
+    placingBomb = false;
+    
+    if (enemiesHit > 0) {
+        showMessage(`Bomb hit ${enemiesHit} enemies for ${Math.round(totalDamage)} damage!`, "#ff5500");
+    } else {
+        showMessage(`Bomb exploded but hit no enemies.`, "#ff5500");
+    }
 }
 
 // --- Enemy Spawning ---
@@ -1249,6 +1494,26 @@ function gameLoop(delta) {
         
         if (item.lifetime <= 0) {
             items.splice(i, 1);
+        }
+    }
+    
+    // Update explosions
+    for (let i = explosions.length - 1; i >= 0; i--) {
+        const explosion = explosions[i];
+        explosion.duration--;
+        
+        // Grow the explosion
+        if (explosion.radius < explosion.maxRadius) {
+            explosion.radius += explosion.maxRadius / 15; // Make it expand a bit faster
+        }
+        
+        // Fade out toward the end
+        if (explosion.duration < 30) {
+            explosion.alpha = explosion.duration / 30;
+        }
+        
+        if (explosion.duration <= 0) {
+            explosions.splice(i, 1);
         }
     }
     
@@ -1582,6 +1847,45 @@ function draw() {
         d.textObj.position.set(d.x, d.y);
         d.textObj.alpha = d.alpha;
     }
+    
+    // Draw explosions
+    for (let explosion of explosions) {
+        // Outer explosion circle
+        graphics.beginFill(explosion.color, explosion.alpha * 0.4)
+            .drawCircle(explosion.x, explosion.y, explosion.radius)
+            .endFill();
+            
+        // Inner bright core
+        graphics.beginFill(0xffffff, explosion.alpha * 0.7)
+            .drawCircle(explosion.x, explosion.y, explosion.radius * 0.3)
+            .endFill();
+            
+        // Add a ring at the edge of explosion for better visual
+        graphics.lineStyle(2, 0xffdd00, explosion.alpha * 0.8)
+            .drawCircle(explosion.x, explosion.y, explosion.radius * 0.8);
+    }
+    
+    // Draw bomb placement preview
+    if (placingBomb) {
+        const mx = app.renderer.events.pointer.global?.x || 0;
+        const my = app.renderer.events.pointer.global?.y || 0;
+        
+        // Draw bomb radius preview
+        graphics.lineStyle(2, BOMB_CONFIG.color, 0.8)
+            .drawCircle(mx, my, BOMB_CONFIG.radius);
+            
+        // Draw bomb icon
+        graphics.beginFill(BOMB_CONFIG.color, 0.7)
+            .drawCircle(mx, my, 20)
+            .endFill();
+            
+        // Add crosshair to help with aiming
+        graphics.lineStyle(2, 0xffffff, 0.8)
+            .moveTo(mx - 10, my)
+            .lineTo(mx + 10, my)
+            .moveTo(mx, my - 10)
+            .lineTo(mx, my + 10);
+    }
 }
 
 // --- Enemy Stats Hover ---
@@ -1642,10 +1946,13 @@ function restartGame(clearStorage = true) {
     damageNumbers = [];
     items = [];
     activeEffects = [];
+    explosions = [];
     gold = CONFIG.gameSettings.startingGold;
     wave = 1;
     lives = CONFIG.gameSettings.startingLives;
     isGameRunning = false;
+    bombCount = 0;
+    placingBomb = false;
     
     // Reset tower types to default towers from config
     TOWER_TYPES = CONFIG.towers.map(tower => ({
