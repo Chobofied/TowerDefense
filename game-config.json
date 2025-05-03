@@ -21,11 +21,11 @@
       "critMultiplier": 2.0
     },
     {
-      "name": "Laser",
+      "name": "Melee",
       "key": "W",
       "color": "0xde6e6e",
       "cost": 70,
-      "range": 100,
+      "range": 50,
       "fireRate": 0.4,
       "damage": 10,
       "damageVariation": 0.15,
