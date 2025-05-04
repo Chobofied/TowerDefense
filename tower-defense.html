@@ -1900,6 +1900,15 @@ function gameLoop(delta) {
     projectiles = projectiles.filter(p => !p.hit);
     
     // --- Remove Dead Enemies ---
+    // First remove emoji text objects for dead enemies
+    enemies.filter(e => !e.alive).forEach(e => {
+        // Clean up emoji text objects when enemies die
+        if (e.emojiText) {
+            app.stage.removeChild(e.emojiText);
+            e.emojiText = null;
+        }
+    });
+    // Then filter out dead enemies
     enemies = enemies.filter(e => e.alive);
     
     // --- Win/Lose ---
