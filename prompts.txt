@@ -56,9 +56,20 @@ modify the tower_defense game to have the following types enemies
 
 Replace the exisiting enemies in the game-config.js file with these enemies (but keep Tank,flying and boss). Add some more configuration variables for these new enemies with % weakness to element type and % resistance to element tyoe (For example Fire enemy is 80% weak against water and %80 resistance to nature)
 While you are doing this, create a fire,waterr,nature,earth,electric,ice tower in the tower shop to purcahse that can damage with these corresponding elements
-please be careful not to change any features or parameters you dont have to avoid other unexpected changes to the game
+please be careful not to change any features or parameters you dont have to avoid other unexpected changes to the game, only perform the exact changes needed to perform my above request,only modify code directly related to my above request,Do not remove any existing functions unless explicitly mentioned
 
 
 Provide a list of upcoming waves and the types of enemies that will be in it
 Add long term currency like diamonds for killing boses that can add other things you can buy outside of that one game
 select enemies and see their stats
+put emookies on towers
+have frost tower slow down enemies
+cheat sheet guide on the side of element types and summary of weakness/resistance of each type
+have all the enemies come out over 5 seconds
+
+
+Help me update my tower-defense.html game.
+
+modify the frost tower to slow down enemies, and have the enemies have some sort of visual effect showing that they are slow and add that description in the tower stats. put the new configuration variables for the frost tower in  the game-config.json.
+
+please be careful not to change any features or parameters you dont have to, to avoid other unexpected changes to the game, only perform the exact changes needed to perform my above request,only modify code directly related to my above request,Do not remove any existing functions unless explicitly mentioned

@@ -379,6 +379,7 @@ let BOOST_CONFIG;
 let SHOP_TOWERS; // Variable for shop towers
 let BOMB_CONFIG; // New variable for bomb configuration
 let ELEMENTS; // New variable for element definitions
+let FROST_CONFIG; // Configuration for frost tower slow effect
 
 // Add purchased towers tracking
 let purchasedTowers = [];
@@ -402,6 +403,13 @@ async function loadConfig() {
         
         // Load elements
         ELEMENTS = CONFIG.elements || {};
+        
+        // Load frost tower configuration
+        FROST_CONFIG = CONFIG.frostTower || {
+            slowAmount: 0.5,   // 50% slow default
+            slowDuration: 3,   // 3 seconds default
+            effectColor: 0x88ccff
+        };
         
         TOWER_TYPES = CONFIG.towers.map(tower => ({
             name: tower.name,
@@ -507,6 +515,23 @@ let towerStatsWindow = null;
 let boostActive = false;
 let boostCooldown = 0;
 let damageTextPool = []; // Pool of reusable text objects for damage numbers
+
+// --- Function to apply slow effect from Frost Tower ---
+function applySlowEffect(enemy, tower) {
+    // Apply slowing effect if the tower is a Frost Tower
+    if (tower.type.name === "Frost") {
+        // Set the slowed status on the enemy
+        enemy.slowed = {
+            amount: FROST_CONFIG.slowAmount,
+            duration: FROST_CONFIG.slowDuration * 60, // Convert to frames
+            originalSpeed: enemy.speed, // Store original speed
+            effectColor: FROST_CONFIG.effectColor
+        };
+        
+        // Apply the slow effect immediately
+        enemy.speed = enemy.slowed.originalSpeed * (1 - enemy.slowed.amount);
+    }
+}
 
 // --- PixiJS Setup ---
 const app = new PIXI.Application({
@@ -1395,7 +1420,7 @@ function showTowerStats(tower, x, y) {
     statsWindow.style.color = '#fff';
     statsWindow.style.padding = '15px 20px';
     statsWindow.style.borderRadius = '8px';
-    statsWindow.style.boxShadow = '0 2px 16px #0008';
+    statsWindow.style.boxShadow = '0 2px 24px #0008';
     statsWindow.style.zIndex = '1000';
     statsWindow.style.minWidth = '200px';
     statsWindow.style.pointerEvents = 'auto';
@@ -1446,6 +1471,11 @@ function showTowerStats(tower, x, y) {
         `Fire Rate: ${(1 / tower.type.fireRate).toFixed(1)}/sec`,
         `DPS: ${damagePerSec.toFixed(1)}`
     ];
+    
+    // Add slow effect info for Frost Tower
+    if (tower.type.name === "Frost") {
+        stats.push(`Slow: ${FROST_CONFIG.slowAmount * 100}% for ${FROST_CONFIG.slowDuration}s`);
+    }
     
     // Add element info
     stats.unshift(`Element: <span class="element-icon" style="background: ${elementColor}">${elementEmoji}</span> ${elementName}`);
@@ -1714,6 +1744,17 @@ function gameLoop(delta) {
     for (let enemy of enemies) {
         if (!enemy.alive) continue;
         
+        // Update slowed status if present
+        if (enemy.slowed) {
+            enemy.slowed.duration -= delta;
+            
+            // Remove slow effect when duration expires
+            if (enemy.slowed.duration <= 0) {
+                enemy.speed = enemy.slowed.originalSpeed; // Restore original speed
+                enemy.slowed = null;
+            }
+        }
+        
         if (enemy.flying) {
             // Flying: straight line
             let dx = (endTile.x*TILE_SIZE+TILE_SIZE/2) - enemy.x;
@@ -1774,7 +1815,6 @@ function gameLoop(delta) {
         tower.cooldown -= (delta/60) * fireRateMultiplier;
         
         if (tower.cooldown <= 0) {
-            // Check if this is a Melee tower
             if (tower.type.name === "Melee") {
                 // Melee towers can't target flying enemies and hit all enemies at once
                 let targets = enemies.filter(e => 
@@ -1853,6 +1893,8 @@ function gameLoop(delta) {
                         elementalEffect,
                         elementalMultiplier,
                         element: tower.type.element,
+                        towerType: tower.type.name, // Add tower type to projectile
+                        originTower: tower, // Reference to tower for effect application
                         speed: 7 + tower.level*2
                     });
                     
@@ -1882,6 +1924,11 @@ function gameLoop(delta) {
                 
                 // Create damage number with elemental effect info
                 createDamageNumber(p.target.x, p.target.y - 20, p.damage, p.isCritical, p.elementalEffect, p.elementalMultiplier);
+                
+                // Apply slow effect if from a Frost Tower
+                if (p.towerType === "Frost") {
+                    applySlowEffect(p.target, p.originTower);
+                }
                 
                 if (p.target.hp <= 0) {
                     p.target.alive = false;
@@ -2044,6 +2091,27 @@ function draw() {
             graphics.drawCircle(e.x, e.y, TILE_SIZE/1.7);
         }
         
+        // Draw slowed effect if enemy is slowed
+        if (e.slowed) {
+            // Draw frost effect around the enemy
+            const pulseAmount = 0.5 + Math.sin(Date.now() / 300) * 0.2; // Pulsing effect
+            graphics.lineStyle(3, e.slowed.effectColor, 0.7 * pulseAmount)
+                .drawCircle(e.x, e.y, (e.type.name === "Boss" ? TILE_SIZE/1.5 : TILE_SIZE/2.2) + pulseAmount * 3);
+            
+            // Add some frost particles
+            for (let i = 0; i < 2; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const distance = (Math.random() * 10) + (e.type.name === "Boss" ? TILE_SIZE/2 : TILE_SIZE/3);
+                graphics.beginFill(e.slowed.effectColor, 0.6)
+                    .drawCircle(
+                        e.x + Math.cos(angle) * distance,
+                        e.y + Math.sin(angle) * distance,
+                        1 + Math.random() * 2
+                    )
+                    .endFill();
+            }
+        }
+        
         // Draw element emoji if available
         if (e.type.emoji && e.type.element !== "physical") {
             // Create or reuse text for emoji
@@ -2098,19 +2166,48 @@ function draw() {
             // Inner glow for elemental projectiles
             graphics.beginFill(0xffffff, 0.5).drawCircle(p.x, p.y, 3).endFill();
             
-            // Trailing effect based on element
-            const trailLength = 3; // Number of trail segments
-            const trailFade = 0.7; // How quickly the trail fades
-            
-            // Only draw trail if direction is defined
-            if (p.dirX !== undefined && p.dirY !== undefined) {
-                for (let i = 1; i <= trailLength; i++) {
-                    const trailOpacity = 0.7 * Math.pow(trailFade, i);
-                    const trailX = p.x - (p.dirX * i * 4);
-                    const trailY = p.y - (p.dirY * i * 4);
-                    graphics.beginFill(p.color, trailOpacity)
-                        .drawCircle(trailX, trailY, 5 - i)
-                        .endFill();
+            // Special frost trail for frost tower projectiles
+            if (p.towerType === "Frost") {
+                const trailLength = 5; // Longer trail for frost
+                const trailFade = 0.8; // How quickly the trail fades
+                
+                // Only draw trail if direction is defined
+                if (p.dirX !== undefined && p.dirY !== undefined) {
+                    for (let i = 1; i <= trailLength; i++) {
+                        const trailOpacity = 0.8 * Math.pow(trailFade, i);
+                        const trailX = p.x - (p.dirX * i * 4);
+                        const trailY = p.y - (p.dirY * i * 4);
+                        
+                        // Frost particles along the trail
+                        if (i % 2 === 0) {
+                            const offsetX = (Math.random() - 0.5) * 5;
+                            const offsetY = (Math.random() - 0.5) * 5;
+                            graphics.beginFill(FROST_CONFIG.effectColor, trailOpacity * 0.7)
+                                .drawCircle(trailX + offsetX, trailY + offsetY, 2 + Math.random() * 2)
+                                .endFill();
+                        }
+                        
+                        // Main trail
+                        graphics.beginFill(FROST_CONFIG.effectColor, trailOpacity)
+                            .drawCircle(trailX, trailY, 4 - i * 0.5)
+                            .endFill();
+                    }
+                }
+            } else {
+                // Regular elemental projectile trail
+                const trailLength = 3; // Number of trail segments
+                const trailFade = 0.7; // How quickly the trail fades
+                
+                // Only draw trail if direction is defined
+                if (p.dirX !== undefined && p.dirY !== undefined) {
+                    for (let i = 1; i <= trailLength; i++) {
+                        const trailOpacity = 0.7 * Math.pow(trailFade, i);
+                        const trailX = p.x - (p.dirX * i * 4);
+                        const trailY = p.y - (p.dirY * i * 4);
+                        graphics.beginFill(p.color, trailOpacity)
+                            .drawCircle(trailX, trailY, 5 - i)
+                            .endFill();
+                    }
                 }
             }
         }

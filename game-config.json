@@ -61,6 +61,11 @@
       "element": "electric"
     }
   ],
+  "frostTower": {
+    "slowAmount": 0.5,
+    "slowDuration": 3,
+    "effectColor": "0x88ccff"
+  },
   "shopTowers": [
     {
       "name": "Sniper",
