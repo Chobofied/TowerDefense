@@ -404,11 +404,11 @@ async function loadConfig() {
         // Load elements
         ELEMENTS = CONFIG.elements || {};
         
-        // Load frost tower configuration
-        FROST_CONFIG = CONFIG.frostTower || {
-            slowAmount: 0.5,   // 50% slow default
-            slowDuration: 3,   // 3 seconds default
-            effectColor: 0x88ccff
+        // Load frost tower configuration - now simply loads from config
+        FROST_CONFIG = {
+            slowAmount: CONFIG.frostTower.slowAmount,
+            slowDuration: CONFIG.frostTower.slowDuration,
+            effectColor: parseInt(CONFIG.frostTower.effectColor)
         };
         
         TOWER_TYPES = CONFIG.towers.map(tower => ({
@@ -520,16 +520,25 @@ let damageTextPool = []; // Pool of reusable text objects for damage numbers
 function applySlowEffect(enemy, tower) {
     // Apply slowing effect if the tower is a Frost Tower
     if (tower.type.name === "Frost") {
-        // Set the slowed status on the enemy
-        enemy.slowed = {
-            amount: FROST_CONFIG.slowAmount,
-            duration: FROST_CONFIG.slowDuration * 60, // Convert to frames
-            originalSpeed: enemy.speed, // Store original speed
-            effectColor: FROST_CONFIG.effectColor
-        };
-        
-        // Apply the slow effect immediately
-        enemy.speed = enemy.slowed.originalSpeed * (1 - enemy.slowed.amount);
+        // If the enemy is not already slowed, apply slow effect
+        if (!enemy.slowed) {
+            // Store the true original speed before any slow is applied
+            const trueOriginalSpeed = enemy.speed;
+            
+            // Set the slowed status on the enemy
+            enemy.slowed = {
+                amount: FROST_CONFIG.slowAmount,
+                duration: FROST_CONFIG.slowDuration * 60, // Convert to frames
+                originalSpeed: trueOriginalSpeed, // Store original speed
+                effectColor: FROST_CONFIG.effectColor
+            };
+            
+            // Apply the slow effect immediately
+            enemy.speed = enemy.slowed.originalSpeed * (1 - enemy.slowed.amount);
+        } else {
+            // Enemy already slowed - just refresh the duration, don't stack the effect
+            enemy.slowed.duration = FROST_CONFIG.slowDuration * 60;
+        }
     }
 }
 
@@ -2092,6 +2101,7 @@ function draw() {
         }
         
         // Draw slowed effect if enemy is slowed
+
         if (e.slowed) {
             // Draw frost effect around the enemy
             const pulseAmount = 0.5 + Math.sin(Date.now() / 300) * 0.2; // Pulsing effect
