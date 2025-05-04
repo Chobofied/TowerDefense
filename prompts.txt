@@ -43,5 +43,22 @@ Save scoreboard,integrate with flask
 save state the game
 build profiles, be able to have currency build up in between waves
 
+IDeas 5/3
 
 
+modify the tower_defense game to have the following types enemies
+- Fire 🔥 – Strong against Nature (burns plants), weak to Water (extinguished by it).
+- Water 🌊 – Strong against Fire (quenches flames), weak to Electric (conducts electricity).
+- Nature 🍃 – Strong against Earth (overgrows rocks), weak to Fire (burns easily).
+- Earth 🏔️ – Strong against Electric (grounds electricity), weak to Water (erosion).
+- Electric ⚡ – Strong against Water (conducts electricity), weak to Earth (grounded).
+- Ice ❄️ – Strong against Nature (freezes plants), weak to Fire (melts easily).
+
+Replace the exisiting enemies in the game-config.js file with these enemies (but keep Tank,flying and boss). Add some more configuration variables for these new enemies with % weakness to element type and % resistance to element tyoe (For example Fire enemy is 80% weak against water and %80 resistance to nature)
+While you are doing this, create a fire,waterr,nature,earth,electric,ice tower in the tower shop to purcahse that can damage with these corresponding elements
+please be careful not to change any features or parameters you dont have to avoid other unexpected changes to the game
+
+
+Provide a list of upcoming waves and the types of enemies that will be in it
+Add long term currency like diamonds for killing boses that can add other things you can buy outside of that one game
+select enemies and see their stats

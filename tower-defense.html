@@ -300,6 +300,34 @@
             font-weight: bold;
             color: white;
         }
+        
+        /* Add new styles for elements */
+        .element-icon {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 5px;
+            text-align: center;
+            font-size: 12px;
+            line-height: 20px;
+            vertical-align: middle;
+        }
+        
+        /* Element tooltips */
+        .element-tooltip {
+            position: absolute;
+            background: rgba(30,34,44,0.95);
+            border-radius: 8px;
+            padding: 10px;
+            color: white;
+            z-index: 1000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            font-size: 12px;
+            max-width: 200px;
+        }
     </style>
 </head>
 <body>
@@ -350,6 +378,7 @@ let ITEM_TYPES;
 let BOOST_CONFIG;
 let SHOP_TOWERS; // Variable for shop towers
 let BOMB_CONFIG; // New variable for bomb configuration
+let ELEMENTS; // New variable for element definitions
 
 // Add purchased towers tracking
 let purchasedTowers = [];
@@ -371,6 +400,9 @@ async function loadConfig() {
         MAP_WIDTH = GRID_SIZE * TILE_SIZE;
         MAP_HEIGHT = GRID_SIZE * TILE_SIZE;
         
+        // Load elements
+        ELEMENTS = CONFIG.elements || {};
+        
         TOWER_TYPES = CONFIG.towers.map(tower => ({
             name: tower.name,
             key: tower.key,
@@ -381,7 +413,8 @@ async function loadConfig() {
             damage: tower.damage,
             damageVariation: tower.damageVariation,
             critChance: tower.critChance,
-            critMultiplier: tower.critMultiplier
+            critMultiplier: tower.critMultiplier,
+            element: tower.element || "physical" // Default to physical
         }));
         
         // Load shop towers
@@ -396,7 +429,8 @@ async function loadConfig() {
             damageVariation: tower.damageVariation,
             critChance: tower.critChance,
             critMultiplier: tower.critMultiplier,
-            shopPrice: tower.shopPrice
+            shopPrice: tower.shopPrice,
+            element: tower.element || "physical" // Default to physical
         }));
         
         // Load bomb configuration
@@ -420,7 +454,10 @@ async function loadConfig() {
             reward: enemy.reward,
             color: parseInt(enemy.color),
             flying: !!enemy.flying,
-            waveScaling: enemy.waveScaling
+            waveScaling: enemy.waveScaling,
+            element: enemy.element || "physical",
+            emoji: enemy.emoji || "",
+            elementalProperties: enemy.elementalProperties || { weaknesses: {}, resistances: {} }
         }));
         
         BOSS_TYPE = {
@@ -429,7 +466,10 @@ async function loadConfig() {
             baseHp: CONFIG.boss.baseHp,
             reward: CONFIG.boss.reward,
             color: parseInt(CONFIG.boss.color),
-            waveScaling: CONFIG.boss.waveScaling
+            waveScaling: CONFIG.boss.waveScaling,
+            element: CONFIG.boss.element || "physical",
+            emoji: CONFIG.boss.emoji || "",
+            elementalProperties: CONFIG.boss.elementalProperties || { weaknesses: {}, resistances: {} }
         };
         
         ITEM_TYPES = CONFIG.items;
@@ -656,6 +696,12 @@ function renderShop() {
         towerPreview.className = 'tower-preview';
         towerPreview.style.background = '#' + tower.color.toString(16).padStart(6, '0');
         
+        // Add element emoji if available
+        const elementInfo = ELEMENTS[tower.element] || {};
+        if (elementInfo.emoji) {
+            towerPreview.textContent = elementInfo.emoji;
+        }
+        
         const infoDiv = document.createElement('div');
         infoDiv.className = 'shop-tower-info';
         
@@ -665,9 +711,17 @@ function renderShop() {
         
         const statsDiv = document.createElement('div');
         statsDiv.className = 'shop-tower-stats';
+        
+        // Add element info to stats
+        let elementText = "";
+        if (tower.element && tower.element !== "physical") {
+            const elementInfo = ELEMENTS[tower.element] || { name: tower.element };
+            elementText = `<span class="element-icon" style="background: #${tower.color.toString(16).padStart(6, '0')}">${elementInfo.emoji || ""}</span> ${elementInfo.name || tower.element} | `;
+        }
+        
         statsDiv.innerHTML = `
-            Damage: ${tower.damage} | Range: ${tower.range} | Fire Rate: ${(1/tower.fireRate).toFixed(1)}/sec<br>
-            Critical: ${(tower.critChance*100).toFixed(0)}% chance (×${tower.critMultiplier})
+            ${elementText}Damage: ${tower.damage} | Range: ${tower.range}<br>
+            Fire Rate: ${(1/tower.fireRate).toFixed(1)}/sec | Crit: ${(tower.critChance*100).toFixed(0)}%
         `;
         
         const priceButton = document.createElement('button');
@@ -771,7 +825,45 @@ function showMessage(text, color = "#ffffff") {
 
 function showStats(enemy) {
     statsPanel.style.display = 'block';
-    statsPanel.innerHTML = `<b>${enemy.type.name}</b><br>HP: ${Math.ceil(enemy.hp)}/${enemy.maxHp}<br>Speed: ${enemy.speed.toFixed(1)}<br>Reward: ${enemy.type.reward}`;
+    
+    // Get element info
+    const elementInfo = ELEMENTS[enemy.type.element] || { name: "Physical", color: "0xcccccc" };
+    const elementName = elementInfo.name;
+    const elementColor = '#' + elementInfo.color.toString(16).padStart(6, '0');
+    const elementEmoji = elementInfo.emoji || "";
+    
+    // Build weaknesses and resistances text
+    let weaknessesText = "";
+    let resistancesText = "";
+    
+    if (enemy.type.elementalProperties) {
+        if (enemy.type.elementalProperties.weaknesses && Object.keys(enemy.type.elementalProperties.weaknesses).length > 0) {
+            weaknessesText = "Weak against: " + Object.entries(enemy.type.elementalProperties.weaknesses)
+                .map(([element, value]) => {
+                    const info = ELEMENTS[element] || { name: element };
+                    return `${info.emoji || ""} ${info.name || element} (${(100 * (1 - value)).toFixed(0)}%)`;
+                }).join(", ");
+        }
+        
+        if (enemy.type.elementalProperties.resistances && Object.keys(enemy.type.elementalProperties.resistances).length > 0) {
+            resistancesText = "Resistant to: " + Object.entries(enemy.type.elementalProperties.resistances)
+                .map(([element, value]) => {
+                    const info = ELEMENTS[element] || { name: element };
+                    return `${info.emoji || ""} ${info.name || element} (${(100 * value).toFixed(0)}%)`;
+                }).join(", ");
+        }
+    }
+    
+    // Create HTML for enemy stats
+    statsPanel.innerHTML = `
+        <b>${enemy.type.name} ${elementEmoji}</b><br>
+        <span class="element-icon" style="background: ${elementColor}">${elementEmoji}</span> ${elementName}<br>
+        HP: ${Math.ceil(enemy.hp)}/${enemy.maxHp}<br>
+        Speed: ${enemy.speed.toFixed(1)}<br>
+        Reward: ${enemy.type.reward}<br>
+        ${weaknessesText ? weaknessesText + "<br>" : ""}
+        ${resistancesText}
+    `;
 }
 
 function hideStats() {
@@ -1245,8 +1337,8 @@ function spawnWave() {
     spawningWave = false;
 }
 
-// --- Calculate damage with randomness and crits ---
-function calculateDamage(tower) {
+// --- Calculate damage with randomness, crits and elemental effects ---
+function calculateDamage(tower, enemy) {
     const baseDamage = tower.type.damage * tower.level;
     const variation = tower.type.damageVariation;
     
@@ -1260,9 +1352,35 @@ function calculateDamage(tower) {
         damage *= tower.type.critMultiplier;
     }
     
+    // Apply elemental effects
+    let elementalMultiplier = 1;
+    let elementalEffect = null;
+    
+    // Tower element
+    const attackElement = tower.type.element;
+    // Enemy element and properties
+    const enemyElement = enemy.type.element;
+    const elementalProps = enemy.type.elementalProperties || { weaknesses: {}, resistances: {} };
+    
+    // Check for weaknesses
+    if (elementalProps.weaknesses && elementalProps.weaknesses[attackElement]) {
+        elementalMultiplier = 1 + (1 - elementalProps.weaknesses[attackElement]);
+        elementalEffect = "weakness";
+    }
+    // Check for resistances
+    else if (elementalProps.resistances && elementalProps.resistances[attackElement]) {
+        elementalMultiplier = elementalProps.resistances[attackElement];
+        elementalEffect = "resistance";
+    }
+    
+    // Apply the multiplier
+    damage *= elementalMultiplier;
+    
     return { 
         damage: Math.round(damage * 10) / 10, // Round to 1 decimal
-        isCritical 
+        isCritical,
+        elementalEffect,
+        elementalMultiplier
     };
 }
 
@@ -1315,6 +1433,12 @@ function showTowerStats(tower, x, y) {
     const critMultiplier = tower.type.critMultiplier;
     const damagePerSec = baseDamage / tower.type.fireRate;
     
+    // Get element info
+    const elementInfo = ELEMENTS[tower.type.element] || { name: "Physical", color: "0xcccccc" };
+    const elementName = elementInfo.name;
+    const elementColor = '#' + elementInfo.color.toString(16).padStart(6, '0');
+    const elementEmoji = elementInfo.emoji || "";
+    
     let stats = [
         `Damage: ${minDamage}-${maxDamage}`,
         `Critical Hit: ${critChance.toFixed(1)}% chance (×${critMultiplier})`,
@@ -1323,9 +1447,12 @@ function showTowerStats(tower, x, y) {
         `DPS: ${damagePerSec.toFixed(1)}`
     ];
     
+    // Add element info
+    stats.unshift(`Element: <span class="element-icon" style="background: ${elementColor}">${elementEmoji}</span> ${elementName}`);
+    
     stats.forEach(stat => {
         let div = document.createElement('div');
-        div.textContent = stat;
+        div.innerHTML = stat;
         statsContainer.appendChild(div);
     });
     
@@ -1437,18 +1564,44 @@ function tryDropItem(x, y) {
 }
 
 // --- Damage Numbers ---
-function createDamageNumber(x, y, damage, isCritical = false) {
+function createDamageNumber(x, y, damage, isCritical = false, elementalEffect = null, elementalMultiplier = 1) {
     // Add random horizontal offset and velocity for bounce effect
     const randX = (Math.random() - 0.5) * 30;
     const randYVel = -2 - Math.random() * 2; // Initial upward velocity
+    
+    // Determine color based on critical and elemental effects
+    let color = 0xFFFFFF; // Default white
+    
+    if (isCritical) {
+        color = 0xff5500; // Critical hits are orange
+    } 
+    else if (elementalEffect === "weakness") {
+        color = 0x66dd66; // Weakness hits are green (more damage)
+    }
+    else if (elementalEffect === "resistance") {
+        color = 0xdd6666; // Resistance hits are red (less damage)
+    }
+    
+    // Prepare text for display
+    let displayText = Math.floor(damage).toString();
+    
+    // Add a prefix for elemental effects
+    if (elementalEffect === "weakness") {
+        displayText = "+" + displayText; 
+    } else if (elementalEffect === "resistance") {
+        displayText = "-" + displayText;
+    }
     
     damageNumbers.push({
         x: x + randX,
         y: y,
         damage: damage,
+        displayText: displayText,
+        color: color,
         alpha: 1,
         life: 45, // Increased lifetime slightly
         isCritical,
+        elementalEffect,
         xVel: (Math.random() - 0.5) * 1.5, // Horizontal velocity
         yVel: randYVel, // Vertical velocity (upward)
         textObj: null // Will be assigned from pool during rendering
@@ -1638,13 +1791,14 @@ function gameLoop(delta) {
                         radius: tower.type.range,
                         duration: 15, // Animation lasts 15 frames
                         angle: Math.random() * Math.PI * 2, // Random starting angle
-                        color: tower.type.color
+                        color: tower.type.color,
+                        element: tower.type.element
                     });
                     
                     // Hit all targets in range
                     for (let target of targets) {
-                        // Calculate damage with randomness and critical hits
-                        const { damage, isCritical } = calculateDamage(tower);
+                        // Calculate damage with randomness, critical hits, and elemental effects
+                        const { damage, isCritical, elementalEffect, elementalMultiplier } = calculateDamage(tower, target);
                         
                         // Apply damage boost if active
                         let finalDamage = damage;
@@ -1654,7 +1808,9 @@ function gameLoop(delta) {
                         }
                         
                         target.hp -= finalDamage;
-                        createDamageNumber(target.x, target.y - 20, finalDamage, isCritical);
+                        
+                        // Create damage number with elemental effect info
+                        createDamageNumber(target.x, target.y - 20, finalDamage, isCritical, elementalEffect, elementalMultiplier);
                         
                         if (target.hp <= 0) {
                             target.alive = false;
@@ -1666,7 +1822,7 @@ function gameLoop(delta) {
                     tower.cooldown = tower.type.fireRate;
                 }
             } else {
-                // Regular tower behavior (unchanged)
+                // Regular tower behavior
                 let targets = enemies.filter(e => 
                     e.alive && 
                     Math.hypot(e.x-(tower.x*TILE_SIZE+TILE_SIZE/2), e.y-(tower.y*TILE_SIZE+TILE_SIZE/2)) < tower.type.range
@@ -1675,8 +1831,8 @@ function gameLoop(delta) {
                 if (targets.length) {
                     let target = targets[0];
                     
-                    // Calculate damage with randomness and critical hits
-                    const { damage, isCritical } = calculateDamage(tower);
+                    // Calculate damage with randomness, critical hits, and elemental effects
+                    const { damage, isCritical, elementalEffect, elementalMultiplier } = calculateDamage(tower, target);
                     
                     // Apply damage boost if active
                     let finalDamage = damage;
@@ -1694,6 +1850,9 @@ function gameLoop(delta) {
                         damage: finalDamage,
                         color: tower.type.color,
                         isCritical,
+                        elementalEffect,
+                        elementalMultiplier,
+                        element: tower.type.element,
                         speed: 7 + tower.level*2
                     });
                     
@@ -1710,13 +1869,19 @@ function gameLoop(delta) {
         let dist = Math.sqrt(dx*dx+dy*dy);
         let spd = p.speed;
         
+        // Store the direction for trail rendering
+        p.dirX = dx / dist;
+        p.dirY = dy / dist;
+        
         if (dist < spd) {
             p.x = p.tx;
             p.y = p.ty;
             
             if (p.target && p.target.alive) {
                 p.target.hp -= p.damage;
-                createDamageNumber(p.target.x, p.target.y - 20, p.damage, p.isCritical);
+                
+                // Create damage number with elemental effect info
+                createDamageNumber(p.target.x, p.target.y - 20, p.damage, p.isCritical, p.elementalEffect, p.elementalMultiplier);
                 
                 if (p.target.hp <= 0) {
                     p.target.alive = false;
@@ -1870,6 +2035,26 @@ function draw() {
             graphics.drawCircle(e.x, e.y, TILE_SIZE/1.7);
         }
         
+        // Draw element emoji if available
+        if (e.type.emoji && e.type.element !== "physical") {
+            // Create or reuse text for emoji
+            if (!e.emojiText) {
+                e.emojiText = new PIXI.Text(e.type.emoji, { 
+                    fontSize: e.type.name === "Boss" ? 20 : 14,
+                    align: "center"
+                });
+                e.emojiText.anchor.set(0.5);
+                app.stage.addChild(e.emojiText);
+            }
+            
+            // Update position
+            e.emojiText.position.x = e.x;
+            e.emojiText.position.y = e.y;
+            e.emojiText.visible = true;
+        } else if (e.emojiText) {
+            e.emojiText.visible = false;
+        }
+        
         // Draw health bar
         const healthPercentage = e.hp / e.maxHp;
         const barWidth = e.type.name === "Boss" ? TILE_SIZE * 1.5 : TILE_SIZE;
@@ -1896,7 +2081,30 @@ function draw() {
     
     // Draw projectiles
     for (let p of projectiles) {
+        // Basic projectile circle
         graphics.beginFill(p.color).drawCircle(p.x, p.y, 7).endFill();
+        
+        // Add elemental effect (optional)
+        if (p.element && p.element !== "physical") {
+            // Inner glow for elemental projectiles
+            graphics.beginFill(0xffffff, 0.5).drawCircle(p.x, p.y, 3).endFill();
+            
+            // Trailing effect based on element
+            const trailLength = 3; // Number of trail segments
+            const trailFade = 0.7; // How quickly the trail fades
+            
+            // Only draw trail if direction is defined
+            if (p.dirX !== undefined && p.dirY !== undefined) {
+                for (let i = 1; i <= trailLength; i++) {
+                    const trailOpacity = 0.7 * Math.pow(trailFade, i);
+                    const trailX = p.x - (p.dirX * i * 4);
+                    const trailY = p.y - (p.dirY * i * 4);
+                    graphics.beginFill(p.color, trailOpacity)
+                        .drawCircle(trailX, trailY, 5 - i)
+                        .endFill();
+                }
+            }
+        }
     }
     
     // Draw damage numbers using text pool
@@ -1914,10 +2122,13 @@ function draw() {
             if (!d.textObj) continue;
             
             // Configure the text object
-            d.textObj.text = Math.floor(d.damage);
+            d.textObj.text = d.displayText || Math.floor(d.damage);
             d.textObj.style.fontSize = d.isCritical ? 20 : 14;
-            d.textObj.style.fill = d.isCritical ? 0xff5500 : 0xFFFFFF;
+            d.textObj.style.fill = d.color;
             d.textObj.visible = true;
+            
+            // Make critical hits bold
+            d.textObj.style.fontWeight = d.isCritical ? "bold" : "normal";
         }
         
         // Update text properties
