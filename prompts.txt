@@ -73,3 +73,11 @@ Help me update my tower-defense.html game.
 modify the frost tower to slow down enemies, and have the enemies have some sort of visual effect showing that they are slow and add that description in the tower stats. put the new configuration variables for the frost tower in  the game-config.json.
 
 please be careful not to change any features or parameters you dont have to, to avoid other unexpected changes to the game, only perform the exact changes needed to perform my above request,only modify code directly related to my above request,Do not remove any existing functions unless explicitly mentioned
+
+
+Ideas 5/4
+
+-Reduce elements to Fire,Water,Earth to simplify, change frost to slow. By default keep a 'normal tower' anda melee tower. In the shop buy an anti-air tower 
+-Have enemy specifc waves (All Water,Earth, ect.), then a mixed wave, then just an air wave
+- Keep an information board to teh right showing the next 5 wave types to prepare the user
+- Upload to Gitlab io for web hosting 
