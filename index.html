@@ -2111,8 +2111,10 @@ function getWavePattern(waveNumber) {
         return WAVE_PATTERNS.patterns.find(p => p.name === "Boss Wave");
     }
     
-    // Use the sequence for other waves
-    const sequenceIndex = (waveNumber - 1) % WAVE_PATTERNS.sequence.length;
+    // For non-boss waves, use a continuous sequence that skips boss wave positions
+    // Count only non-boss waves to determine sequence position
+    const nonBossWaveCount = waveNumber - Math.floor((waveNumber - 1) / 5);
+    const sequenceIndex = (nonBossWaveCount - 1) % WAVE_PATTERNS.sequence.length;
     const patternIndex = WAVE_PATTERNS.sequence[sequenceIndex];
     return WAVE_PATTERNS.patterns[patternIndex];
 }
@@ -2561,8 +2563,6 @@ function restartGame(clearStorage = true) {
         text.visible = false;
     });
 }
-
-// ...existing code...
 
 // Load the game
 loadConfig();
