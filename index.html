@@ -2180,7 +2180,7 @@ function getWavePattern(waveNumber) {
         //const random = (seed % 233280) / 233280;
         const random = Math.random();
         
-        if (random < 0.6) {
+        if (random < WAVE_PATTERNS.mixedWaveChance) {
             // 60% chance for mixed wave
             pattern = WAVE_PATTERNS.patterns.find(p => p.name === "Mixed Wave");
         } else {
