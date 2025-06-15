@@ -328,6 +328,57 @@
             font-size: 12px;
             max-width: 200px;
         }
+        
+        /* Wave Info Panel Styles */
+        #wave-info-panel {
+            position: static;
+            background: rgba(30,34,44,0.95);
+            border-radius: 12px;
+            box-shadow: 0 2px 16px #0008;
+            color: #fff;
+            padding: 15px 20px;
+            margin: 16px 0;
+            pointer-events: auto;
+            width: 220px;
+        }
+        
+        #wave-info-title {
+            font-size: 1.1em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+            border-bottom: 1px solid #3b405a;
+            padding-bottom: 5px;
+        }
+        
+        .wave-info-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            padding: 5px 8px;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+        
+        .wave-info-item.current {
+            background: rgba(110, 143, 222, 0.3);
+            border: 1px solid #6e8fde;
+        }
+        
+        .wave-info-number {
+            font-weight: bold;
+            margin-right: 8px;
+            min-width: 25px;
+        }
+        
+        .wave-info-icon {
+            margin-right: 8px;
+            font-size: 16px;
+        }
+        
+        .wave-info-name {
+            font-size: 0.9em;
+        }
     </style>
 </head>
 <body>
@@ -341,10 +392,16 @@
                 <span>Enemies Left: <span id="enemies-left">0</span></span>
             </div>
             
-            <!-- Add bomb UI section -->
+            <!-- Bomb UI section -->
             <div id="bomb-ui">
                 <div id="bomb-count">Bombs: 0</div>
                 <button id="place-bomb-btn" disabled>Place [X]</button>
+            </div>
+            
+            <!-- Wave Information Panel -->
+            <div id="wave-info-panel">
+                <div id="wave-info-title">Upcoming Waves</div>
+                <div id="wave-info-content"></div>
             </div>
             
             <div class="ui-panel" id="tower-select"></div>
@@ -379,7 +436,8 @@ let BOOST_CONFIG;
 let SHOP_TOWERS; // Variable for shop towers
 let BOMB_CONFIG; // New variable for bomb configuration
 let ELEMENTS; // New variable for element definitions
-let FROST_CONFIG; // Configuration for frost tower slow effect
+let SLOW_CONFIG; // Configuration for slow tower slow effect
+let WAVE_PATTERNS; // Wave pattern configuration
 
 // Add purchased towers tracking
 let purchasedTowers = [];
@@ -404,12 +462,15 @@ async function loadConfig() {
         // Load elements
         ELEMENTS = CONFIG.elements || {};
         
-        // Load frost tower configuration - now simply loads from config
-        FROST_CONFIG = {
-            slowAmount: CONFIG.frostTower.slowAmount,
-            slowDuration: CONFIG.frostTower.slowDuration,
-            effectColor: parseInt(CONFIG.frostTower.effectColor)
+        // Load slow tower configuration (renamed from frost)
+        SLOW_CONFIG = {
+            slowAmount: CONFIG.slowTower.slowAmount,
+            slowDuration: CONFIG.slowTower.slowDuration,
+            effectColor: parseInt(CONFIG.slowTower.effectColor)
         };
+        
+        // Load wave patterns
+        WAVE_PATTERNS = CONFIG.wavePatterns;
         
         TOWER_TYPES = CONFIG.towers.map(tower => ({
             name: tower.name,
@@ -438,7 +499,8 @@ async function loadConfig() {
             critChance: tower.critChance,
             critMultiplier: tower.critMultiplier,
             shopPrice: tower.shopPrice,
-            element: tower.element || "physical" // Default to physical
+            element: tower.element || "physical",
+            flyingOnly: tower.flyingOnly || false
         }));
         
         // Load bomb configuration
@@ -516,10 +578,10 @@ let boostActive = false;
 let boostCooldown = 0;
 let damageTextPool = []; // Pool of reusable text objects for damage numbers
 
-// --- Function to apply slow effect from Frost Tower ---
+// --- Function to apply slow effect from Slow Tower ---
 function applySlowEffect(enemy, tower) {
-    // Apply slowing effect if the tower is a Frost Tower
-    if (tower.type.name === "Frost") {
+    // Apply slowing effect if the tower is a Slow Tower
+    if (tower.type.name === "Slow") {
         // If the enemy is not already slowed, apply slow effect
         if (!enemy.slowed) {
             // Store the true original speed before any slow is applied
@@ -527,17 +589,17 @@ function applySlowEffect(enemy, tower) {
             
             // Set the slowed status on the enemy
             enemy.slowed = {
-                amount: FROST_CONFIG.slowAmount,
-                duration: FROST_CONFIG.slowDuration * 60, // Convert to frames
+                amount: SLOW_CONFIG.slowAmount,
+                duration: SLOW_CONFIG.slowDuration * 60, // Convert to frames
                 originalSpeed: trueOriginalSpeed, // Store original speed
-                effectColor: FROST_CONFIG.effectColor
+                effectColor: SLOW_CONFIG.effectColor
             };
             
             // Apply the slow effect immediately
             enemy.speed = enemy.slowed.originalSpeed * (1 - enemy.slowed.amount);
         } else {
             // Enemy already slowed - just refresh the duration, don't stack the effect
-            enemy.slowed.duration = FROST_CONFIG.slowDuration * 60;
+            enemy.slowed.duration = SLOW_CONFIG.slowDuration * 60;
         }
     }
 }
@@ -572,6 +634,7 @@ function initGame() {
     // Apply UI updates
     updateUI();
     renderTowerSelect();
+    renderWaveInfo(); // Add wave info rendering
     updatePathGrid();
     
     // Set up all game event handlers and logic
@@ -836,6 +899,9 @@ function updateUI() {
     } else {
         shopBtn.textContent = 'Shop [P]';
     }
+    
+    // Update wave info when wave changes
+    renderWaveInfo();
 }
 
 function showMessage(text, color = "#ffffff") {
@@ -1056,7 +1122,7 @@ function nextWave() {
     isGameRunning = true;
     nextWaveBtn.style.display = 'none';
     wave++;
-    updateUI();
+    updateUI(); // This will call renderWaveInfo()
     spawnWave();
 }
 
@@ -1318,39 +1384,46 @@ function spawnWave() {
     spawningWave = true;
     let count = 8 + wave * 2;
     
-    // Apply wave scaling to enemies
-    let types = ENEMY_TYPES.map(enemy => {
-        // Calculate HP and speed scaling based on wave number
-        const hpScale = 1 + (wave - 1) * enemy.waveScaling.hp;
-        const speedScale = 1 + (wave - 1) * enemy.waveScaling.speed;
-        
-        return {
-            ...enemy,
-            hp: Math.round(enemy.baseHp * hpScale),
-            speed: enemy.baseSpeed * speedScale
-        };
-    });
+    // Get the wave pattern for this wave
+    const wavePattern = getWavePattern(wave);
     
-    // Scale boss stats for boss waves
-    if (wave % 5 === 0) {
+    // Apply wave scaling to enemies
+    let availableEnemyTypes = [];
+    
+    // Get enemy types based on wave pattern
+    if (wavePattern.name === "Boss Wave") {
+        // Scale boss stats for boss waves
         const hpScale = 1 + (wave - 1) * BOSS_TYPE.waveScaling.hp;
         const speedScale = 1 + (wave - 1) * BOSS_TYPE.waveScaling.speed;
         
-        types.push({
+        availableEnemyTypes.push({
             ...BOSS_TYPE,
             hp: Math.round(BOSS_TYPE.baseHp * hpScale),
             speed: BOSS_TYPE.baseSpeed * speedScale
+        });
+        count = 1; // Only one boss
+    } else {
+        // Regular wave - filter enemy types based on pattern
+        const patternEnemyNames = wavePattern.enemies;
+        
+        ENEMY_TYPES.forEach(enemy => {
+            if (patternEnemyNames.includes(enemy.name)) {
+                // Calculate HP and speed scaling based on wave number
+                const hpScale = 1 + (wave - 1) * enemy.waveScaling.hp;
+                const speedScale = 1 + (wave - 1) * enemy.waveScaling.speed;
+                
+                availableEnemyTypes.push({
+                    ...enemy,
+                    hp: Math.round(enemy.baseHp * hpScale),
+                    speed: enemy.baseSpeed * speedScale
+                });
+            }
         });
     }
     
     // Create all enemies at once with slight position offsets to prevent overlap
     for (let i = 0; i < count; i++) {
-        let type = types[Math.floor(Math.random()*types.length)];
-        
-        // Boss is always first on boss waves
-        if (wave % 5 === 0 && i === 0) {
-            type = types.find(t => t.name === "Boss");
-        }
+        let type = availableEnemyTypes[Math.floor(Math.random() * availableEnemyTypes.length)];
         
         const xOffset = i * 10; // Offset to prevent enemies stacking
         enemies.push({
@@ -1367,7 +1440,7 @@ function spawnWave() {
         });
     }
     
-    showMessage(`Wave ${wave} starting!`, "#6e8fde");
+    showMessage(`Wave ${wave}: ${wavePattern.name}!`, "#6e8fde");
     spawningWave = false;
 }
 
@@ -1481,12 +1554,16 @@ function showTowerStats(tower, x, y) {
         `DPS: ${damagePerSec.toFixed(1)}`
     ];
     
-    // Add slow effect info for Frost Tower
-    if (tower.type.name === "Frost") {
-        stats.push(`Slow: ${FROST_CONFIG.slowAmount * 100}% for ${FROST_CONFIG.slowDuration}s`);
+    // Add slow effect info for Slow Tower
+    if (tower.type.name === "Slow") {
+        stats.push(`Slow: ${SLOW_CONFIG.slowAmount * 100}% for ${SLOW_CONFIG.slowDuration}s`);
     }
     
-    // Add element info
+    // Add special targeting info for Anti-Air
+    if (tower.type.name === "Anti-Air") {
+        stats.push(`Special: Only targets flying enemies`);
+    }
+    
     stats.unshift(`Element: <span class="element-icon" style="background: ${elementColor}">${elementEmoji}</span> ${elementName}`);
     
     stats.forEach(stat => {
@@ -1870,6 +1947,46 @@ function gameLoop(delta) {
                     
                     tower.cooldown = tower.type.fireRate;
                 }
+            } else if (tower.type.name === "Anti-Air") {
+                // Anti-Air towers only target flying enemies
+                let targets = enemies.filter(e => 
+                    e.alive && 
+                    e.flying &&
+                    Math.hypot(e.x-(tower.x*TILE_SIZE+TILE_SIZE/2), e.y-(tower.y*TILE_SIZE+TILE_SIZE/2)) < tower.type.range
+                );
+                
+                if (targets.length) {
+                    let target = targets[0];
+                    
+                    // Calculate damage with randomness, critical hits, and elemental effects
+                    const { damage, isCritical, elementalEffect, elementalMultiplier } = calculateDamage(tower, target);
+                    
+                    // Apply damage boost if active
+                    let finalDamage = damage;
+                    const damageEffect = activeEffects.find(e => e.type === "damage");
+                    if (damageEffect) {
+                        finalDamage *= (1 + damageEffect.multiplier);
+                    }
+                    
+                    projectiles.push({
+                        x: tower.x*TILE_SIZE+TILE_SIZE/2,
+                        y: tower.y*TILE_SIZE+TILE_SIZE/2,
+                        tx: target.x,
+                        ty: target.y,
+                        target,
+                        damage: finalDamage,
+                        color: tower.type.color,
+                        isCritical,
+                        elementalEffect,
+                        elementalMultiplier,
+                        element: tower.type.element,
+                        towerType: tower.type.name,
+                        originTower: tower,
+                        speed: 9 + tower.level*2 // Faster projectiles for anti-air
+                    });
+                    
+                    tower.cooldown = tower.type.fireRate;
+                }
             } else {
                 // Regular tower behavior
                 let targets = enemies.filter(e => 
@@ -1934,8 +2051,8 @@ function gameLoop(delta) {
                 // Create damage number with elemental effect info
                 createDamageNumber(p.target.x, p.target.y - 20, p.damage, p.isCritical, p.elementalEffect, p.elementalMultiplier);
                 
-                // Apply slow effect if from a Frost Tower
-                if (p.towerType === "Frost") {
+                // Apply slow effect if from a Slow Tower
+                if (p.towerType === "Slow") {
                     applySlowEffect(p.target, p.originTower);
                 }
                 
@@ -1985,6 +2102,55 @@ function gameLoop(delta) {
     
     updateUI();
     draw();
+}
+
+// --- Wave Information Functions ---
+function getWavePattern(waveNumber) {
+    // Every 5th wave is a boss wave
+    if (waveNumber % 5 === 0) {
+        return WAVE_PATTERNS.patterns.find(p => p.name === "Boss Wave");
+    }
+    
+    // Use the sequence for other waves
+    const sequenceIndex = (waveNumber - 1) % WAVE_PATTERNS.sequence.length;
+    const patternIndex = WAVE_PATTERNS.sequence[sequenceIndex];
+    return WAVE_PATTERNS.patterns[patternIndex];
+}
+
+function renderWaveInfo() {
+    const waveInfoContent = document.getElementById('wave-info-content');
+    waveInfoContent.innerHTML = '';
+    
+    // Show next 5 waves
+    for (let i = 0; i < 5; i++) {
+        const waveNum = wave + i;
+        const pattern = getWavePattern(waveNum);
+        
+        const waveItem = document.createElement('div');
+        waveItem.className = 'wave-info-item';
+        if (i === 0) {
+            waveItem.classList.add('current');
+        }
+        
+        const waveNumber = document.createElement('div');
+        waveNumber.className = 'wave-info-number';
+        waveNumber.textContent = waveNum;
+        
+        const waveIcon = document.createElement('div');
+        waveIcon.className = 'wave-info-icon';
+        waveIcon.textContent = pattern.icon;
+        
+        const waveName = document.createElement('div');
+        waveName.className = 'wave-info-name';
+        waveName.textContent = pattern.name;
+        waveName.style.color = '#' + pattern.color.toString(16).padStart(6, '0');
+        
+        waveItem.appendChild(waveNumber);
+        waveItem.appendChild(waveIcon);
+        waveItem.appendChild(waveName);
+        
+        waveInfoContent.appendChild(waveItem);
+    }
 }
 
 // --- Drawing ---
@@ -2176,9 +2342,9 @@ function draw() {
             // Inner glow for elemental projectiles
             graphics.beginFill(0xffffff, 0.5).drawCircle(p.x, p.y, 3).endFill();
             
-            // Special frost trail for frost tower projectiles
-            if (p.towerType === "Frost") {
-                const trailLength = 5; // Longer trail for frost
+            // Special slow trail for slow tower projectiles
+            if (p.towerType === "Slow") {
+                const trailLength = 5; // Longer trail for slow
                 const trailFade = 0.8; // How quickly the trail fades
                 
                 // Only draw trail if direction is defined
@@ -2188,17 +2354,17 @@ function draw() {
                         const trailX = p.x - (p.dirX * i * 4);
                         const trailY = p.y - (p.dirY * i * 4);
                         
-                        // Frost particles along the trail
+                        // Slow particles along the trail
                         if (i % 2 === 0) {
                             const offsetX = (Math.random() - 0.5) * 5;
                             const offsetY = (Math.random() - 0.5) * 5;
-                            graphics.beginFill(FROST_CONFIG.effectColor, trailOpacity * 0.7)
+                            graphics.beginFill(SLOW_CONFIG.effectColor, trailOpacity * 0.7)
                                 .drawCircle(trailX + offsetX, trailY + offsetY, 2 + Math.random() * 2)
                                 .endFill();
                         }
                         
                         // Main trail
-                        graphics.beginFill(FROST_CONFIG.effectColor, trailOpacity)
+                        graphics.beginFill(SLOW_CONFIG.effectColor, trailOpacity)
                             .drawCircle(trailX, trailY, 4 - i * 0.5)
                             .endFill();
                     }
@@ -2369,7 +2535,8 @@ function restartGame(clearStorage = true) {
         damage: tower.damage,
         damageVariation: tower.damageVariation,
         critChance: tower.critChance,
-        critMultiplier: tower.critMultiplier
+        critMultiplier: tower.critMultiplier,
+        element: tower.element || "physical" // Add element property
     }));
     
     // Reset purchased towers array if needed
@@ -2384,6 +2551,7 @@ function restartGame(clearStorage = true) {
     updatePathGrid();
     updateUI();
     renderTowerSelect();
+    renderWaveInfo(); // Update wave info on restart
     startBtn.style.display = '';
     endBtn.style.display = 'none';
     nextWaveBtn.style.display = 'none';
@@ -2394,17 +2562,7 @@ function restartGame(clearStorage = true) {
     });
 }
 
-// Add this code right before the "Load the game" line
-window.addEventListener('load', function() {
-    // The game will be loaded by loadConfig()
-    // After loading, reset the game state as a true "New Game"
-    setTimeout(() => {
-        // Short delay to ensure config is loaded
-        if (CONFIG) {
-            restartGame(true); // true = clear localStorage and purchased towers
-        }
-    }, 100);
-});
+// ...existing code...
 
 // Load the game
 loadConfig();

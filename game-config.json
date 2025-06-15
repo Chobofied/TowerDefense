@@ -61,29 +61,30 @@
       "element": "electric"
     }
   ],
-  "frostTower": {
+  "slowTower": {
     "slowAmount": 0.4,
     "slowDuration": 2,
     "effectColor": "0x88ccff"
   },
   "shopTowers": [
     {
-      "name": "Sniper",
-      "key": "S",
+      "name": "Anti-Air",
+      "key": "A",
       "color": "0x9e6ede",
       "cost": 80,
-      "range": 250,
-      "fireRate": 1.8,
-      "damage": 45,
+      "range": 200,
+      "fireRate": 1.0,
+      "damage": 40,
       "damageVariation": 0.15,
       "critChance": 0.25,
       "critMultiplier": 2.2,
       "shopPrice": 300,
-      "element": "physical"
+      "element": "physical",
+      "flyingOnly": true
     },
     {
-      "name": "Frost",
-      "key": "F",
+      "name": "Slow",
+      "key": "S",
       "color": "0x6ecede",
       "cost": 100,
       "range": 110,
@@ -93,11 +94,11 @@
       "critChance": 0.1,
       "critMultiplier": 1.5,
       "shopPrice": 250,
-      "element": "ice"
+      "element": "slow"
     },
     {
-      "name": "Flame",
-      "key": "T",
+      "name": "Fire",
+      "key": "F",
       "color": "0xff7700",
       "cost": 140,
       "range": 85,
@@ -111,7 +112,7 @@
     },
     {
       "name": "Water",
-      "key": "U",
+      "key": "T",
       "color": "0x0099ff",
       "cost": 110,
       "range": 100,
@@ -124,22 +125,8 @@
       "element": "water"
     },
     {
-      "name": "Nature",
-      "key": "I",
-      "color": "0x33cc33",
-      "cost": 120,
-      "range": 95,
-      "fireRate": 0.6,
-      "damage": 16,
-      "damageVariation": 0.15,
-      "critChance": 0.14,
-      "critMultiplier": 1.9,
-      "shopPrice": 380,
-      "element": "nature"
-    },
-    {
       "name": "Earth",
-      "key": "O",
+      "key": "E",
       "color": "0x996633",
       "cost": 130,
       "range": 80,
@@ -150,20 +137,6 @@
       "critMultiplier": 2.0,
       "shopPrice": 420,
       "element": "earth"
-    },
-    {
-      "name": "Lightning",
-      "key": "P",
-      "color": "0xffcc00",
-      "cost": 140,
-      "range": 140,
-      "fireRate": 0.4,
-      "damage": 14,
-      "damageVariation": 0.3,
-      "critChance": 0.18,
-      "critMultiplier": 2.1,
-      "shopPrice": 450,
-      "element": "electric"
     }
   ],
   "enemies": [
@@ -181,10 +154,10 @@
       },
       "elementalProperties": {
         "weaknesses": {
-          "water": 0.8
+          "water": 0.7
         },
         "resistances": {
-          "nature": 0.8
+          "fire": 0.8
         }
       }
     },
@@ -202,32 +175,10 @@
       },
       "elementalProperties": {
         "weaknesses": {
-          "electric": 0.8
+          "earth": 0.7
         },
         "resistances": {
-          "fire": 0.8
-        }
-      }
-    },
-    {
-      "name": "Nature",
-      "baseSpeed": 1.4,
-      "baseHp": 40,
-      "reward": 11,
-      "color": "0x33cc33",
-      "element": "nature",
-      "emoji": "🍃",
-      "waveScaling": {
-        "hp": 0.09,
-        "speed": 0.04
-      },
-      "elementalProperties": {
-        "weaknesses": {
-          "fire": 0.7,
-          "ice": 0.6
-        },
-        "resistances": {
-          "earth": 0.8
+          "water": 0.8
         }
       }
     },
@@ -245,66 +196,23 @@
       },
       "elementalProperties": {
         "weaknesses": {
-          "water": 0.7,
-          "nature": 0.6
+          "fire": 0.7
         },
         "resistances": {
-          "electric": 0.8
+          "earth": 0.8
         }
       }
     },
     {
-      "name": "Electric",
-      "baseSpeed": 1.6,
-      "baseHp": 35,
-      "reward": 14,
-      "color": "0xffcc00",
-      "element": "electric",
-      "emoji": "⚡",
-      "waveScaling": {
-        "hp": 0.08,
-        "speed": 0.05
-      },
-      "elementalProperties": {
-        "weaknesses": {
-          "earth": 0.7
-        },
-        "resistances": {
-          "water": 0.8
-        }
-      }
-    },
-    {
-      "name": "Ice",
-      "baseSpeed": 1.0,
-      "baseHp": 60,
-      "reward": 14,
-      "color": "0xaaddff",
-      "element": "ice",
-      "emoji": "❄️",
-      "waveScaling": {
-        "hp": 0.11,
-        "speed": 0.03
-      },
-      "elementalProperties": {
-        "weaknesses": {
-          "fire": 0.8
-        },
-        "resistances": {
-          "nature": 0.7
-        }
-      }
-    },
-    {
-      "name": "Tank",
-      "baseSpeed": 0.7,
-      "baseHp": 120,
-      "reward": 25,
-      "color": "0x6e9ede",
+      "name": "Normal",
+      "baseSpeed": 1.2,
+      "baseHp": 50,
+      "reward": 12,
+      "color": "0xcccccc",
       "element": "physical",
       "waveScaling": {
-        "hp": 0.15,
-        "speed": 0.02
+        "hp": 0.10,
+        "speed": 0.03
       },
       "elementalProperties": {
         "weaknesses": {},
@@ -313,10 +221,10 @@
     },
     {
       "name": "Flying",
-      "baseSpeed":0.5,
+      "baseSpeed": 1.5,
       "baseHp": 30,
       "reward": 12,
-      "color": "0xcccccc",
+      "color": "0xaaddff",
       "flying": true,
       "element": "physical",
       "waveScaling": {
@@ -344,6 +252,53 @@
       "weaknesses": {},
       "resistances": {}
     }
+  },
+  "wavePatterns": {
+    "patterns": [
+      {
+        "name": "Fire Wave",
+        "enemies": ["Fire"],
+        "color": "0xff4400",
+        "icon": "🔥"
+      },
+      {
+        "name": "Water Wave",
+        "enemies": ["Water"],
+        "color": "0x0099ff",
+        "icon": "🌊"
+      },
+      {
+        "name": "Earth Wave",
+        "enemies": ["Earth"],
+        "color": "0x996633",
+        "icon": "🏔️"
+      },
+      {
+        "name": "Normal Wave",
+        "enemies": ["Normal"],
+        "color": "0xcccccc",
+        "icon": "⚪"
+      },
+      {
+        "name": "Mixed Wave",
+        "enemies": ["Fire", "Water", "Earth", "Normal"],
+        "color": "0x9966cc",
+        "icon": "🌈"
+      },
+      {
+        "name": "Air Wave",
+        "enemies": ["Flying"],
+        "color": "0xaaddff",
+        "icon": "✈️"
+      },
+      {
+        "name": "Boss Wave",
+        "enemies": ["Boss"],
+        "color": "0xf2e96d",
+        "icon": "👑"
+      }
+    ],
+    "sequence": [0, 1, 2, 3, 4, 5, 6, 0, 1, 2, 4, 5, 6, 0, 2, 3, 4, 5, 6]
   },
   "items": [
     {
@@ -391,7 +346,7 @@
       "name": "Fire",
       "color": "0xff4400",
       "emoji": "🔥",
-      "strongAgainst": ["nature"],
+      "strongAgainst": ["earth"],
       "weakAgainst": ["water"]
     },
     "water": {
@@ -399,35 +354,19 @@
       "color": "0x0099ff",
       "emoji": "🌊",
       "strongAgainst": ["fire"],
-      "weakAgainst": ["electric"]
-    },
-    "nature": {
-      "name": "Nature",
-      "color": "0x33cc33",
-      "emoji": "🍃",
-      "strongAgainst": ["earth"],
-      "weakAgainst": ["fire", "ice"]
+      "weakAgainst": ["earth"]
     },
     "earth": {
       "name": "Earth",
       "color": "0x996633",
       "emoji": "🏔️",
-      "strongAgainst": ["electric"],
-      "weakAgainst": ["water", "nature"]
-    },
-    "electric": {
-      "name": "Electric",
-      "color": "0xffcc00",
-      "emoji": "⚡",
       "strongAgainst": ["water"],
-      "weakAgainst": ["earth"]
-    },
-    "ice": {
-      "name": "Ice",
-      "color": "0xaaddff",
-      "emoji": "❄️",
-      "strongAgainst": ["nature"],
       "weakAgainst": ["fire"]
+    },
+    "slow": {
+      "name": "Slow",
+      "color": "0x6ecede",
+      "emoji": "❄️"
     }
   }
 }
