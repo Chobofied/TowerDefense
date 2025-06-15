@@ -97,6 +97,20 @@
       "element": "slow"
     },
     {
+      "name": "Sniper",
+      "key": "T",
+      "color": "0x8e44ad",
+      "cost": 150,
+      "range": 200,
+      "fireRate": 2.0,
+      "damage": 80,
+      "damageVariation": 0.15,
+      "critChance": 0.3,
+      "critMultiplier": 3.0,
+      "shopPrice": 500,
+      "element": "physical"
+    },
+    {
       "name": "Fire",
       "key": "F",
       "color": "0xff7700",
@@ -112,7 +126,7 @@
     },
     {
       "name": "Water",
-      "key": "T",
+      "key": "Y",
       "color": "0x0099ff",
       "cost": 110,
       "range": 100,
@@ -126,7 +140,7 @@
     },
     {
       "name": "Earth",
-      "key": "E",
+      "key": "U",
       "color": "0x996633",
       "cost": 130,
       "range": 80,

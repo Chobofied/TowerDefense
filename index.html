@@ -472,6 +472,7 @@ async function loadConfig() {
         // Load wave patterns
         WAVE_PATTERNS = CONFIG.wavePatterns;
         
+        // Load ONLY base towers initially - no purchased towers on page load
         TOWER_TYPES = CONFIG.towers.map(tower => ({
             name: tower.name,
             key: tower.key,
@@ -514,9 +515,10 @@ async function loadConfig() {
             color: parseInt(CONFIG.bomb.color)
         };
         
-        // Load purchased towers from localStorage
-        loadPurchasedTowers();
+        // Initialize purchased towers as empty - don't load from localStorage automatically
+        purchasedTowers = [];
         
+        // Load enemy types and boss type - THIS WAS MISSING!
         ENEMY_TYPES = CONFIG.enemies.map(enemy => ({
             name: enemy.name,
             baseSpeed: enemy.baseSpeed,
@@ -2124,7 +2126,7 @@ function renderWaveInfo() {
     waveInfoContent.innerHTML = '';
     
     // Show next 5 waves
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i <  5; i++) {
         const waveNum = wave + i;
         const pattern = getWavePattern(waveNum);
         
@@ -2504,6 +2506,7 @@ function showGameOver(msg) {
     
     // New Game button - clears localStorage
     over.querySelector('#new-game-btn').onclick = () => {
+        // Clear ALL game-related localStorage
         localStorage.removeItem('purchasedTowers');
         document.body.removeChild(over);
         restartGame(true);  // true = clear localStorage
@@ -2526,7 +2529,7 @@ function restartGame(clearStorage = true) {
     bombCount = 0;
     placingBomb = false;
     
-    // Reset tower types to default towers from config
+    // Reset tower types to default towers from config (ONLY base towers)
     TOWER_TYPES = CONFIG.towers.map(tower => ({
         name: tower.name,
         key: tower.key,
@@ -2538,13 +2541,13 @@ function restartGame(clearStorage = true) {
         damageVariation: tower.damageVariation,
         critChance: tower.critChance,
         critMultiplier: tower.critMultiplier,
-        element: tower.element || "physical" // Add element property
+        element: tower.element || "physical"
     }));
     
-    // Reset purchased towers array if needed
+    // Reset purchased towers array and clear storage if needed
     if (clearStorage) {
         purchasedTowers = [];
-        localStorage.removeItem('purchasedTowers');
+        localStorage.clear(); // Clear ALL localStorage to be sure
     } else {
         // Reload purchased towers
         loadPurchasedTowers();
@@ -2553,7 +2556,7 @@ function restartGame(clearStorage = true) {
     updatePathGrid();
     updateUI();
     renderTowerSelect();
-    renderWaveInfo(); // Update wave info on restart
+    renderWaveInfo();
     startBtn.style.display = '';
     endBtn.style.display = 'none';
     nextWaveBtn.style.display = 'none';
