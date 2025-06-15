@@ -21,51 +21,55 @@
         }
         #ui-right-panel {
             position: absolute;
-            top: 0;
+            top: 50%;
             left: calc(50% + 384px); /* 16*48/2 = 384, grid centered */
-            width: 260px;
-            min-height: 100vh;
+            transform: translateY(-50%); /* Center vertically */
+            width: 300px; /* Increased width for two columns */
+            height: 768px; /* Same as grid height (16*48) */
             display: flex;
             flex-direction: column;
             align-items: flex-start;
-            gap: 24px;
+            gap: 8px; /* Reduced gap */
             z-index: 20;
             pointer-events: auto;
+            overflow-y: auto; /* Allow scrolling if needed */
+            overflow-x: hidden;
         }
         #live-stats {
             position: static;
             background: rgba(30,34,44,0.95);
-            border-radius: 12px;
+            border-radius: 8px; /* Smaller radius */
             box-shadow: 0 2px 16px #0008;
             color: #fff;
-            padding: 10px 32px;
-            font-size: 1.2em;
+            padding: 8px 16px; /* Reduced padding */
+            font-size: 1em; /* Smaller font */
             z-index: 10;
-            margin-top: 32px;
-            margin-bottom: 8px;
+            margin: 0; /* Remove margins */
             pointer-events: auto;
+            width: 260px; /* Adjusted for new panel width */
         }
         #tower-select {
             position: static;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
+            display: grid; /* Changed to grid layout */
+            grid-template-columns: 1fr 1fr; /* Two equal columns */
+            gap: 6px; /* Small gap between items */
             z-index: 10;
             pointer-events: auto;
+            width: 260px; /* Adjusted for new panel width */
         }
         #start-btn, #end-btn, #next-wave-btn {
             background: #4e6fae;
             border: none;
-            border-radius: 8px;
+            border-radius: 6px; /* Smaller radius */
             color: #fff;
-            font-size: 1.1em;
-            padding: 8px 24px;
-            margin: 8px 0;
+            font-size: 0.8em; /* Even smaller font for two columns */
+            padding: 6px 12px; /* Reduced padding */
+            margin: 2px 0; /* Reduced margin */
             cursor: pointer;
             transition: background 0.2s;
             pointer-events: auto;
-            width: 180px;
-            text-align: left;
+            width: 125px; /* Smaller width for two columns */
+            text-align: center; /* Center align for better look */
         }
         #start-btn:hover, #end-btn:hover, #next-wave-btn:hover {
             background: #6e8fde;
@@ -73,16 +77,16 @@
         #end-btn {
             background: #de6e6e;
             border: none;
-            border-radius: 8px;
+            border-radius: 6px;
             color: #fff;
-            font-size: 1.1em;
-            padding: 8px 24px;
-            margin: 48px 0 0 0; /* Move further down */
+            font-size: 0.9em;
+            padding: 6px 12px;
+            margin: 2px 0; /* Reduced margin */
             cursor: pointer;
             transition: background 0.2s;
             pointer-events: auto;
-            width: 180px;
-            text-align: left;
+            width: 125px; /* Smaller width for two columns */
+            text-align: center;
         }
         #end-btn:hover {
             background: #ff4444;
@@ -96,14 +100,15 @@
             background: #6ede8a;
             color: white;
             border: none;
-            border-radius: 8px;
-            padding: 10px 20px;
-            margin: 10px 0;
+            border-radius: 6px;
+            padding: 6px 12px; /* Reduced padding */
+            margin: 2px 0; /* Reduced margin */
             cursor: pointer;
             transition: all 0.2s;
-            font-size: 1.1em;
+            font-size: 0.8em; /* Smaller font */
             font-weight: bold;
-            width: 180px;
+            width: 125px; /* Smaller width for two columns */
+            text-align: center;
         }
         #boost-btn:disabled {
             background: #666;
@@ -137,16 +142,16 @@
         #shop-btn {
             background: #9e6ede;
             border: none;
-            border-radius: 8px;
+            border-radius: 6px;
             color: #fff;
-            font-size: 1.1em;
-            padding: 8px 24px;
-            margin: 8px 0;
+            font-size: 0.8em; /* Smaller font */
+            padding: 6px 12px;
+            margin: 2px 0;
             cursor: pointer;
             transition: background 0.2s;
             pointer-events: auto;
-            width: 180px;
-            text-align: left;
+            width: 125px; /* Smaller width for two columns */
+            text-align: center;
         }
         #shop-btn:hover {
             background: #b68ef2;
@@ -240,31 +245,33 @@
         /* Bomb UI styles */
         #bomb-ui {
             background: rgba(30,34,44,0.95);
-            border-radius: 12px;
+            border-radius: 8px;
             box-shadow: 0 2px 16px #0008;
             color: #fff;
-            padding: 10px 20px;
-            margin: 16px 0;
+            padding: 8px 16px; /* Reduced padding */
+            margin: 4px 0; /* Reduced margin */
             display: flex;
             align-items: center;
             justify-content: space-between;
             pointer-events: auto;
+            width: 260px; /* Adjusted for new panel width */
         }
         
         #bomb-count {
-            font-size: 1.2em;
+            font-size: 1em; /* Smaller font */
             font-weight: bold;
-            margin-right: 10px;
+            margin-right: 8px;
         }
         
         #place-bomb-btn {
             background: #ff3300;
             border: none;
-            border-radius: 8px;
+            border-radius: 6px;
             color: #fff;
-            padding: 8px 15px;
+            padding: 4px 12px; /* Reduced padding */
             cursor: pointer;
             transition: background 0.2s;
+            font-size: 0.8em; /* Smaller font */
         }
         
         #place-bomb-btn:hover:not(:disabled) {
@@ -333,30 +340,30 @@
         #wave-info-panel {
             position: static;
             background: rgba(30,34,44,0.95);
-            border-radius: 12px;
+            border-radius: 8px;
             box-shadow: 0 2px 16px #0008;
             color: #fff;
-            padding: 15px 20px;
-            margin: 16px 0;
+            padding: 8px 16px; /* Reduced padding */
+            margin: 4px 0; /* Reduced margin */
             pointer-events: auto;
-            width: 220px;
+            width: 260px; /* Adjusted for new panel width */
         }
         
         #wave-info-title {
-            font-size: 1.1em;
+            font-size: 1em; /* Smaller font */
             font-weight: bold;
-            margin-bottom: 10px;
+            margin-bottom: 6px; /* Reduced margin */
             text-align: center;
             border-bottom: 1px solid #3b405a;
-            padding-bottom: 5px;
+            padding-bottom: 4px; /* Reduced padding */
         }
         
         .wave-info-item {
             display: flex;
             align-items: center;
-            margin: 8px 0;
-            padding: 5px 8px;
-            border-radius: 6px;
+            margin: 4px 0; /* Reduced margin */
+            padding: 3px 6px; /* Reduced padding */
+            border-radius: 4px;
             transition: background 0.2s;
         }
         
@@ -367,17 +374,47 @@
         
         .wave-info-number {
             font-weight: bold;
-            margin-right: 8px;
-            min-width: 25px;
+            margin-right: 6px;
+            min-width: 20px;
+            font-size: 0.9em; /* Smaller font */
         }
         
         .wave-info-icon {
-            margin-right: 8px;
-            font-size: 16px;
+            margin-right: 6px;
+            font-size: 12px; /* Smaller icon */
         }
         
         .wave-info-name {
-            font-size: 0.9em;
+            font-size: 0.8em; /* Smaller font */
+        }
+
+        /* Make tower buttons more compact for two columns */
+        .tower-btn {
+            background: rgba(30,34,44,0.95);
+            border: 2px solid #4e6fae;
+            border-radius: 6px;
+            color: #fff;
+            padding: 4px 8px; /* Even more reduced padding */
+            margin: 0; /* Remove margin */
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.7em; /* Smaller font for two columns */
+            width: 125px; /* Specific width for grid layout */
+            height: 50px; /* Reduced height for more compact look */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            line-height: 1.1; /* Tighter line spacing */
+        }
+
+        /* Create a button container for two-column layout */
+        .button-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            width: 260px;
+            pointer-events: auto;
         }
     </style>
 </head>
@@ -387,9 +424,15 @@
         <div id="ui-right-panel">
             <div class="ui-panel" id="live-stats">
                 <span>Wave: <span id="wave-num">1</span></span> |
-                <span>Gold: <span id="gold">500</span></span> |
+                <span>Gold: <span id="gold">500</span></span><br>
                 <span>Lives: <span id="lives">20</span></span> |
-                <span>Enemies Left: <span id="enemies-left">0</span></span>
+                <span>Left: <span id="enemies-left">0</span></span>
+            </div>
+            
+            <!-- Wave Information Panel -->
+            <div id="wave-info-panel">
+                <div id="wave-info-title">Next Waves</div>
+                <div id="wave-info-content"></div>
             </div>
             
             <!-- Bomb UI section -->
@@ -398,17 +441,16 @@
                 <button id="place-bomb-btn" disabled>Place [X]</button>
             </div>
             
-            <!-- Wave Information Panel -->
-            <div id="wave-info-panel">
-                <div id="wave-info-title">Upcoming Waves</div>
-                <div id="wave-info-content"></div>
+            <div class="ui-panel" id="tower-select"></div>
+            
+            <!-- Button container for two-column layout -->
+            <div class="button-container">
+                <button id="boost-btn">Boost [B]</button>
+                <button id="shop-btn">Shop [P]</button>
+                <button id="start-btn">Start Wave</button>
+                <button id="next-wave-btn" style="display:none;">Next Wave</button>
             </div>
             
-            <div class="ui-panel" id="tower-select"></div>
-            <button id="boost-btn">Boost [B]</button>
-            <button id="shop-btn">Shop [P]</button>
-            <button id="start-btn">Start Wave</button>
-            <button id="next-wave-btn" style="display:none;">Next Wave</button>
             <button id="end-btn" style="display:none;">End Game</button>
         </div>
         <div class="ui-panel" id="stats-panel" style="display:none;"></div>
@@ -978,7 +1020,12 @@ function renderTowerSelect() {
     TOWER_TYPES.forEach((t, i) => {
         const btn = document.createElement('button');
         btn.className = 'tower-btn' + (selectedTowerType === i ? ' selected' : '');
-        btn.innerHTML = `<b>${t.name}</b><br><small>[${t.key}]</small><br>Cost: ${t.cost}`;
+        // Condensed text layout with tighter spacing
+        btn.innerHTML = `<div style="text-align: center; line-height: 1.1;">
+            <div style="font-weight: bold; margin-bottom: 1px;">${t.name}</div>
+            <div style="font-size: 0.85em; margin-bottom: 1px;">[${t.key}]</div>
+            <div style="font-size: 0.9em;">Cost: ${t.cost}</div>
+        </div>`;
         btn.onclick = () => {
             selectedTowerType = i;
             // Close tower stats window if one is open
@@ -2054,7 +2101,7 @@ function gameLoop(delta) {
                 createDamageNumber(p.target.x, p.target.y - 20, p.damage, p.isCritical, p.elementalEffect, p.elementalMultiplier);
                 
                 // Apply slow effect if from a Slow Tower
-                if (p.towerType === "Slow") {
+                if ( p.towerType === "Slow") {
                     applySlowEffect(p.target, p.originTower);
                 }
                 
@@ -2125,8 +2172,8 @@ function renderWaveInfo() {
     const waveInfoContent = document.getElementById('wave-info-content');
     waveInfoContent.innerHTML = '';
     
-    // Show next 5 waves
-    for (let i = 0; i <  5; i++) {
+    // Show next 5 waves as requested
+    for (let i = 0; i < 5; i++) {
         const waveNum = wave + i;
         const pattern = getWavePattern(waveNum);
         
