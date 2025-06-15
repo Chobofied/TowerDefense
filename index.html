@@ -944,8 +944,8 @@ function updateUI() {
         shopBtn.textContent = 'Shop [P]';
     }
     
-    // Update wave info when wave changes
-    renderWaveInfo();
+    // Only update wave info when wave changes - removed automatic call
+    // renderWaveInfo();
 }
 
 function showMessage(text, color = "#ffffff") {
@@ -1171,7 +1171,8 @@ function nextWave() {
     isGameRunning = true;
     nextWaveBtn.style.display = 'none';
     wave++;
-    updateUI(); // This will call renderWaveInfo()
+    updateUI();
+    renderWaveInfo(); // Only update wave info when wave actually changes
     spawnWave();
 }
 
@@ -2154,18 +2155,49 @@ function gameLoop(delta) {
 }
 
 // --- Wave Information Functions ---
+let cachedWavePatterns = {}; // Cache wave patterns so they don't change
+
 function getWavePattern(waveNumber) {
-    // Every 5th wave is a boss wave
-    if (waveNumber % 5 === 0) {
-        return WAVE_PATTERNS.patterns.find(p => p.name === "Boss Wave");
+    // Check if we already have this wave cached
+    if (cachedWavePatterns[waveNumber]) {
+        return cachedWavePatterns[waveNumber];
     }
     
-    // For non-boss waves, use a continuous sequence that skips boss wave positions
-    // Count only non-boss waves to determine sequence position
-    const nonBossWaveCount = waveNumber - Math.floor((waveNumber - 1) / 5);
-    const sequenceIndex = (nonBossWaveCount - 1) % WAVE_PATTERNS.sequence.length;
-    const patternIndex = WAVE_PATTERNS.sequence[sequenceIndex];
-    return WAVE_PATTERNS.patterns[patternIndex];
+    let pattern;
+    
+    // Every 5th wave (5, 15, 25, etc.) is a boss wave
+    if (waveNumber % 10 === 5) {
+        pattern = WAVE_PATTERNS.patterns.find(p => p.name === "Boss Wave");
+    }
+    // Every 10th wave (10, 20, 30, etc.) is an air wave
+    else if (waveNumber % 10 === 0) {
+        pattern = WAVE_PATTERNS.patterns.find(p => p.name === "Air Wave");
+    }
+    // For all other waves, use a seeded random based on wave number
+    else {
+        // Use wave number as seed for consistent randomization
+        //const seed = waveNumber * 9301 + 49297; // Simple linear congruential generator seed
+        //const random = (seed % 233280) / 233280;
+        const random = Math.random();
+        
+        if (random < 0.6) {
+            // 60% chance for mixed wave
+            pattern = WAVE_PATTERNS.patterns.find(p => p.name === "Mixed Wave");
+        } else {
+            // 40% chance for other wave types (Fire, Water, Earth, Normal)
+            const otherPatterns = WAVE_PATTERNS.patterns.filter(p => 
+                p.name !== "Mixed Wave" && 
+                p.name !== "Air Wave" && 
+                p.name !== "Boss Wave"
+            );
+            const randomIndex = Math.floor((random - 0.6) / 0.4 * otherPatterns.length);
+            pattern = otherPatterns[randomIndex];
+        }
+    }
+    
+    // Cache the pattern so it doesn't change
+    cachedWavePatterns[waveNumber] = pattern;
+    return pattern;
 }
 
 function renderWaveInfo() {
@@ -2576,6 +2608,9 @@ function restartGame(clearStorage = true) {
     bombCount = 0;
     placingBomb = false;
     
+    // Clear cached wave patterns when restarting
+    cachedWavePatterns = {};
+    
     // Reset tower types to default towers from config (ONLY base towers)
     TOWER_TYPES = CONFIG.towers.map(tower => ({
         name: tower.name,
@@ -2603,7 +2638,7 @@ function restartGame(clearStorage = true) {
     updatePathGrid();
     updateUI();
     renderTowerSelect();
-    renderWaveInfo();
+    renderWaveInfo(); // Only render wave info when actually restarting
     startBtn.style.display = '';
     endBtn.style.display = 'none';
     nextWaveBtn.style.display = 'none';

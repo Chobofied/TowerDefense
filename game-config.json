@@ -297,7 +297,7 @@
         "name": "Mixed Wave",
         "enemies": ["Fire", "Water", "Earth", "Normal"],
         "color": "0x9966cc",
-        "icon": "🌈"
+        "icon": "💯"
       },
       {
         "name": "Air Wave",
