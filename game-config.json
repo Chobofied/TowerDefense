@@ -268,9 +268,8 @@
     }
   },
   "wavePatterns": {
-    "bossWaveInterval": 5,
-    "airWaveInterval": 10,
     "mixedWaveChance": 0.6,
+    "spawnDuration": 5.0,
     "patterns": [
       {
         "name": "Fire Wave",

@@ -94,3 +94,5 @@ Help me update my game
 - Keep an information board to the right showing the next 5 wave types to prepare the user
 
 please be careful not to change any features or parameters you dont have to avoid other unexpected changes to the game, only perform the exact changes needed to perform my above request,only modify code directly related to my above request,Do not remove any existing functions unless explicitly mentioned
+
+Lets randomize the waves more and make most of them mixed. Also lets make the enemies spawn over alonger period of time

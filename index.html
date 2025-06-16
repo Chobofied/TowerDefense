@@ -621,6 +621,8 @@ let towerStatsWindow = null;
 let boostActive = false;
 let boostCooldown = 0;
 let damageTextPool = []; // Pool of reusable text objects for damage numbers
+let enemySpawnQueue = []; // Queue for enemies to spawn
+let spawningWave = false;
 
 // --- Function to apply slow effect from Slow Tower ---
 function applySlowEffect(enemy, tower) {
@@ -1428,8 +1430,6 @@ function placeBomb(x, y) {
 }
 
 // --- Enemy Spawning ---
-let spawningWave = false;
-
 function spawnWave() {
     spawningWave = true;
     let count = 8 + wave * 2;
@@ -1471,307 +1471,22 @@ function spawnWave() {
         });
     }
     
-    // Create all enemies at once with slight position offsets to prevent overlap
+    // Calculate spawn interval (5 seconds total / number of enemies)
+    const spawnInterval = 5000 / count; // milliseconds between each spawn
+    
+    // Create spawn queue with timing
+    enemySpawnQueue = [];
     for (let i = 0; i < count; i++) {
         let type = availableEnemyTypes[Math.floor(Math.random() * availableEnemyTypes.length)];
         
-        const xOffset = i * 10; // Offset to prevent enemies stacking
-        enemies.push({
+        enemySpawnQueue.push({
             type,
-            x: startTile.x * TILE_SIZE + TILE_SIZE/2 - xOffset,
-            y: startTile.y * TILE_SIZE + TILE_SIZE/2,
-            hp: type.hp,
-            maxHp: type.hp,
-            speed: type.speed,
-            path: type.flying ? null : aStar(startTile, endTile),
-            pathIdx: 0,
-            flying: !!type.flying,
-            alive: true
+            spawnTime: Date.now() + (i * spawnInterval),
+            xOffset: i * 10 // Offset to prevent enemies stacking
         });
     }
     
     showMessage(`Wave ${wave}: ${wavePattern.name}!`, "#6e8fde");
-    spawningWave = false;
-}
-
-// --- Calculate damage with randomness, crits and elemental effects ---
-function calculateDamage(tower, enemy) {
-    const baseDamage = tower.type.damage * tower.level;
-    const variation = tower.type.damageVariation;
-    
-    // Random damage variation
-    const randomFactor = 1 + (Math.random() * variation * 2 - variation);
-    let damage = baseDamage * randomFactor;
-    
-    // Critical hit check
-    const isCritical = Math.random() < tower.type.critChance;
-    if (isCritical) {
-        damage *= tower.type.critMultiplier;
-    }
-    
-    // Apply elemental effects
-    let elementalMultiplier = 1;
-    let elementalEffect = null;
-    
-    // Tower element
-    const attackElement = tower.type.element;
-    // Enemy element and properties
-    const enemyElement = enemy.type.element;
-    const elementalProps = enemy.type.elementalProperties || { weaknesses: {}, resistances: {} };
-    
-    // Check for weaknesses
-    if (elementalProps.weaknesses && elementalProps.weaknesses[attackElement]) {
-        elementalMultiplier = 1 + (1 - elementalProps.weaknesses[attackElement]);
-        elementalEffect = "weakness";
-    }
-    // Check for resistances
-    else if (elementalProps.resistances && elementalProps.resistances[attackElement]) {
-        elementalMultiplier = elementalProps.resistances[attackElement];
-        elementalEffect = "resistance";
-    }
-    
-    // Apply the multiplier
-    damage *= elementalMultiplier;
-    
-    return { 
-        damage: Math.round(damage * 10) / 10, // Round to 1 decimal
-        isCritical,
-        elementalEffect,
-        elementalMultiplier
-    };
-}
-
-// --- Tower Stats Window ---
-function showTowerStats(tower, x, y) {
-    // Create stats window
-    let statsWindow = document.createElement('div');
-    statsWindow.style.position = 'absolute';
-    statsWindow.style.left = (x + 20) + 'px';
-    statsWindow.style.top = (y - 20) + 'px';
-    statsWindow.style.background = '#23273a';
-    statsWindow.style.color = '#fff';
-    statsWindow.style.padding = '15px 20px';
-    statsWindow.style.borderRadius = '8px';
-    statsWindow.style.boxShadow = '0 2px 24px #0008';
-    statsWindow.style.zIndex = '1000';
-    statsWindow.style.minWidth = '200px';
-    statsWindow.style.pointerEvents = 'auto';
-    
-    // Add close button (X) in the top right
-    let closeBtn = document.createElement('div');
-    closeBtn.innerHTML = '×';
-    closeBtn.style.position = 'absolute';
-    closeBtn.style.top = '5px';
-    closeBtn.style.right = '10px';
-    closeBtn.style.fontSize = '24px';
-    closeBtn.style.cursor = 'pointer';
-    closeBtn.style.color = '#fff';
-    closeBtn.style.lineHeight = '20px';
-    closeBtn.onclick = () => {
-        document.body.removeChild(statsWindow);
-        towerStatsWindow = null;
-    };
-    
-    // Create content elements
-    let title = document.createElement('h3');
-    title.style.margin = '0 0 10px 0';
-    title.textContent = `${tower.type.name} Tower (Level ${tower.level})`;
-    
-    // Stats container
-    let statsContainer = document.createElement('div');
-    statsContainer.style.marginBottom = '15px';
-    
-    // Add stats including damage variation and critical hit info
-    const baseDamage = tower.type.damage * tower.level;
-    const variation = tower.type.damageVariation;
-    const minDamage = Math.floor(baseDamage * (1 - variation));
-    const maxDamage = Math.ceil(baseDamage * (1 + variation));
-    const critChance = tower.type.critChance * 100;
-    const critMultiplier = tower.type.critMultiplier;
-    const damagePerSec = baseDamage / tower.type.fireRate;
-    
-    // Get element info
-    const elementInfo = ELEMENTS[tower.type.element] || { name: "Physical", color: "0xcccccc" };
-    const elementName = elementInfo.name;
-    const elementColor = '#' + elementInfo.color.toString(16).padStart(6, '0');
-    const elementEmoji = elementInfo.emoji || "";
-    
-    let stats = [
-        `Damage: ${minDamage}-${maxDamage}`,
-        `Critical Hit: ${critChance.toFixed(1)}% chance (×${critMultiplier})`,
-        `Range: ${tower.type.range}`,
-        `Fire Rate: ${(1 / tower.type.fireRate).toFixed(1)}/sec`,
-        `DPS: ${damagePerSec.toFixed(1)}`
-    ];
-    
-    // Add slow effect info for Slow Tower
-    if (tower.type.name === "Slow") {
-        stats.push(`Slow: ${SLOW_CONFIG.slowAmount * 100}% for ${SLOW_CONFIG.slowDuration}s`);
-    }
-    
-    // Add special targeting info for Anti-Air
-    if (tower.type.name === "Anti-Air") {
-        stats.push(`Special: Only targets flying enemies`);
-    }
-    
-    stats.unshift(`Element: <span class="element-icon" style="background: ${elementColor}">${elementEmoji}</span> ${elementName}`);
-    
-    stats.forEach(stat => {
-        let div = document.createElement('div');
-        div.innerHTML = stat;
-        statsContainer.appendChild(div);
-    });
-    
-    // Buttons container
-    let buttonsContainer = document.createElement('div');
-    buttonsContainer.style.display = 'flex';
-    buttonsContainer.style.justifyContent = 'space-between';
-    buttonsContainer.style.gap = '10px';
-    
-    // Upgrade button
-    let upgradeBtn = document.createElement('button');
-    upgradeBtn.textContent = `Upgrade (${Math.floor(tower.type.cost*0.7*tower.level)})`;
-    upgradeBtn.onclick = () => {
-        let cost = Math.floor(tower.type.cost*0.7*tower.level);
-        if (gold >= cost) {
-            gold -= cost;
-            tower.level++;
-            updateUI();
-            // Update the stats window with new values
-            document.body.removeChild(statsWindow);
-            showTowerStats(tower, x, y);
-        }
-    };
-    
-    // Sell button
-    let sellBtn = document.createElement('button');
-    sellBtn.textContent = `Sell (${Math.floor(tower.type.cost*0.5*tower.level)})`;
-    sellBtn.onclick = () => {
-        gold += Math.floor(tower.type.cost*0.5*tower.level);
-        towers = towers.filter(t => t !== tower);
-        updatePathGrid();
-        document.body.removeChild(statsWindow);
-        towerStatsWindow = null;
-        selectedTower = null;
-        updateUI();
-    };
-    
-    // Assemble the window
-    statsWindow.appendChild(closeBtn);
-    statsWindow.appendChild(title);
-    statsWindow.appendChild(statsContainer);
-    buttonsContainer.appendChild(upgradeBtn);
-    buttonsContainer.appendChild(sellBtn);
-    statsWindow.appendChild(buttonsContainer);
-    
-    document.body.appendChild(statsWindow);
-    towerStatsWindow = statsWindow;
-    
-    // Close the window when clicking outside
-    document.addEventListener('mousedown', function closeStatsWindow(e) {
-        if (!statsWindow.contains(e.target) && e.target !== statsWindow) {
-            document.body.removeChild(statsWindow);
-            towerStatsWindow = null;
-            document.removeEventListener('mousedown', closeStatsWindow);
-        }
-    });
-}
-
-// --- Handle item collection ---
-function collectItem(item) {
-    if (item.type.name === "Gold") {
-        gold += item.type.value;
-        showMessage(`+${item.type.value} Gold!`, "#ffd700");
-    }
-    else if (item.type.name === "Damage Boost") {
-        activeEffects.push({
-            type: "damage",
-            multiplier: item.type.value,
-            duration: item.type.duration * 60 // Convert to frames
-        });
-        showMessage(`Damage Boost +${Math.round(item.type.value * 100)}% for ${item.type.duration}s!`, "#ff4500");
-    }
-    else if (item.type.name === "Speed Boost") {
-        activeEffects.push({
-            type: "fireRate",
-            multiplier: item.type.value,
-            duration: item.type.duration * 60 // Convert to frames
-        });
-        showMessage(`Fire Rate Boost +${Math.round(item.type.value * 100)}% for ${item.type.duration}s!`, "#00ffff");
-    }
-}
-
-// --- Try to drop an item from defeated enemy ---
-function tryDropItem(x, y) {
-    if (Math.random() < CONFIG.gameSettings.itemDropChance) {
-        // Weighted random selection of item type
-        const totalWeight = ITEM_TYPES.reduce((sum, item) => sum + item.weight, 0);
-        let roll = Math.random() * totalWeight;
-        let selectedItem = null;
-        
-        for (const item of ITEM_TYPES) {
-            roll -= item.weight;
-            if (roll <= 0) {
-                selectedItem = item;
-                break;
-            }
-        }
-        
-        if (selectedItem) {
-            items.push({
-                x, y,
-                type: selectedItem,
-                pulseDirection: 1,
-                pulseValue: 0,
-                lifetime: 300 // Item disappears after 5 seconds (60 frames/sec)
-            });
-        }
-    }
-}
-
-// --- Damage Numbers ---
-function createDamageNumber(x, y, damage, isCritical = false, elementalEffect = null, elementalMultiplier = 1) {
-    // Add random horizontal offset and velocity for bounce effect
-    const randX = (Math.random() - 0.5) * 30;
-    const randYVel = -2 - Math.random() * 2; // Initial upward velocity
-    
-    // Determine color based on critical and elemental effects
-    let color = 0xFFFFFF; // Default white
-    
-    if (isCritical) {
-        color = 0xff5500; // Critical hits are orange
-    } 
-    else if (elementalEffect === "weakness") {
-        color = 0x66dd66; // Weakness hits are green (more damage)
-    }
-    else if (elementalEffect === "resistance") {
-        color = 0xdd6666; // Resistance hits are red (less damage)
-    }
-    
-    // Prepare text for display
-    let displayText = Math.floor(damage).toString();
-    
-    // Add a prefix for elemental effects
-    if (elementalEffect === "weakness") {
-        displayText = "+" + displayText; 
-    } else if (elementalEffect === "resistance") {
-        displayText = "-" + displayText;
-    }
-    
-    damageNumbers.push({
-        x: x + randX,
-        y: y,
-        damage: damage,
-        displayText: displayText,
-        color: color,
-        alpha: 1,
-        life: 45, // Increased lifetime slightly
-        isCritical,
-        elementalEffect,
-        xVel: (Math.random() - 0.5) * 1.5, // Horizontal velocity
-        yVel: randYVel, // Vertical velocity (upward)
-        textObj: null // Will be assigned from pool during rendering
-    });
 }
 
 // --- Game Loop ---
@@ -1787,6 +1502,34 @@ function gameLoop(delta) {
             boostCooldown = 0;
         }
         updateUI(); // Always update UI when boost timer changes
+    }
+    
+    // Process enemy spawn queue
+    if (spawningWave && enemySpawnQueue.length > 0) {
+        const currentTime = Date.now();
+        
+        // Check if it's time to spawn the next enemy
+        while (enemySpawnQueue.length > 0 && enemySpawnQueue[0].spawnTime <= currentTime) {
+            const enemyData = enemySpawnQueue.shift();
+            
+            enemies.push({
+                type: enemyData.type,
+                x: startTile.x * TILE_SIZE + TILE_SIZE/2 - enemyData.xOffset,
+                y: startTile.y * TILE_SIZE + TILE_SIZE/2,
+                hp: enemyData.type.hp,
+                maxHp: enemyData.type.hp,
+                speed: enemyData.type.speed,
+                path: enemyData.type.flying ? null : aStar(startTile, endTile),
+                pathIdx: 0,
+                flying: !!enemyData.type.flying,
+                alive: true
+            });
+        }
+        
+        // End spawning wave when queue is empty
+        if (enemySpawnQueue.length === 0) {
+            spawningWave = false;
+        }
     }
     
     // Update active effects
@@ -2152,6 +1895,286 @@ function gameLoop(delta) {
     
     updateUI();
     draw();
+}
+
+// --- Calculate damage with randomness, crits and elemental effects ---
+function calculateDamage(tower, enemy) {
+    const baseDamage = tower.type.damage * tower.level;
+    const variation = tower.type.damageVariation;
+    
+    // Random damage variation
+    const randomFactor = 1 + (Math.random() * variation * 2 - variation);
+    let damage = baseDamage * randomFactor;
+    
+    // Critical hit check
+    const isCritical = Math.random() < tower.type.critChance;
+    if (isCritical) {
+        damage *= tower.type.critMultiplier;
+    }
+    
+    // Apply elemental effects
+    let elementalMultiplier = 1;
+    let elementalEffect = null;
+    
+    // Tower element
+    const attackElement = tower.type.element;
+    // Enemy element and properties
+    const enemyElement = enemy.type.element;
+    const elementalProps = enemy.type.elementalProperties || { weaknesses: {}, resistances: {} };
+    
+    // Check for weaknesses
+    if (elementalProps.weaknesses && elementalProps.weaknesses[attackElement]) {
+        elementalMultiplier = 1 + (1 - elementalProps.weaknesses[attackElement]);
+        elementalEffect = "weakness";
+    }
+    // Check for resistances
+    else if (elementalProps.resistances && elementalProps.resistances[attackElement]) {
+        elementalMultiplier = elementalProps.resistances[attackElement];
+        elementalEffect = "resistance";
+    }
+    
+    // Apply the multiplier
+    damage *= elementalMultiplier;
+    
+    return { 
+        damage: Math.round(damage * 10) / 10, // Round to 1 decimal
+        isCritical,
+        elementalEffect,
+        elementalMultiplier
+    };
+}
+
+// --- Tower Stats Window ---
+function showTowerStats(tower, x, y) {
+    // Create stats window
+    let statsWindow = document.createElement('div');
+    statsWindow.style.position = 'absolute';
+    statsWindow.style.left = (x + 20) + 'px';
+    statsWindow.style.top = (y - 20) + 'px';
+    statsWindow.style.background = '#23273a';
+    statsWindow.style.color = '#fff';
+    statsWindow.style.padding = '15px 20px';
+    statsWindow.style.borderRadius = '8px';
+    statsWindow.style.boxShadow = '0 2px 24px #0008';
+    statsWindow.style.zIndex = '1000';
+    statsWindow.style.minWidth = '200px';
+    statsWindow.style.pointerEvents = 'auto';
+    
+    // Add close button (X) in the top right
+    let closeBtn = document.createElement('div');
+    closeBtn.innerHTML = '×';
+    closeBtn.style.position = 'absolute';
+    closeBtn.style.top = '5px';
+    closeBtn.style.right = '10px';
+    closeBtn.style.fontSize = '24px';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.style.color = '#fff';
+    closeBtn.style.lineHeight = '20px';
+    closeBtn.onclick = () => {
+        document.body.removeChild(statsWindow);
+        towerStatsWindow = null;
+    };
+    
+    // Create content elements
+    let title = document.createElement('h3');
+    title.style.margin = '0 0 10px 0';
+    title.textContent = `${tower.type.name} Tower (Level ${tower.level})`;
+    
+    // Stats container
+    let statsContainer = document.createElement('div');
+    statsContainer.style.marginBottom = '15px';
+    
+    // Add stats including damage variation and critical hit info
+    const baseDamage = tower.type.damage * tower.level;
+    const variation = tower.type.damageVariation;
+    const minDamage = Math.floor(baseDamage * (1 - variation));
+    const maxDamage = Math.ceil(baseDamage * (1 + variation));
+    const critChance = tower.type.critChance * 100;
+    const critMultiplier = tower.type.critMultiplier;
+    const damagePerSec = baseDamage / tower.type.fireRate;
+    
+    // Get element info
+    const elementInfo = ELEMENTS[tower.type.element] || { name: "Physical", color: "0xcccccc" };
+    const elementName = elementInfo.name;
+    const elementColor = '#' + elementInfo.color.toString(16).padStart(6, '0');
+    const elementEmoji = elementInfo.emoji || "";
+    
+    let stats = [
+        `Damage: ${minDamage}-${maxDamage}`,
+        `Critical Hit: ${critChance.toFixed(1)}% chance (×${critMultiplier})`,
+        `Range: ${tower.type.range}`,
+        `Fire Rate: ${(1 / tower.type.fireRate).toFixed(1)}/sec`,
+        `DPS: ${damagePerSec.toFixed(1)}`
+    ];
+    
+    // Add slow effect info for Slow Tower
+    if (tower.type.name === "Slow") {
+        stats.push(`Slow: ${SLOW_CONFIG.slowAmount * 100}% for ${SLOW_CONFIG.slowDuration}s`);
+    }
+    
+    // Add special targeting info for Anti-Air
+    if (tower.type.name === "Anti-Air") {
+        stats.push(`Special: Only targets flying enemies`);
+    }
+    
+    stats.unshift(`Element: <span class="element-icon" style="background: ${elementColor}">${elementEmoji}</span> ${elementName}`);
+    
+    stats.forEach(stat => {
+        let div = document.createElement('div');
+        div.innerHTML = stat;
+        statsContainer.appendChild(div);
+    });
+    
+    // Buttons container
+    let buttonsContainer = document.createElement('div');
+    buttonsContainer.style.display = 'flex';
+    buttonsContainer.style.justifyContent = 'space-between';
+    buttonsContainer.style.gap = '10px';
+    
+    // Upgrade button
+    let upgradeBtn = document.createElement('button');
+    upgradeBtn.textContent = `Upgrade (${Math.floor(tower.type.cost*0.7*tower.level)})`;
+    upgradeBtn.onclick = () => {
+        let cost = Math.floor(tower.type.cost*0.7*tower.level);
+        if (gold >= cost) {
+            gold -= cost;
+            tower.level++;
+            updateUI();
+            // Update the stats window with new values
+            document.body.removeChild(statsWindow);
+            showTowerStats(tower, x, y);
+        }
+    };
+    
+    // Sell button
+    let sellBtn = document.createElement('button');
+    sellBtn.textContent = `Sell (${Math.floor(tower.type.cost*0.5*tower.level)})`;
+    sellBtn.onclick = () => {
+        gold += Math.floor(tower.type.cost*0.5*tower.level);
+        towers = towers.filter(t => t !== tower);
+        updatePathGrid();
+        document.body.removeChild(statsWindow);
+        towerStatsWindow = null;
+        selectedTower = null;
+        updateUI();
+    };
+    
+    // Assemble the window
+    statsWindow.appendChild(closeBtn);
+    statsWindow.appendChild(title);
+    statsWindow.appendChild(statsContainer);
+    buttonsContainer.appendChild(upgradeBtn);
+    buttonsContainer.appendChild(sellBtn);
+    statsWindow.appendChild(buttonsContainer);
+    
+    document.body.appendChild(statsWindow);
+    towerStatsWindow = statsWindow;
+    
+    // Close the window when clicking outside
+    document.addEventListener('mousedown', function closeStatsWindow(e) {
+        if (!statsWindow.contains(e.target) && e.target !== statsWindow) {
+            document.body.removeChild(statsWindow);
+            towerStatsWindow = null;
+            document.removeEventListener('mousedown', closeStatsWindow);
+        }
+    });
+}
+
+// --- Handle item collection ---
+function collectItem(item) {
+    if (item.type.name === "Gold") {
+        gold += item.type.value;
+        showMessage(`+${item.type.value} Gold!`, "#ffd700");
+    }
+    else if (item.type.name === "Damage Boost") {
+        activeEffects.push({
+            type: "damage",
+            multiplier: item.type.value,
+            duration: item.type.duration * 60 // Convert to frames
+        });
+        showMessage(`Damage Boost +${Math.round(item.type.value * 100)}% for ${item.type.duration}s!`, "#ff4500");
+    }
+    else if (item.type.name === "Speed Boost") {
+        activeEffects.push({
+            type: "fireRate",
+            multiplier: item.type.value,
+            duration: item.type.duration * 60 // Convert to frames
+        });
+        showMessage(`Fire Rate Boost +${Math.round(item.type.value * 100)}% for ${item.type.duration}s!`, "#00ffff");
+    }
+}
+
+// --- Try to drop an item from defeated enemy ---
+function tryDropItem(x, y) {
+    if (Math.random() < CONFIG.gameSettings.itemDropChance) {
+        // Weighted random selection of item type
+        const totalWeight = ITEM_TYPES.reduce((sum, item) => sum + item.weight, 0);
+        let roll = Math.random() * totalWeight;
+        let selectedItem = null;
+        
+        for (const item of ITEM_TYPES) {
+            roll -= item.weight;
+            if (roll <= 0) {
+                selectedItem = item;
+                break;
+            }
+        }
+        
+        if (selectedItem) {
+            items.push({
+                x, y,
+                type: selectedItem,
+                pulseDirection: 1,
+                pulseValue: 0,
+                lifetime: 300 // Item disappears after 5 seconds (60 frames/sec)
+            });
+        }
+    }
+}
+
+// --- Damage Numbers ---
+function createDamageNumber(x, y, damage, isCritical = false, elementalEffect = null, elementalMultiplier = 1) {
+    // Add random horizontal offset and velocity for bounce effect
+    const randX = (Math.random() - 0.5) * 30;
+    const randYVel = -2 - Math.random() * 2; // Initial upward velocity
+    
+    // Determine color based on critical and elemental effects
+    let color = 0xFFFFFF; // Default white
+    
+    if (isCritical) {
+        color = 0xff5500; // Critical hits are orange
+    } 
+    else if (elementalEffect === "weakness") {
+        color = 0x66dd66; // Weakness hits are green (more damage)
+    }
+    else if (elementalEffect === "resistance") {
+        color = 0xdd6666; // Resistance hits are red (less damage)
+    }
+    
+    // Prepare text for display
+    let displayText = Math.floor(damage).toString();
+    
+    // Add a prefix for elemental effects
+    if (elementalEffect === "weakness") {
+        displayText = "+" + displayText; 
+    } else if (elementalEffect === "resistance") {
+        displayText = "-" + displayText;
+    }
+    
+    damageNumbers.push({
+        x: x + randX,
+        y: y,
+        damage: damage,
+        displayText: displayText,
+        color: color,
+        alpha: 1,
+        life: 45, // Increased lifetime slightly
+        isCritical,
+        elementalEffect,
+        xVel: (Math.random() - 0.5) * 1.5, // Horizontal velocity
+        yVel: randYVel, // Vertical velocity (upward)
+        textObj: null // Will be assigned from pool during rendering
+    });
 }
 
 // --- Wave Information Functions ---
