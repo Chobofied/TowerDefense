@@ -1471,8 +1471,8 @@ function spawnWave() {
         });
     }
     
-    // Calculate spawn interval (5 seconds total / number of enemies)
-    const spawnInterval = 5000 / count; // milliseconds between each spawn
+    // Calculate spawn interval using spawnDuration from wave patterns configuration
+    const spawnInterval = WAVE_PATTERNS.spawnDuration / count; // milliseconds between each spawn
     
     // Create spawn queue with timing
     enemySpawnQueue = [];
