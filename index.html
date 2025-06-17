@@ -526,7 +526,9 @@ async function loadConfig() {
             damageVariation: tower.damageVariation,
             critChance: tower.critChance,
             critMultiplier: tower.critMultiplier,
-            element: tower.element || "physical" // Default to physical
+            element: tower.element || "physical",
+            splashRadius: tower.splashRadius || 0,
+            splashDamageRatio: tower.splashDamageRatio || 0
         }));
         
         // Load shop towers
@@ -543,7 +545,9 @@ async function loadConfig() {
             critMultiplier: tower.critMultiplier,
             shopPrice: tower.shopPrice,
             element: tower.element || "physical",
-            flyingOnly: tower.flyingOnly || false
+            flyingOnly: tower.flyingOnly || false,
+            splashRadius: tower.splashRadius || 0,
+            splashDamageRatio: tower.splashDamageRatio || 0
         }));
         
         // Load bomb configuration
@@ -606,12 +610,13 @@ let damageNumbers = [];
 let items = []; 
 let activeEffects = [];
 let explosions = []; // Track active explosions
+let splashEffects = []; // Track splash animations
 let gold;
 let wave;
 let lives;
 let placingTower = null;
 let selectedTowerType = -1;
-let selectedEnemy = null;
+let selectedEnemy = null; // Track selected enemy
 let isGameRunning = false;
 let pathGrid = [];
 let startTile;
@@ -1000,15 +1005,17 @@ function showStats(enemy) {
         }
     }
     
-    // Create HTML for enemy stats
+    // Create HTML for enemy stats with white text
     statsPanel.innerHTML = `
-        <b>${enemy.type.name} ${elementEmoji}</b><br>
-        <span class="element-icon" style="background: ${elementColor}">${elementEmoji}</span> ${elementName}<br>
-        HP: ${Math.ceil(enemy.hp)}/${enemy.maxHp}<br>
-        Speed: ${enemy.speed.toFixed(1)}<br>
-        Reward: ${enemy.type.reward}<br>
-        ${weaknessesText ? weaknessesText + "<br>" : ""}
-        ${resistancesText}
+        <div style="color: white;">
+            <b>${enemy.type.name} ${elementEmoji}</b><br>
+            <span class="element-icon" style="background: ${elementColor}">${elementEmoji}</span> ${elementName}<br>
+            HP: ${Math.ceil(enemy.hp)}/${enemy.maxHp}<br>
+            Speed: ${enemy.speed.toFixed(1)}<br>
+            Reward: ${enemy.type.reward}<br>
+            ${weaknessesText ? weaknessesText + "<br>" : ""}
+            ${resistancesText}
+        </div>
     `;
 }
 
@@ -1299,6 +1306,27 @@ function setupPlacementHandlers() {
             return;
         }
         
+        // Check for enemy selection first (before tower selection)
+        let clickedEnemy = null;
+        for (let enemy of enemies) {
+            if (!enemy.alive) continue;
+            let r = enemy.type.name === "Boss" ? TILE_SIZE/1.7 : TILE_SIZE/2.5;
+            if (Math.hypot(enemy.x - mx, enemy.y - my) < r) {
+                clickedEnemy = enemy;
+                break;
+            }
+        }
+        
+        if (clickedEnemy) {
+            selectedEnemy = clickedEnemy;
+            showStats(selectedEnemy);
+            return; // Don't process other clicks when selecting enemy
+        } else {
+            // Clear enemy selection when clicking elsewhere
+            selectedEnemy = null;
+            hideStats();
+        }
+        
         // If clicking on a tower, select it and show stats
         let tower = towers.find(t => t.x === tx && t.y === ty);
         if (tower) {
@@ -1452,6 +1480,26 @@ function spawnWave() {
             speed: BOSS_TYPE.baseSpeed * speedScale
         });
         count = 1; // Only one boss
+    } else if (wavePattern.name === "Air Wave") {
+        // Air Wave: Half the enemies at 1/3rd speed
+        count = Math.max(1, Math.floor(count / 2)); // Half the enemies, minimum 1
+        
+        // Regular wave - filter enemy types based on pattern
+        const patternEnemyNames = wavePattern.enemies;
+        
+        ENEMY_TYPES.forEach(enemy => {
+            if (patternEnemyNames.includes(enemy.name)) {
+                // Calculate HP and speed scaling based on wave number
+                const hpScale = 1 + (wave - 1) * enemy.waveScaling.hp;
+                const speedScale = 1 + (wave - 1) * enemy.waveScaling.speed;
+                
+                availableEnemyTypes.push({
+                    ...enemy,
+                    hp: Math.round(enemy.baseHp * hpScale),
+                    speed: (enemy.baseSpeed * speedScale) *.75, // Air enemies move slower
+                });
+            }
+        });
     } else {
         // Regular wave - filter enemy types based on pattern
         const patternEnemyNames = wavePattern.enemies;
@@ -1581,6 +1629,26 @@ function gameLoop(delta) {
         }
     }
     
+    // Update splash effects
+    for (let i = splashEffects.length - 1; i >= 0; i--) {
+        const splash = splashEffects[i];
+        splash.duration--;
+        
+        // Grow the splash effect
+        if (splash.radius < splash.maxRadius) {
+            splash.radius += splash.maxRadius / 10;
+        }
+        
+        // Fade out toward the end
+        if (splash.duration < 20) {
+            splash.alpha = splash.duration / 20;
+        }
+        
+        if (splash.duration <= 0) {
+            splashEffects.splice(i, 1);
+        }
+    }
+    
     // Update sword swing animations
     for (let i = swordSwings.length - 1; i >= 0; i--) {
         const swing = swordSwings[i];
@@ -1642,8 +1710,14 @@ function gameLoop(delta) {
             
             if (dist < 6) {
                 enemy.alive = false;
-                lives--;
-                showMessage("Life Lost!", "#ff6666");
+                // Boss enemies cause 3 life loss, others cause 1
+                const livesLost = enemy.type.name === "Boss" ? 3 : 1;
+                lives -= livesLost;
+                if (livesLost === 3) {
+                    showMessage("Boss Escaped! 3 Lives Lost!", "#ff6666");
+                } else {
+                    showMessage("Life Lost!", "#ff6666");
+                }
                 continue;
             }
             
@@ -1653,8 +1727,14 @@ function gameLoop(delta) {
         } else {
             if (!enemy.path || enemy.pathIdx >= enemy.path.length) {
                 enemy.alive = false;
-                lives--;
-                showMessage("Life Lost!", "#ff6666");
+                // Boss enemies cause 3 life loss, others cause 1
+                const livesLost = enemy.type.name === "Boss" ? 3 : 1;
+                lives -= livesLost;
+                if (livesLost === 3) {
+                    showMessage("Boss Escaped! 3 Lives Lost!", "#ff6666");
+                } else {
+                    showMessage("Life Lost!", "#ff6666");
+                }
                 continue;
             }
             
@@ -1849,6 +1929,38 @@ function gameLoop(delta) {
                     applySlowEffect(p.target, p.originTower);
                 }
                 
+                // Check for splash damage (Missile(Splash) tower)
+                if (p.towerType === "Missile(Splash)" && p.originTower.type.splashRadius > 0) {
+                    // Create splash effect animation
+                    splashEffects.push({
+                        x: p.target.x,
+                        y: p.target.y,
+                        radius: 0,
+                        maxRadius: p.originTower.type.splashRadius,
+                        alpha: 0.8,
+                        duration: 30,
+                        color: p.originTower.type.color
+                    });
+                    
+                    // Apply splash damage to nearby enemies
+                    enemies.filter(e => e.alive && e !== p.target).forEach(enemy => {
+                        const distance = Math.hypot(enemy.x - p.target.x, enemy.y - p.target.y);
+                        if (distance <= p.originTower.type.splashRadius) {
+                            const splashDamage = p.damage * p.originTower.type.splashDamageRatio;
+                            enemy.hp -= splashDamage;
+                            
+                            // Create splash damage number
+                            createSplashDamageNumber(enemy.x, enemy.y - 20, splashDamage);
+                            
+                            if (enemy.hp <= 0) {
+                                enemy.alive = false;
+                                gold += enemy.type.reward;
+                                tryDropItem(enemy.x, enemy.y);
+                            }
+                        }
+                    });
+                }
+                
                 if (p.target.hp <= 0) {
                     p.target.alive = false;
                     gold += p.target.type.reward;
@@ -1872,6 +1984,12 @@ function gameLoop(delta) {
         if (e.emojiText) {
             app.stage.removeChild(e.emojiText);
             e.emojiText = null;
+        }
+        
+        // Clear selected enemy if it dies
+        if (selectedEnemy === e) {
+            selectedEnemy = null;
+            hideStats();
         }
     });
     // Then filter out dead enemies
@@ -1999,12 +2117,13 @@ function showTowerStats(tower, x, y) {
     const elementColor = '#' + elementInfo.color.toString(16).padStart(6, '0');
     const elementEmoji = elementInfo.emoji || "";
     
+    
     let stats = [
         `Damage: ${minDamage}-${maxDamage}`,
         `Critical Hit: ${critChance.toFixed(1)}% chance (×${critMultiplier})`,
         `Range: ${tower.type.range}`,
         `Fire Rate: ${(1 / tower.type.fireRate).toFixed(1)}/sec`,
-        `DPS: ${damagePerSec.toFixed(1)}`
+        `DPS: ${damagePerSec.toFixed(1)}`,
     ];
     
     // Add slow effect info for Slow Tower
@@ -2015,6 +2134,11 @@ function showTowerStats(tower, x, y) {
     // Add special targeting info for Anti-Air
     if (tower.type.name === "Anti-Air") {
         stats.push(`Special: Only targets flying enemies`);
+    }
+    
+    // Add splash damage info for Missile(Splash) Tower
+    if (tower.type.name === "Missile(Splash)") {
+        stats.push(`Splash: ${(tower.type.splashDamageRatio * 100).toFixed(0)}% damage in ${tower.type.splashRadius}px radius`);
     }
     
     stats.unshift(`Element: <span class="element-icon" style="background: ${elementColor}">${elementEmoji}</span> ${elementName}`);
@@ -2041,6 +2165,7 @@ function showTowerStats(tower, x, y) {
             tower.level++;
             updateUI();
             // Update the stats window with new values
+
             document.body.removeChild(statsWindow);
             showTowerStats(tower, x, y);
         }
@@ -2177,6 +2302,34 @@ function createDamageNumber(x, y, damage, isCritical = false, elementalEffect = 
     });
 }
 
+// --- Splash Damage Numbers ---
+function createSplashDamageNumber(x, y, damage) {
+    // Add random horizontal offset and velocity for bounce effect
+    const randX = (Math.random() - 0.5) * 30;
+    const randYVel = -1.5 - Math.random() * 1.5; // Slightly less upward velocity
+    
+    // Splash damage numbers are orange/yellow
+    const color = 0xffaa00;
+    
+    // Prepare text for display
+    let displayText = Math.floor(damage).toString();
+    
+    damageNumbers.push({
+        x: x + randX,
+        y: y,
+        damage: damage,
+        displayText: displayText,
+        color: color,
+        alpha: 1,
+        life: 35, // Shorter lifetime than regular damage numbers
+        isCritical: false, // Splash damage is never critical
+        elementalEffect: "splash",
+        xVel: (Math.random() - 0.5) * 1.2, // Slightly less horizontal velocity
+        yVel: randYVel,
+        textObj: null // Will be assigned from pool during rendering
+    });
+}
+
 // --- Wave Information Functions ---
 let cachedWavePatterns = {}; // Cache wave patterns so they don't change
 
@@ -2198,9 +2351,6 @@ function getWavePattern(waveNumber) {
     }
     // For all other waves, use a seeded random based on wave number
     else {
-        // Use wave number as seed for consistent randomization
-        //const seed = waveNumber * 9301 + 49297; // Simple linear congruential generator seed
-        //const random = (seed % 233280) / 233280;
         const random = Math.random();
         
         if (random < WAVE_PATTERNS.mixedWaveChance) {
@@ -2372,8 +2522,13 @@ function draw() {
             graphics.drawCircle(e.x, e.y, TILE_SIZE/1.7);
         }
         
+        // Draw yellow selection circle for selected enemy
+        if (selectedEnemy === e) {
+            graphics.lineStyle(3, 0xffff00, 0.8); // Yellow circle
+            graphics.drawCircle(e.x, e.y, (e.type.name === "Boss" ? TILE_SIZE/1.5 : TILE_SIZE/2.2) + 5);
+        }
+        
         // Draw slowed effect if enemy is slowed
-
         if (e.slowed) {
             // Draw frost effect around the enemy
             const pulseAmount = 0.5 + Math.sin(Date.now() / 300) * 0.2; // Pulsing effect
@@ -2541,6 +2696,23 @@ function draw() {
             .drawCircle(explosion.x, explosion.y, explosion.radius * 0.8);
     }
     
+    // Draw splash effects
+    for (let splash of splashEffects) {
+        // Outer splash circle
+        graphics.beginFill(splash.color, splash.alpha * 0.3)
+            .drawCircle(splash.x, splash.y, splash.radius)
+            .endFill();
+            
+        // Inner bright core
+        graphics.beginFill(0xffffff, splash.alpha * 0.6)
+            .drawCircle(splash.x, splash.y, splash.radius * 0.4)
+            .endFill();
+            
+        // Add a ring at the edge of splash for better visual
+        graphics.lineStyle(2, splash.color, splash.alpha * 0.8)
+            .drawCircle(splash.x, splash.y, splash.radius * 0.8);
+    }
+    
     // Draw bomb placement preview
     if (placingBomb) {
         const mx = app.renderer.events.pointer.global?.x || 0;
@@ -2566,6 +2738,9 @@ function draw() {
 
 // --- Enemy Stats Hover ---
 app.view.addEventListener('mousemove', e => {
+    // Only show hover stats if no enemy is currently selected
+    if (selectedEnemy) return;
+    
     const rect = app.view.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
@@ -2624,12 +2799,15 @@ function restartGame(clearStorage = true) {
     items = [];
     activeEffects = [];
     explosions = [];
+    splashEffects = []; // Clear splash effects
+    enemySpawnQueue = []; // Clear spawn queue
     gold = CONFIG.gameSettings.startingGold;
     wave = 1;
     lives = CONFIG.gameSettings.startingLives;
     isGameRunning = false;
     bombCount = 0;
     placingBomb = false;
+    spawningWave = false; // Reset spawning flag
     
     // Clear cached wave patterns when restarting
     cachedWavePatterns = {};
@@ -2646,7 +2824,9 @@ function restartGame(clearStorage = true) {
         damageVariation: tower.damageVariation,
         critChance: tower.critChance,
         critMultiplier: tower.critMultiplier,
-        element: tower.element || "physical"
+        element: tower.element || "physical",
+        splashRadius: tower.splashRadius || 0,
+        splashDamageRatio: tower.splashDamageRatio || 0
     }));
     
     // Reset purchased towers array and clear storage if needed
