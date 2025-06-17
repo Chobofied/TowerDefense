@@ -1710,8 +1710,14 @@ function gameLoop(delta) {
             
             if (dist < 6) {
                 enemy.alive = false;
-                lives--;
-                showMessage("Life Lost!", "#ff6666");
+                // Boss enemies cause 3 life loss, others cause 1
+                const livesLost = enemy.type.name === "Boss" ? 3 : 1;
+                lives -= livesLost;
+                if (livesLost === 3) {
+                    showMessage("Boss Escaped! 3 Lives Lost!", "#ff6666");
+                } else {
+                    showMessage("Life Lost!", "#ff6666");
+                }
                 continue;
             }
             
@@ -1721,8 +1727,14 @@ function gameLoop(delta) {
         } else {
             if (!enemy.path || enemy.pathIdx >= enemy.path.length) {
                 enemy.alive = false;
-                lives--;
-                showMessage("Life Lost!", "#ff6666");
+                // Boss enemies cause 3 life loss, others cause 1
+                const livesLost = enemy.type.name === "Boss" ? 3 : 1;
+                lives -= livesLost;
+                if (livesLost === 3) {
+                    showMessage("Boss Escaped! 3 Lives Lost!", "#ff6666");
+                } else {
+                    showMessage("Life Lost!", "#ff6666");
+                }
                 continue;
             }
             

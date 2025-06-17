@@ -67,7 +67,7 @@
       "damageVariation": 0.15,
       "critChance": 0.25,
       "critMultiplier": 2.2,
-      "shopPrice": 300,
+      "shopPrice": 200,
       "element": "physical",
       "flyingOnly": true
     },
@@ -152,8 +152,8 @@
       "element": "fire",
       "emoji": "🔥",
       "waveScaling": {
-        "hp": 0.12,
-        "speed": 0.02
+        "hp": 0.16,
+        "speed": 0.025
       },
       "elementalProperties": {
         "weaknesses": {
@@ -173,8 +173,8 @@
       "element": "water",
       "emoji": "🌊",
       "waveScaling": {
-        "hp": 0.12,
-        "speed": 0.02
+        "hp": 0.16,
+        "speed": 0.025
       },
       "elementalProperties": {
         "weaknesses": {
@@ -194,8 +194,8 @@
       "element": "earth",
       "emoji": "🌲",
       "waveScaling": {
-        "hp": 0.12,
-        "speed": 0.02
+        "hp": 0.16,
+        "speed": 0.025
       },
       "elementalProperties": {
         "weaknesses": {
@@ -214,7 +214,7 @@
       "color": "0xcccccc",
       "element": "physical",
       "waveScaling": {
-        "hp": 0.10,
+        "hp": 0.16,
         "speed": 0.03
       },
       "elementalProperties": {
@@ -231,8 +231,8 @@
       "flying": true,
       "element": "physical",
       "waveScaling": {
-        "hp": 0.09,
-        "speed": 0.04
+        "hp": 0.12,
+        "speed": 0.03
       },
       "elementalProperties": {
         "weaknesses": {},
@@ -243,7 +243,7 @@
   "boss": {
     "name": "Boss",
     "baseSpeed": 1.1,
-    "baseHp": 500,
+    "baseHp": 400,
     "reward": 100,
     "color": "0xf2e96d",
     "element": "physical",
