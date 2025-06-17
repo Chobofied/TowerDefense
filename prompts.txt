@@ -81,3 +81,18 @@ Ideas 5/4
 -Have enemy specifc waves (All Water,Earth, ect.), then a mixed wave, then just an air wave
 - Keep an information board to teh right showing the next 5 wave types to prepare the user
 - Upload to Gitlab io for web hosting 
+
+
+6/15/25
+
+Help me update my game
+
+- Reduce elements of the enemies to Fire,Water,Earth, and None to simplify. 
+- Change frost tower to slow tower without any element effects. 
+- Add Anti Air tower In the shop that does extra damage to flying units
+-Have enemy specifc waves (All Water,Earth, ect.), then a mixed wave, then just an air wave
+- Keep an information board to the right showing the next 5 wave types to prepare the user
+
+please be careful not to change any features or parameters you dont have to avoid other unexpected changes to the game, only perform the exact changes needed to perform my above request,only modify code directly related to my above request,Do not remove any existing functions unless explicitly mentioned
+
+Lets randomize the waves more and make most of them mixed. Also lets make the enemies spawn over alonger period of time
