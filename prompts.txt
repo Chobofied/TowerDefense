@@ -93,6 +93,15 @@ Help me update my game
 -Have enemy specifc waves (All Water,Earth, ect.), then a mixed wave, then just an air wave
 - Keep an information board to the right showing the next 5 wave types to prepare the user
 
-please be careful not to change any features or parameters you dont have to avoid other unexpected changes to the game, only perform the exact changes needed to perform my above request,only modify code directly related to my above request,Do not remove any existing functions unless explicitly mentioned
+
+
+please be careful not to change any features or parameters you dont have to avoid other unexpected changes to the game, only perform the exact changes needed to perform my above request,only modify code directly related to my above request,Do not remove any existing functions unless explicitly mentioned. please please please Do not delete unrelated code! Previous prompts you deleted/truncated hundreds of lines of code, please check that you dont do this
 
 Lets randomize the waves more and make most of them mixed. Also lets make the enemies spawn over alonger period of time
+
+6/16/25
+-Show more tower stats and enemies status pop up guide
+- Be able to buy lives back at a maximum of 20 for alot of gold
+- make it so you loose 3 lives if you dont kill the boss
+- make it so 1/3rd the enemies spawn in the air wave and they go half the speed
+- when upgrading slow tower, increase slow %

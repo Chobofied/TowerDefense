@@ -1480,6 +1480,26 @@ function spawnWave() {
             speed: BOSS_TYPE.baseSpeed * speedScale
         });
         count = 1; // Only one boss
+    } else if (wavePattern.name === "Air Wave") {
+        // Air Wave: Half the enemies at 1/3rd speed
+        count = Math.max(1, Math.floor(count / 2)); // Half the enemies, minimum 1
+        
+        // Regular wave - filter enemy types based on pattern
+        const patternEnemyNames = wavePattern.enemies;
+        
+        ENEMY_TYPES.forEach(enemy => {
+            if (patternEnemyNames.includes(enemy.name)) {
+                // Calculate HP and speed scaling based on wave number
+                const hpScale = 1 + (wave - 1) * enemy.waveScaling.hp;
+                const speedScale = 1 + (wave - 1) * enemy.waveScaling.speed;
+                
+                availableEnemyTypes.push({
+                    ...enemy,
+                    hp: Math.round(enemy.baseHp * hpScale),
+                    speed: (enemy.baseSpeed * speedScale) *.75, // Air enemies move slower
+                });
+            }
+        });
     } else {
         // Regular wave - filter enemy types based on pattern
         const patternEnemyNames = wavePattern.enemies;
@@ -2084,6 +2104,7 @@ function showTowerStats(tower, x, y) {
     const elementName = elementInfo.name;
     const elementColor = '#' + elementInfo.color.toString(16).padStart(6, '0');
     const elementEmoji = elementInfo.emoji || "";
+    
     
     let stats = [
         `Damage: ${minDamage}-${maxDamage}`,
