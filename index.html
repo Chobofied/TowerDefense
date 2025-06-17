@@ -1897,8 +1897,8 @@ function gameLoop(delta) {
                     applySlowEffect(p.target, p.originTower);
                 }
                 
-                // Check for splash damage (Missile tower)
-                if (p.towerType === "Missile" && p.originTower.type.splashRadius > 0) {
+                // Check for splash damage (Missile(Splash) tower)
+                if (p.towerType === "Missile(Splash)" && p.originTower.type.splashRadius > 0) {
                     // Create splash effect animation
                     splashEffects.push({
                         x: p.target.x,
@@ -2103,8 +2103,8 @@ function showTowerStats(tower, x, y) {
         stats.push(`Special: Only targets flying enemies`);
     }
     
-    // Add splash damage info for Missile Tower
-    if (tower.type.name === "Missile") {
+    // Add splash damage info for Missile(Splash) Tower
+    if (tower.type.name === "Missile(Splash)") {
         stats.push(`Splash: ${(tower.type.splashDamageRatio * 100).toFixed(0)}% damage in ${tower.type.splashRadius}px radius`);
     }
     

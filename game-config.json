@@ -12,10 +12,10 @@
       "name": "Cannon",
       "key": "Q",
       "color": "0x4e6fae",
-      "cost": 50,
+      "cost": 30,
       "range": 120,
       "fireRate": 0.8,
-      "damage": 18,
+      "damage": 5,
       "damageVariation": 0.2,
       "critChance": 0.1,
       "critMultiplier": 2.0,
@@ -28,14 +28,14 @@
       "cost": 70,
       "range": 50,
       "fireRate": 0.4,
-      "damage": 10,
+      "damage": 20,
       "damageVariation": 0.15,
       "critChance": 0.15,
       "critMultiplier": 1.8,
       "element": "physical"
     },
     {
-      "name": "Missile",
+      "name": "Missile(Splash)",
       "key": "E",
       "color": "0x6ede8a",
       "cost": 100,
@@ -60,10 +60,10 @@
       "name": "Anti-Air",
       "key": "A",
       "color": "0x9e6ede",
-      "cost": 80,
+      "cost": 75,
       "range": 200,
       "fireRate": 1.0,
-      "damage": 40,
+      "damage": 200,
       "damageVariation": 0.15,
       "critChance": 0.25,
       "critMultiplier": 2.2,
@@ -90,13 +90,13 @@
       "key": "T",
       "color": "0x8e44ad",
       "cost": 150,
-      "range": 200,
+      "range": 300,
       "fireRate": 2.0,
-      "damage": 80,
+      "damage": 70,
       "damageVariation": 0.15,
       "critChance": 0.3,
       "critMultiplier": 3.0,
-      "shopPrice": 500,
+      "shopPrice": 600,
       "element": "physical"
     },
     {
@@ -117,43 +117,43 @@
       "name": "Water",
       "key": "Y",
       "color": "0x0099ff",
-      "cost": 110,
-      "range": 100,
-      "fireRate": 0.5,
-      "damage": 15,
-      "damageVariation": 0.15,
-      "critChance": 0.12,
-      "critMultiplier": 1.8,
-      "shopPrice": 350,
+      "cost": 140,
+      "range": 85,
+      "fireRate": 0.3,
+      "damage": 12,
+      "damageVariation": 0.2,
+      "critChance": 0.15,
+      "critMultiplier": 1.7,
+      "shopPrice": 400,
       "element": "water"
     },
     {
       "name": "Earth",
       "key": "U",
       "color": "0x996633",
-      "cost": 130,
-      "range": 80,
-      "fireRate": 0.7,
-      "damage": 22,
-      "damageVariation": 0.1,
+      "cost": 140,
+      "range": 85,
+      "fireRate": 0.3,
+      "damage": 12,
+      "damageVariation": 0.2,
       "critChance": 0.15,
-      "critMultiplier": 2.0,
-      "shopPrice": 420,
+      "critMultiplier": 1.7,
+      "shopPrice": 400,
       "element": "earth"
     }
   ],
   "enemies": [
     {
       "name": "Fire",
-      "baseSpeed": 1.3,
-      "baseHp": 45,
-      "reward": 12,
+      "baseSpeed": 1.1,
+      "baseHp": 55,
+      "reward": 13,
       "color": "0xff4400",
       "element": "fire",
       "emoji": "🔥",
       "waveScaling": {
-        "hp": 0.11,
-        "speed": 0.03
+        "hp": 0.12,
+        "speed": 0.02
       },
       "elementalProperties": {
         "weaknesses": {
@@ -187,14 +187,14 @@
     },
     {
       "name": "Earth",
-      "baseSpeed": 0.9,
-      "baseHp": 70,
-      "reward": 15,
+      "baseSpeed": 1.1,
+      "baseHp": 55,
+      "reward": 13,
       "color": "0x996633",
       "element": "earth",
       "emoji": "🌲",
       "waveScaling": {
-        "hp": 0.14,
+        "hp": 0.12,
         "speed": 0.02
       },
       "elementalProperties": {
@@ -243,7 +243,7 @@
   "boss": {
     "name": "Boss",
     "baseSpeed": 1.1,
-    "baseHp": 400,
+    "baseHp": 500,
     "reward": 100,
     "color": "0xf2e96d",
     "element": "physical",
@@ -315,14 +315,14 @@
     {
       "name": "Damage Boost",
       "value": 0.3,
-      "duration": 10,
+      "duration": 20,
       "color": "0xff4500",
       "weight": 25
     },
     {
       "name": "Speed Boost",
       "value": 0.5,
-      "duration": 8,
+      "duration": 20,
       "color": "0x00ffff",
       "weight": 25
     }
@@ -331,12 +331,12 @@
     "key": "B",
     "speedMultiplier": 2.0,
     "duration": 5,
-    "cooldown": 30
+    "cooldown": 25
   },
   "bomb": {
     "name": "Explosive Bomb",
-    "shopPrice": 150,
-    "damage": 80,
+    "shopPrice": 300,
+    "damage": 300,
     "radius": 120,
     "explosionDuration": 0.5,
     "key": "X",
