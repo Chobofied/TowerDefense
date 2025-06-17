@@ -38,14 +38,16 @@
       "name": "Missile",
       "key": "E",
       "color": "0x6ede8a",
-      "cost": 90,
-      "range": 160,
+      "cost": 100,
+      "range": 120,
       "fireRate": 1.2,
-      "damage": 30,
+      "damage": 20,
       "damageVariation": 0.25,
       "critChance": 0.08,
       "critMultiplier": 2.5,
-      "element": "physical"
+      "element": "physical",
+      "splashRadius": 80,
+      "splashDamageRatio": 0.7
     }
   ],
   "slowTower": {

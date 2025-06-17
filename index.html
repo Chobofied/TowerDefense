@@ -526,7 +526,9 @@ async function loadConfig() {
             damageVariation: tower.damageVariation,
             critChance: tower.critChance,
             critMultiplier: tower.critMultiplier,
-            element: tower.element || "physical" // Default to physical
+            element: tower.element || "physical",
+            splashRadius: tower.splashRadius || 0,
+            splashDamageRatio: tower.splashDamageRatio || 0
         }));
         
         // Load shop towers
@@ -543,7 +545,9 @@ async function loadConfig() {
             critMultiplier: tower.critMultiplier,
             shopPrice: tower.shopPrice,
             element: tower.element || "physical",
-            flyingOnly: tower.flyingOnly || false
+            flyingOnly: tower.flyingOnly || false,
+            splashRadius: tower.splashRadius || 0,
+            splashDamageRatio: tower.splashDamageRatio || 0
         }));
         
         // Load bomb configuration
@@ -606,6 +610,7 @@ let damageNumbers = [];
 let items = []; 
 let activeEffects = [];
 let explosions = []; // Track active explosions
+let splashEffects = []; // Track splash animations
 let gold;
 let wave;
 let lives;
@@ -1604,6 +1609,26 @@ function gameLoop(delta) {
         }
     }
     
+    // Update splash effects
+    for (let i = splashEffects.length - 1; i >= 0; i--) {
+        const splash = splashEffects[i];
+        splash.duration--;
+        
+        // Grow the splash effect
+        if (splash.radius < splash.maxRadius) {
+            splash.radius += splash.maxRadius / 10;
+        }
+        
+        // Fade out toward the end
+        if (splash.duration < 20) {
+            splash.alpha = splash.duration / 20;
+        }
+        
+        if (splash.duration <= 0) {
+            splashEffects.splice(i, 1);
+        }
+    }
+    
     // Update sword swing animations
     for (let i = swordSwings.length - 1; i >= 0; i--) {
         const swing = swordSwings[i];
@@ -1872,6 +1897,38 @@ function gameLoop(delta) {
                     applySlowEffect(p.target, p.originTower);
                 }
                 
+                // Check for splash damage (Missile tower)
+                if (p.towerType === "Missile" && p.originTower.type.splashRadius > 0) {
+                    // Create splash effect animation
+                    splashEffects.push({
+                        x: p.target.x,
+                        y: p.target.y,
+                        radius: 0,
+                        maxRadius: p.originTower.type.splashRadius,
+                        alpha: 0.8,
+                        duration: 30,
+                        color: p.originTower.type.color
+                    });
+                    
+                    // Apply splash damage to nearby enemies
+                    enemies.filter(e => e.alive && e !== p.target).forEach(enemy => {
+                        const distance = Math.hypot(enemy.x - p.target.x, enemy.y - p.target.y);
+                        if (distance <= p.originTower.type.splashRadius) {
+                            const splashDamage = p.damage * p.originTower.type.splashDamageRatio;
+                            enemy.hp -= splashDamage;
+                            
+                            // Create splash damage number
+                            createSplashDamageNumber(enemy.x, enemy.y - 20, splashDamage);
+                            
+                            if (enemy.hp <= 0) {
+                                enemy.alive = false;
+                                gold += enemy.type.reward;
+                                tryDropItem(enemy.x, enemy.y);
+                            }
+                        }
+                    });
+                }
+                
                 if (p.target.hp <= 0) {
                     p.target.alive = false;
                     gold += p.target.type.reward;
@@ -2048,7 +2105,7 @@ function showTowerStats(tower, x, y) {
     
     // Add splash damage info for Missile Tower
     if (tower.type.name === "Missile") {
-        stats.push(`Splash: 70% damage in 80px radius`);
+        stats.push(`Splash: ${(tower.type.splashDamageRatio * 100).toFixed(0)}% damage in ${tower.type.splashRadius}px radius`);
     }
     
     stats.unshift(`Element: <span class="element-icon" style="background: ${elementColor}">${elementEmoji}</span> ${elementName}`);
@@ -2075,6 +2132,7 @@ function showTowerStats(tower, x, y) {
             tower.level++;
             updateUI();
             // Update the stats window with new values
+
             document.body.removeChild(statsWindow);
             showTowerStats(tower, x, y);
         }
@@ -2605,6 +2663,23 @@ function draw() {
             .drawCircle(explosion.x, explosion.y, explosion.radius * 0.8);
     }
     
+    // Draw splash effects
+    for (let splash of splashEffects) {
+        // Outer splash circle
+        graphics.beginFill(splash.color, splash.alpha * 0.3)
+            .drawCircle(splash.x, splash.y, splash.radius)
+            .endFill();
+            
+        // Inner bright core
+        graphics.beginFill(0xffffff, splash.alpha * 0.6)
+            .drawCircle(splash.x, splash.y, splash.radius * 0.4)
+            .endFill();
+            
+        // Add a ring at the edge of splash for better visual
+        graphics.lineStyle(2, splash.color, splash.alpha * 0.8)
+            .drawCircle(splash.x, splash.y, splash.radius * 0.8);
+    }
+    
     // Draw bomb placement preview
     if (placingBomb) {
         const mx = app.renderer.events.pointer.global?.x || 0;
@@ -2691,6 +2766,7 @@ function restartGame(clearStorage = true) {
     items = [];
     activeEffects = [];
     explosions = [];
+    splashEffects = []; // Clear splash effects
     enemySpawnQueue = []; // Clear spawn queue
     gold = CONFIG.gameSettings.startingGold;
     wave = 1;
@@ -2715,7 +2791,9 @@ function restartGame(clearStorage = true) {
         damageVariation: tower.damageVariation,
         critChance: tower.critChance,
         critMultiplier: tower.critMultiplier,
-        element: tower.element || "physical"
+        element: tower.element || "physical",
+        splashRadius: tower.splashRadius || 0,
+        splashDamageRatio: tower.splashDamageRatio || 0
     }));
     
     // Reset purchased towers array and clear storage if needed
