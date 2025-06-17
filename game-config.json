@@ -152,7 +152,7 @@
       "element": "fire",
       "emoji": "🔥",
       "waveScaling": {
-        "hp": 0.16,
+        "hp": 0.17,
         "speed": 0.025
       },
       "elementalProperties": {
@@ -173,7 +173,7 @@
       "element": "water",
       "emoji": "🌊",
       "waveScaling": {
-        "hp": 0.16,
+        "hp": 0.17,
         "speed": 0.025
       },
       "elementalProperties": {
@@ -194,7 +194,7 @@
       "element": "earth",
       "emoji": "🌲",
       "waveScaling": {
-        "hp": 0.16,
+        "hp": 0.17,
         "speed": 0.025
       },
       "elementalProperties": {
@@ -214,7 +214,7 @@
       "color": "0xcccccc",
       "element": "physical",
       "waveScaling": {
-        "hp": 0.16,
+        "hp": 0.17,
         "speed": 0.03
       },
       "elementalProperties": {
@@ -248,7 +248,7 @@
     "color": "0xf2e96d",
     "element": "physical",
     "waveScaling": {
-      "hp": 0.25,
+      "hp": 0.28,
       "speed": 0.03
     },
     "elementalProperties": {
