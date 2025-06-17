@@ -611,7 +611,7 @@ let wave;
 let lives;
 let placingTower = null;
 let selectedTowerType = -1;
-let selectedEnemy = null;
+let selectedEnemy = null; // Track selected enemy
 let isGameRunning = false;
 let pathGrid = [];
 let startTile;
@@ -1000,15 +1000,17 @@ function showStats(enemy) {
         }
     }
     
-    // Create HTML for enemy stats
+    // Create HTML for enemy stats with white text
     statsPanel.innerHTML = `
-        <b>${enemy.type.name} ${elementEmoji}</b><br>
-        <span class="element-icon" style="background: ${elementColor}">${elementEmoji}</span> ${elementName}<br>
-        HP: ${Math.ceil(enemy.hp)}/${enemy.maxHp}<br>
-        Speed: ${enemy.speed.toFixed(1)}<br>
-        Reward: ${enemy.type.reward}<br>
-        ${weaknessesText ? weaknessesText + "<br>" : ""}
-        ${resistancesText}
+        <div style="color: white;">
+            <b>${enemy.type.name} ${elementEmoji}</b><br>
+            <span class="element-icon" style="background: ${elementColor}">${elementEmoji}</span> ${elementName}<br>
+            HP: ${Math.ceil(enemy.hp)}/${enemy.maxHp}<br>
+            Speed: ${enemy.speed.toFixed(1)}<br>
+            Reward: ${enemy.type.reward}<br>
+            ${weaknessesText ? weaknessesText + "<br>" : ""}
+            ${resistancesText}
+        </div>
     `;
 }
 
@@ -1297,6 +1299,27 @@ function setupPlacementHandlers() {
         if (placingBomb) {
             placeBomb(mx, my);
             return;
+        }
+        
+        // Check for enemy selection first (before tower selection)
+        let clickedEnemy = null;
+        for (let enemy of enemies) {
+            if (!enemy.alive) continue;
+            let r = enemy.type.name === "Boss" ? TILE_SIZE/1.7 : TILE_SIZE/2.5;
+            if (Math.hypot(enemy.x - mx, enemy.y - my) < r) {
+                clickedEnemy = enemy;
+                break;
+            }
+        }
+        
+        if (clickedEnemy) {
+            selectedEnemy = clickedEnemy;
+            showStats(selectedEnemy);
+            return; // Don't process other clicks when selecting enemy
+        } else {
+            // Clear enemy selection when clicking elsewhere
+            selectedEnemy = null;
+            hideStats();
         }
         
         // If clicking on a tower, select it and show stats
@@ -1873,6 +1896,12 @@ function gameLoop(delta) {
             app.stage.removeChild(e.emojiText);
             e.emojiText = null;
         }
+        
+        // Clear selected enemy if it dies
+        if (selectedEnemy === e) {
+            selectedEnemy = null;
+            hideStats();
+        }
     });
     // Then filter out dead enemies
     enemies = enemies.filter(e => e.alive);
@@ -2004,7 +2033,7 @@ function showTowerStats(tower, x, y) {
         `Critical Hit: ${critChance.toFixed(1)}% chance (×${critMultiplier})`,
         `Range: ${tower.type.range}`,
         `Fire Rate: ${(1 / tower.type.fireRate).toFixed(1)}/sec`,
-        `DPS: ${damagePerSec.toFixed(1)}`
+        `DPS: ${damagePerSec.toFixed(1)}`,
     ];
     
     // Add slow effect info for Slow Tower
@@ -2015,6 +2044,11 @@ function showTowerStats(tower, x, y) {
     // Add special targeting info for Anti-Air
     if (tower.type.name === "Anti-Air") {
         stats.push(`Special: Only targets flying enemies`);
+    }
+    
+    // Add splash damage info for Missile Tower
+    if (tower.type.name === "Missile") {
+        stats.push(`Splash: 70% damage in 80px radius`);
     }
     
     stats.unshift(`Element: <span class="element-icon" style="background: ${elementColor}">${elementEmoji}</span> ${elementName}`);
@@ -2177,6 +2211,34 @@ function createDamageNumber(x, y, damage, isCritical = false, elementalEffect = 
     });
 }
 
+// --- Splash Damage Numbers ---
+function createSplashDamageNumber(x, y, damage) {
+    // Add random horizontal offset and velocity for bounce effect
+    const randX = (Math.random() - 0.5) * 30;
+    const randYVel = -1.5 - Math.random() * 1.5; // Slightly less upward velocity
+    
+    // Splash damage numbers are orange/yellow
+    const color = 0xffaa00;
+    
+    // Prepare text for display
+    let displayText = Math.floor(damage).toString();
+    
+    damageNumbers.push({
+        x: x + randX,
+        y: y,
+        damage: damage,
+        displayText: displayText,
+        color: color,
+        alpha: 1,
+        life: 35, // Shorter lifetime than regular damage numbers
+        isCritical: false, // Splash damage is never critical
+        elementalEffect: "splash",
+        xVel: (Math.random() - 0.5) * 1.2, // Slightly less horizontal velocity
+        yVel: randYVel,
+        textObj: null // Will be assigned from pool during rendering
+    });
+}
+
 // --- Wave Information Functions ---
 let cachedWavePatterns = {}; // Cache wave patterns so they don't change
 
@@ -2198,9 +2260,6 @@ function getWavePattern(waveNumber) {
     }
     // For all other waves, use a seeded random based on wave number
     else {
-        // Use wave number as seed for consistent randomization
-        //const seed = waveNumber * 9301 + 49297; // Simple linear congruential generator seed
-        //const random = (seed % 233280) / 233280;
         const random = Math.random();
         
         if (random < WAVE_PATTERNS.mixedWaveChance) {
@@ -2372,8 +2431,13 @@ function draw() {
             graphics.drawCircle(e.x, e.y, TILE_SIZE/1.7);
         }
         
+        // Draw yellow selection circle for selected enemy
+        if (selectedEnemy === e) {
+            graphics.lineStyle(3, 0xffff00, 0.8); // Yellow circle
+            graphics.drawCircle(e.x, e.y, (e.type.name === "Boss" ? TILE_SIZE/1.5 : TILE_SIZE/2.2) + 5);
+        }
+        
         // Draw slowed effect if enemy is slowed
-
         if (e.slowed) {
             // Draw frost effect around the enemy
             const pulseAmount = 0.5 + Math.sin(Date.now() / 300) * 0.2; // Pulsing effect
@@ -2566,6 +2630,9 @@ function draw() {
 
 // --- Enemy Stats Hover ---
 app.view.addEventListener('mousemove', e => {
+    // Only show hover stats if no enemy is currently selected
+    if (selectedEnemy) return;
+    
     const rect = app.view.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
@@ -2624,12 +2691,14 @@ function restartGame(clearStorage = true) {
     items = [];
     activeEffects = [];
     explosions = [];
+    enemySpawnQueue = []; // Clear spawn queue
     gold = CONFIG.gameSettings.startingGold;
     wave = 1;
     lives = CONFIG.gameSettings.startingLives;
     isGameRunning = false;
     bombCount = 0;
     placingBomb = false;
+    spawningWave = false; // Reset spawning flag
     
     // Clear cached wave patterns when restarting
     cachedWavePatterns = {};
