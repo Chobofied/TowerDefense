@@ -416,6 +416,46 @@
             width: 260px;
             pointer-events: auto;
         }
+        
+        /* Tower tooltip styles */
+        #tower-tooltip {
+            position: absolute;
+            background: rgba(30,34,44,0.98);
+            border-radius: 8px;
+            padding: 12px;
+            color: white;
+            z-index: 1000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            font-size: 12px;
+            max-width: 250px;
+            border: 1px solid #4e6fae;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+        
+        #tower-tooltip .tooltip-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #6e8fde;
+        }
+        
+        #tower-tooltip .tooltip-stats {
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+        
+        #tower-tooltip .tooltip-description {
+            font-style: italic;
+            margin-bottom: 5px;
+            color: #ccc;
+        }
+        
+        #tower-tooltip .tooltip-tips {
+            color: #88dd88;
+            font-size: 11px;
+        }
     </style>
 </head>
 <body>
@@ -462,6 +502,9 @@
         <button class="shop-close">×</button>
         <div id="shop-content"></div>
     </div>
+    
+    <!-- Tower Tooltip -->
+    <div id="tower-tooltip"></div>
     
     <script>
 // --- Load Game Configuration ---
@@ -1029,6 +1072,11 @@ function renderTowerSelect() {
     TOWER_TYPES.forEach((t, i) => {
         const btn = document.createElement('button');
         btn.className = 'tower-btn' + (selectedTowerType === i ? ' selected' : '');
+        
+        // Get configuration data for tooltips
+        const configTower = CONFIG.towers.find(ct => ct.name === t.name) || 
+                           CONFIG.shopTowers.find(st => st.name === t.name);
+        
         // Condensed text layout with tighter spacing
         btn.innerHTML = `<div style="text-align: center; line-height: 1.1;">
             <div style="font-weight: bold; margin-bottom: 1px;">${t.name}</div>
@@ -1044,10 +1092,76 @@ function renderTowerSelect() {
             }
             renderTowerSelect();
         };
+        
+        // Add hover tooltip functionality
+        btn.addEventListener('mouseenter', (e) => {
+            showTowerTooltip(t, configTower, e.pageX, e.pageY);
+        });
+        
+        btn.addEventListener('mouseleave', () => {
+            hideTowerTooltip();
+        });
+        
         towerSelect.appendChild(btn);
     });
 }
 
+// --- Tower Tooltip Functions ---
+function showTowerTooltip(tower, configTower, x, y) {
+    const tooltip = document.getElementById('tower-tooltip');
+    
+    // Calculate detailed stats
+    const baseDamage = tower.damage;
+    const variation = tower.damageVariation;
+    const minDamage = Math.floor(baseDamage * (1 - variation));
+    const maxDamage = Math.ceil(baseDamage * (1 + variation));
+    const critChance = tower.critChance * 100;
+    const damagePerSec = baseDamage / tower.fireRate;
+    
+    // Get element info
+    const elementInfo = ELEMENTS[tower.element] || { name: "Physical", color: "0xcccccc" };
+    const elementName = elementInfo.name;
+    const elementEmoji = elementInfo.emoji || "";
+    
+    // Build special abilities text
+    let specialText = "";
+    if (tower.name === "Slow") {
+        specialText = `<br><strong>Slow:</strong> ${SLOW_CONFIG.slowAmount * 100}% for ${SLOW_CONFIG.slowDuration}s`;
+    }
+    if (tower.flyingOnly) {
+        specialText = `<br><strong>Special:</strong> Only targets flying enemies`;
+    }
+    if (tower.splashRadius > 0) {
+        specialText = `<br><strong>Splash:</strong> ${(tower.splashDamageRatio * 100).toFixed(0)}% damage, ${tower.splashRadius}px radius`;
+    }
+    if (tower.name === "Melee") {
+        specialText = `<br><strong>Special:</strong> Hits all nearby ground enemies`;
+    }
+    
+    tooltip.innerHTML = `
+        <div class="tooltip-title">${tower.name} Tower [${tower.key}]</div>
+        <div class="tooltip-stats">
+            <strong>Element:</strong> ${elementEmoji} ${elementName}<br>
+            <strong>Damage:</strong> ${minDamage}-${maxDamage} | <strong>DPS:</strong> ${damagePerSec.toFixed(1)}<br>
+            <strong>Range:</strong> ${tower.range} | <strong>Crit:</strong> ${critChance.toFixed(0)}%<br>
+            <strong>Cost:</strong> ${tower.cost} gold${specialText}
+        </div>
+        ${configTower && configTower.description ? `<div class="tooltip-description">${configTower.description}</div>` : ''}
+        ${configTower && configTower.tips ? `<div class="tooltip-tips">💡 ${configTower.tips}</div>` : ''}
+    `;
+    
+    // Position tooltip
+    tooltip.style.left = (x + 10) + 'px';
+    tooltip.style.top = (y - 10) + 'px';
+    tooltip.style.opacity = '1';
+}
+
+function hideTowerTooltip() {
+    const tooltip = document.getElementById('tower-tooltip');
+    tooltip.style.opacity = '0';
+}
+
+// --- Game Handlers ---
 function setupGameHandlers() {
     // --- Boost Button Handler ---
     boostBtn.addEventListener('click', activateBoost);

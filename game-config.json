@@ -19,7 +19,9 @@
       "damageVariation": 0.2,
       "critChance": 0.1,
       "critMultiplier": 2.0,
-      "element": "physical"
+      "element": "physical",
+      "description": "Basic ranged tower with balanced stats",
+      "tips": "Good all-around starter tower, affordable and reliable"
     },
     {
       "name": "Melee",
@@ -32,7 +34,9 @@
       "damageVariation": 0.15,
       "critChance": 0.15,
       "critMultiplier": 1.8,
-      "element": "physical"
+      "element": "physical",
+      "description": "Close-range tower that hits all nearby ground enemies",
+      "tips": "Great for chokepoints, can't target flying enemies"
     },
     {
       "name": "Missile(Splash)",
@@ -47,7 +51,9 @@
       "critMultiplier": 2.5,
       "element": "physical",
       "splashRadius": 80,
-      "splashDamageRatio": 0.7
+      "splashDamageRatio": 0.7,
+      "description": "Explosive missiles that deal splash damage to nearby enemies",
+      "tips": "Best against groups of enemies, slower fire rate but area damage"
     }
   ],
   "slowTower": {
@@ -69,7 +75,9 @@
       "critMultiplier": 2.2,
       "shopPrice": 200,
       "element": "physical",
-      "flyingOnly": true
+      "flyingOnly": true,
+      "description": "Specialized tower that only targets flying enemies",
+      "tips": "Essential for air waves, useless against ground enemies"
     },
     {
       "name": "Slow",
@@ -83,7 +91,9 @@
       "critChance": 0.1,
       "critMultiplier": 1.5,
       "shopPrice": 250,
-      "element": "slow"
+      "element": "slow",
+      "description": "Applies slow effect to enemies, reducing their movement speed",
+      "tips": "Great support tower, pairs well with high-damage towers"
     },
     {
       "name": "Sniper",
@@ -97,7 +107,9 @@
       "critChance": 0.3,
       "critMultiplier": 3.0,
       "shopPrice": 600,
-      "element": "physical"
+      "element": "physical",
+      "description": "Long-range tower with high damage and critical hit chance",
+      "tips": "Excellent for picking off strong enemies from far away"
     },
     {
       "name": "Fire",
@@ -111,7 +123,9 @@
       "critChance": 0.15,
       "critMultiplier": 1.7,
       "shopPrice": 400,
-      "element": "fire"
+      "element": "fire",
+      "description": "Fire elemental tower, strong against earth enemies",
+      "tips": "Weak against water enemies, strong against earth enemies"
     },
     {
       "name": "Water",
@@ -125,7 +139,9 @@
       "critChance": 0.15,
       "critMultiplier": 1.7,
       "shopPrice": 400,
-      "element": "water"
+      "element": "water",
+      "description": "Water elemental tower, strong against fire enemies",
+      "tips": "Weak against earth enemies, strong against fire enemies"
     },
     {
       "name": "Earth",
@@ -139,7 +155,9 @@
       "critChance": 0.15,
       "critMultiplier": 1.7,
       "shopPrice": 400,
-      "element": "earth"
+      "element": "earth",
+      "description": "Earth elemental tower, strong against water enemies",
+      "tips": "Weak against fire enemies, strong against water enemies"
     }
   ],
   "enemies": [
