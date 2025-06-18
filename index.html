@@ -900,19 +900,51 @@ function renderShop() {
         nameDiv.className = 'shop-tower-name';
         nameDiv.textContent = `${tower.name} Tower [${tower.key}]`;
         
+        // Enhanced stats display with same format as tooltips
         const statsDiv = document.createElement('div');
         statsDiv.className = 'shop-tower-stats';
         
-        // Add element info to stats
+        // Calculate detailed stats (same as tooltip)
+        const baseDamage = tower.damage;
+        const variation = tower.damageVariation;
+        const minDamage = Math.floor(baseDamage * (1 - variation));
+        const maxDamage = Math.ceil(baseDamage * (1 + variation));
+        const critChance = tower.critChance * 100;
+        const damagePerSec = baseDamage / tower.fireRate;
+        
+        // Get element info for detailed stats (renamed to avoid conflict)
+        const detailedElementInfo = ELEMENTS[tower.element] || { name: "Physical", color: "0xcccccc" };
+        const elementName = detailedElementInfo.name;
+        const elementEmoji = detailedElementInfo.emoji || "";
+        
+        // Build element text
         let elementText = "";
         if (tower.element && tower.element !== "physical") {
-            const elementInfo = ELEMENTS[tower.element] || { name: tower.element };
-            elementText = `<span class="element-icon" style="background: #${tower.color.toString(16).padStart(6, '0')}">${elementInfo.emoji || ""}</span> ${elementInfo.name || tower.element} | `;
+            elementText = `<span class="element-icon" style="background: #${tower.color.toString(16).padStart(6, '0')}">${elementEmoji}</span> ${elementName}<br>`;
         }
         
+        // Build special abilities text
+        let specialText = "";
+        if (tower.name === "Slow") {
+            specialText = `<strong>Slow:</strong> ${SLOW_CONFIG.slowAmount * 100}% for ${SLOW_CONFIG.slowDuration}s<br>`;
+        }
+        if (tower.flyingOnly) {
+            specialText = `<strong>Special:</strong> Only targets flying enemies<br>`;
+        }
+        if (tower.splashRadius > 0) {
+            specialText = `<strong>Splash:</strong> ${(tower.splashDamageRatio * 100).toFixed(0)}% damage, ${tower.splashRadius}px radius<br>`;
+        }
+        
+        // Get config tower for description and tips
+        const configTower = CONFIG.shopTowers.find(ct => ct.name === tower.name);
+        
         statsDiv.innerHTML = `
-            ${elementText}Damage: ${tower.damage} | Range: ${tower.range}<br>
-            Fire Rate: ${(1/tower.fireRate).toFixed(1)}/sec | Crit: ${(tower.critChance*100).toFixed(0)}%
+            <div style="font-style: italic; color: #aaa; margin-bottom: 5px;">${configTower && configTower.description ? configTower.description : ''}</div>
+            ${elementText}
+            <strong>Damage:</strong> ${minDamage}-${maxDamage} | <strong>DPS:</strong> ${damagePerSec.toFixed(1)}<br>
+            <strong>Range:</strong> ${tower.range} | <strong>Crit:</strong> ${critChance.toFixed(0)}%<br>
+            ${specialText}
+            <div style="color: #88dd88; font-size: 11px; margin-top: 3px;"><strong>Tips:</strong> ${configTower && configTower.tips ? configTower.tips : ''}</div>
         `;
         
         const priceButton = document.createElement('button');
