@@ -163,14 +163,14 @@
   "enemies": [
     {
       "name": "Fire",
-      "baseSpeed": 1.1,
-      "baseHp": 55,
+      "baseSpeed": 1.0,
+      "baseHp": 45,
       "reward": 13,
       "color": "0xff4400",
       "element": "fire",
       "emoji": "🔥",
       "waveScaling": {
-        "hp": 0.17,
+        "hp": 0.19,
         "speed": 0.025
       },
       "elementalProperties": {
@@ -184,14 +184,14 @@
     },
     {
       "name": "Water",
-      "baseSpeed": 1.1,
-      "baseHp": 55,
+      "baseSpeed": 1.0,
+      "baseHp": 45,
       "reward": 13,
       "color": "0x0099ff",
       "element": "water",
       "emoji": "🌊",
       "waveScaling": {
-        "hp": 0.17,
+        "hp": 0.19,
         "speed": 0.025
       },
       "elementalProperties": {
@@ -205,14 +205,14 @@
     },
     {
       "name": "Earth",
-      "baseSpeed": 1.1,
-      "baseHp": 55,
+      "baseSpeed": 1.0,
+      "baseHp": 45,
       "reward": 13,
       "color": "0x996633",
       "element": "earth",
       "emoji": "🌲",
       "waveScaling": {
-        "hp": 0.17,
+        "hp": 0.19,
         "speed": 0.025
       },
       "elementalProperties": {
@@ -227,12 +227,12 @@
     {
       "name": "Normal",
       "baseSpeed": 1.2,
-      "baseHp": 50,
+      "baseHp": 45,
       "reward": 12,
       "color": "0xcccccc",
       "element": "physical",
       "waveScaling": {
-        "hp": 0.17,
+        "hp": 0.19,
         "speed": 0.03
       },
       "elementalProperties": {
@@ -242,14 +242,14 @@
     },
     {
       "name": "Flying",
-      "baseSpeed": 1.5,
+      "baseSpeed": 1.2,
       "baseHp": 30,
       "reward": 12,
       "color": "0xaaddff",
       "flying": true,
       "element": "physical",
       "waveScaling": {
-        "hp": 0.12,
+        "hp": 0.13,
         "speed": 0.03
       },
       "elementalProperties": {
@@ -261,12 +261,12 @@
   "boss": {
     "name": "Boss",
     "baseSpeed": 1.1,
-    "baseHp": 400,
+    "baseHp": 300,
     "reward": 100,
     "color": "0xf2e96d",
     "element": "physical",
     "waveScaling": {
-      "hp": 0.28,
+      "hp": 0.34,
       "speed": 0.03
     },
     "elementalProperties": {
