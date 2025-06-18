@@ -191,7 +191,7 @@
       "element": "water",
       "emoji": "🌊",
       "waveScaling": {
-        "hp": 0.19,
+        "hp": 0.20,
         "speed": 0.025
       },
       "elementalProperties": {
@@ -212,7 +212,7 @@
       "element": "earth",
       "emoji": "🌲",
       "waveScaling": {
-        "hp": 0.19,
+        "hp": 0.20,
         "speed": 0.025
       },
       "elementalProperties": {
@@ -232,7 +232,7 @@
       "color": "0xcccccc",
       "element": "physical",
       "waveScaling": {
-        "hp": 0.19,
+        "hp": 0.20,
         "speed": 0.03
       },
       "elementalProperties": {
