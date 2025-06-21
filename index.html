@@ -25,124 +25,134 @@
         @media (max-width: 768px) {
             #ui-right-panel {
                 position: absolute;
-                top: auto;
                 bottom: 0;
                 left: 0;
                 right: 0;
-                transform: none;
                 width: 100%;
                 height: auto;
-                max-height: 40vh;
+                max-height: 35vh;
                 display: flex;
-                flex-direction: row;
-                flex-wrap: wrap;
-                align-items: flex-start;
-                gap: 4px;
+                flex-direction: column;
+                gap: 6px;
                 z-index: 20;
                 pointer-events: auto;
                 overflow-y: auto;
-                overflow-x: hidden;
                 padding: 8px;
                 box-sizing: border-box;
-                background: rgba(24, 28, 37, 0.9);
+                background: rgba(24, 28, 37, 0.95);
+                border-top: 2px solid #4e6fae;
+            }
+            
+            /* Top row with stats and wave info */
+            .mobile-top-row {
+                display: flex;
+                gap: 6px;
+                width: 100%;
             }
             
             #live-stats {
                 position: static;
                 background: rgba(30,34,44,0.95);
                 border-radius: 6px;
-                box-shadow: 0 2px 16px #0008;
+                box-shadow: 0 2px 8px #0004;
                 color: #fff;
-                padding: 6px 12px;
-                font-size: 0.9em;
-                z-index: 10;
+                padding: 8px 12px;
+                font-size: 0.85em;
                 margin: 0;
                 pointer-events: auto;
-                width: calc(50% - 2px);
-                flex: 0 0 auto;
+                flex: 1;
+                min-width: 0;
             }
             
             #wave-info-panel {
                 position: static;
                 background: rgba(30,34,44,0.95);
                 border-radius: 6px;
-                box-shadow: 0 2px 16px #0008;
+                box-shadow: 0 2px 8px #0004;
                 color: #fff;
-                padding: 6px 12px;
+                padding: 8px 12px;
                 margin: 0;
                 pointer-events: auto;
-                width: calc(50% - 2px);
-                flex: 0 0 auto;
+                flex: 1;
+                min-width: 0;
             }
             
+            /* Second row with bomb UI */
             #bomb-ui {
                 background: rgba(30,34,44,0.95);
                 border-radius: 6px;
-                box-shadow: 0 2px 16px #0008;
+                box-shadow: 0 2px 8px #0004;
                 color: #fff;
-                padding: 6px 12px;
+                padding: 8px 12px;
                 margin: 0;
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
                 pointer-events: auto;
-                width: calc(33.33% - 3px);
-                flex: 0 0 auto;
+                width: 100%;
+                box-sizing: border-box;
             }
             
+            /* Third row with tower selection */
             #tower-select {
                 position: static;
                 display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-                gap: 4px;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 6px;
                 z-index: 10;
                 pointer-events: auto;
-                width: calc(66.67% - 3px);
-                flex: 0 0 auto;
+                width: 100%;
             }
             
+            /* Fourth row with action buttons */
             .button-container {
                 display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-                gap: 4px;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 6px;
                 width: 100%;
                 pointer-events: auto;
-                flex: 0 0 auto;
             }
             
             .tower-btn {
                 background: rgba(30,34,44,0.95);
                 border: 2px solid #4e6fae;
-                border-radius: 6px;
+                border-radius: 8px;
                 color: #fff;
-                padding: 8px 4px;
+                padding: 12px 8px;
                 margin: 0;
                 cursor: pointer;
                 transition: all 0.2s;
-                font-size: 0.7em;
-                min-height: 60px;
+                font-size: 0.75em;
+                min-height: 70px;
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
                 align-items: center;
-                line-height: 1.1;
+                line-height: 1.2;
                 touch-action: manipulation;
+                font-weight: bold;
+            }
+            
+            .tower-btn.selected {
+                border-color: #6ede8a;
+                background: rgba(110, 222, 138, 0.2);
             }
             
             #start-btn, #end-btn, #next-wave-btn, #boost-btn, #shop-btn {
                 background: #4e6fae;
                 border: none;
-                border-radius: 6px;
+                border-radius: 8px;
                 color: #fff;
-                font-size: 0.8em;
-                padding: 12px 8px;
+                font-size: 0.9em;
+                font-weight: bold;
+                padding: 16px 12px;
                 margin: 0;
                 cursor: pointer;
                 transition: background 0.2s;
                 pointer-events: auto;
                 text-align: center;
                 touch-action: manipulation;
-                min-height: 44px;
+                min-height: 50px;
             }
             
             #place-bomb-btn {
@@ -150,12 +160,18 @@
                 border: none;
                 border-radius: 6px;
                 color: #fff;
-                padding: 8px 12px;
+                padding: 10px 16px;
                 cursor: pointer;
                 transition: background 0.2s;
-                font-size: 0.7em;
+                font-size: 0.8em;
+                font-weight: bold;
                 touch-action: manipulation;
                 min-height: 44px;
+            }
+            
+            #end-btn {
+                background: #de6e6e;
+                grid-column: span 2;
             }
         }
         
@@ -164,7 +180,7 @@
             #ui-right-panel {
                 position: absolute;
                 top: 50%;
-                left: calc(50% + 384px);
+                left: calc(50% + 400px);
                 transform: translateY(-50%);
                 width: 300px;
                 height: 768px;
@@ -176,6 +192,10 @@
                 pointer-events: auto;
                 overflow-y: auto;
                 overflow-x: hidden;
+            }
+            
+            .mobile-top-row {
+                display: contents;
             }
             
             #live-stats {
@@ -610,7 +630,8 @@
             height: 100%;
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start;
+            padding-top: 10px;
         }
         
         /* Mobile adjustments for modals */
@@ -639,17 +660,19 @@
     <div id="game-ui">
         <div id="message-container"></div>
         <div id="ui-right-panel">
-            <div class="ui-panel" id="live-stats">
-                <span>Wave: <span id="wave-num">1</span></span> |
-                <span>Gold: <span id="gold">500</span></span><br>
-                <span>Lives: <span id="lives">20</span></span> |
-                <span>Left: <span id="enemies-left">0</span></span>
-            </div>
-            
-            <!-- Wave Information Panel -->
-            <div id="wave-info-panel">
-                <div id="wave-info-title">Next Waves</div>
-                <div id="wave-info-content"></div>
+            <div class="mobile-top-row">
+                <div class="ui-panel" id="live-stats">
+                    <span>Wave: <span id="wave-num">1</span></span> |
+                    <span>Gold: <span id="gold">500</span></span><br>
+                    <span>Lives: <span id="lives">20</span></span> |
+                    <span>Left: <span id="enemies-left">0</span></span>
+                </div>
+                
+                <!-- Wave Information Panel -->
+                <div id="wave-info-panel">
+                    <div id="wave-info-title">Next Waves</div>
+                    <div id="wave-info-content"></div>
+                </div>
             </div>
             
             <!-- Bomb UI section -->
@@ -883,7 +906,7 @@ const app = new PIXI.Application({
 document.body.appendChild(app.view);
 
 function initGame() {
-    // Set canvas dimensions from configuration with responsive scaling
+    // Set canvas dimensions with better mobile scaling
     const maxWidth = window.innerWidth;
     const maxHeight = window.innerHeight;
     const isMobile = window.innerWidth <= 768;
@@ -891,16 +914,27 @@ function initGame() {
     let canvasWidth, canvasHeight;
     
     if (isMobile) {
-        // On mobile, adjust canvas size to fit screen better
-        const aspectRatio = MAP_WIDTH / MAP_HEIGHT;
-        const availableHeight = maxHeight * 0.6; // Leave space for UI at bottom
+        // On mobile, calculate available space for the game area
+        const uiHeight = Math.min(maxHeight * 0.35, 300); // UI takes max 35% or 300px
+        const availableHeight = maxHeight - uiHeight - 40; // Leave more padding for UI
+        const availableWidth = maxWidth - 40; // Leave padding on sides
         
-        if (maxWidth / aspectRatio <= availableHeight) {
-            canvasWidth = maxWidth;
-            canvasHeight = maxWidth / aspectRatio;
+        const aspectRatio = MAP_WIDTH / MAP_HEIGHT;
+        
+        // Scale down more aggressively to ensure entire map is visible
+        if (availableWidth / aspectRatio <= availableHeight) {
+            canvasWidth = Math.min(availableWidth, MAP_WIDTH * 0.8); // Cap at 80% of original size
+            canvasHeight = canvasWidth / aspectRatio;
         } else {
-            canvasHeight = availableHeight;
-            canvasWidth = availableHeight * aspectRatio;
+            canvasHeight = Math.min(availableHeight, MAP_HEIGHT * 0.8); // Cap at 80% of original size
+            canvasWidth = canvasHeight * aspectRatio;
+        }
+        
+        // Ensure we can see the entire 16x16 grid by setting minimum scale
+        const minScaleToSeeAll = Math.min(availableWidth / MAP_WIDTH, availableHeight / MAP_HEIGHT);
+        if (canvasWidth / MAP_WIDTH > minScaleToSeeAll) {
+            canvasWidth = MAP_WIDTH * minScaleToSeeAll * 0.9; // 90% to ensure margins
+            canvasHeight = MAP_HEIGHT * minScaleToSeeAll * 0.9;
         }
     } else {
         canvasWidth = MAP_WIDTH;
@@ -912,7 +946,7 @@ function initGame() {
     app.view.style.margin = '0 auto';
     app.view.style.position = 'absolute';
     app.view.style.left = '50%';
-    app.view.style.top = isMobile ? '10%' : '50%';
+    app.view.style.top = isMobile ? '20px' : '50%';
     app.view.style.transform = isMobile ? 'translateX(-50%)' : 'translate(-50%, -50%)';
     
     // Store scale factor for touch/click coordinate conversion
@@ -1631,8 +1665,14 @@ function setupPlacementHandlers() {
             clientY = e.clientY;
         }
         
-        const mx = (clientX - rect.left) / (window.gameScaleX || 1);
-        const my = (clientY - rect.top) / (window.gameScaleY || 1);
+        // More precise coordinate conversion that accounts for canvas scaling and positioning
+        const canvasX = clientX - rect.left;
+        const canvasY = clientY - rect.top;
+        
+        // Convert canvas coordinates to game world coordinates
+        const mx = canvasX * (MAP_WIDTH / rect.width);
+        const my = canvasY * (MAP_HEIGHT / rect.height);
+        
         return { mx, my };
     }
     
@@ -2074,6 +2114,8 @@ function gameLoop(delta) {
     for (let enemy of enemies) {
         if (!enemy.alive) continue;
         
+ 
+        
         // Update slowed status if present
         if (enemy.slowed) {
             enemy.slowed.duration -= delta;
@@ -2456,7 +2498,7 @@ function showTowerStats(tower, x, y) {
     statsWindow.style.color = '#fff';
     statsWindow.style.padding = '15px 20px';
     statsWindow.style.borderRadius = '8px';
-    statsWindow.style.boxShadow = '0 2px 24px #0008';
+    statsWindow.style.boxShadow = '0 2px 24px #000a';
     statsWindow.style.zIndex = '1000';
     statsWindow.style.minWidth = '200px';
     statsWindow.style.pointerEvents = 'auto';
@@ -3096,35 +3138,86 @@ function draw() {
             .drawCircle(splash.x, splash.y, splash.radius * 0.8);
     }
     
-    // Draw bomb placement preview
+    // Draw bomb placement preview with corrected coordinates
     if (placingBomb) {
-        const mx = app.renderer.events.pointer.global?.x || 0;
-        const my = app.renderer.events.pointer.global?.y || 0;
-        
-        // Draw bomb radius preview
-        graphics.lineStyle(2, BOMB_CONFIG.color, 0.8)
-            .drawCircle(mx, my, BOMB_CONFIG.radius);
-            
-        // Draw bomb icon
-        graphics.beginFill(BOMB_CONFIG.color, 0.7)
-            .drawCircle(mx, my, 20)
-            .endFill();
-            
-        // Add crosshair to help with aiming
-        graphics.lineStyle(2, 0xffffff, 0.8)
-            .moveTo(mx - 10, my)
-            .lineTo(mx + 10, my)
-            .moveTo(mx, my - 10)
-            .lineTo(mx, my + 10);
+        // Store the last known mouse/touch position for bomb preview
+        if (window.lastTouchX !== undefined && window.lastTouchY !== undefined) {
+            // Draw bomb radius preview
+            graphics.lineStyle(2, BOMB_CONFIG.color, 0.8)
+                .drawCircle(window.lastTouchX, window.lastTouchY, BOMB_CONFIG.radius);
+                
+            // Draw bomb icon
+            graphics.beginFill(BOMB_CONFIG.color, 0.7)
+                .drawCircle(window.lastTouchX, window.lastTouchY, 20)
+                .endFill();
+                
+            // Add crosshair to help with aiming
+            graphics.lineStyle(2, 0xffffff, 0.8)
+                .moveTo(window.lastTouchX - 10, window.lastTouchY)
+                .lineTo(window.lastTouchX + 10, window.lastTouchY)
+                .moveTo(window.lastTouchX, window.lastTouchY - 10)
+                .lineTo(window.lastTouchX, window.lastTouchY + 10);
+        }
     }
 }
 
-// --- Enemy Stats Hover ---
+// Handle window resize for responsive design
+window.addEventListener('resize', () => {
+    if (typeof initGame === 'function') {
+        // Reinitialize canvas sizing on resize
+        const maxWidth = window.innerWidth;
+        const maxHeight = window.innerHeight;
+        const isMobile = window.innerWidth <= 768;
+        
+        let canvasWidth, canvasHeight;
+        
+        if (isMobile) {
+            const uiHeight = Math.min(maxHeight * 0.35, 300);
+            const availableHeight = maxHeight - uiHeight - 40;
+            const availableWidth = maxWidth - 40;
+            
+            const aspectRatio = MAP_WIDTH / MAP_HEIGHT;
+            
+            if (availableWidth / aspectRatio <= availableHeight) {
+                canvasWidth = Math.min(availableWidth, MAP_WIDTH * 0.8);
+                canvasHeight = canvasWidth / aspectRatio;
+            } else {
+                canvasHeight = Math.min(availableHeight, MAP_HEIGHT * 0.8);
+                canvasWidth = canvasHeight * aspectRatio;
+            }
+            
+            const minScaleToSeeAll = Math.min(availableWidth / MAP_WIDTH, availableHeight / MAP_HEIGHT);
+            if (canvasWidth / MAP_WIDTH > minScaleToSeeAll) {
+                canvasWidth = MAP_WIDTH * minScaleToSeeAll * 0.9;
+                canvasHeight = MAP_HEIGHT * minScaleToSeeAll * 0.9;
+            }
+        } else {
+            canvasWidth = MAP_WIDTH;
+            canvasHeight = MAP_HEIGHT;
+        }
+        
+        app.renderer.resize(canvasWidth, canvasHeight);
+        app.view.style.top = isMobile ? '20px' : '50%';
+        app.view.style.transform = isMobile ? 'translateX(-50%)' : 'translate(-50%, -50%)';
+        
+        // Update scale factors
+        window.gameScaleX = canvasWidth / MAP_WIDTH;
+        window.gameScaleY = canvasHeight / MAP_HEIGHT;
+    }
+});
+
+// --- Track mouse/touch position for bomb preview
 app.view.addEventListener('mousemove', e => {
+    // Store coordinates for bomb preview
+    const rect = app.view.getBoundingClientRect();
+    const canvasX = e.clientX - rect.left;
+    const canvasY = e.clientY - rect.top;
+    window.lastTouchX = canvasX * (MAP_WIDTH / rect.width);
+    window.lastTouchY = canvasY * (MAP_HEIGHT / rect.height);
+    
     // Only show hover stats if no enemy is currently selected
     if (selectedEnemy) return;
     
-    const rect = app.view.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
     let found = null;
@@ -3141,6 +3234,17 @@ app.view.addEventListener('mousemove', e => {
         hideStats();
     }
 });
+
+// Track touch position for bomb preview
+app.view.addEventListener('touchmove', e => {
+    if (e.touches.length > 0) {
+        const rect = app.view.getBoundingClientRect();
+        const canvasX = e.touches[0].clientX - rect.left;
+        const canvasY = e.touches[0].clientY - rect.top;
+        window.lastTouchX = canvasX * (MAP_WIDTH / rect.width);
+        window.lastTouchY = canvasY * (MAP_HEIGHT / rect.height);
+    }
+}, { passive: true });
 
 // --- Game Start/End/Over ---
 function showGameOver(msg) {
