@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>PixiJS Tower Defense</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.2.4/pixi.min.js"></script>
     <style>
         html, body {
@@ -12,6 +12,7 @@
             background: #181c25;
             font-family: 'Segoe UI', Arial, sans-serif;
             overflow: hidden;
+            touch-action: manipulation;
         }
         #game-ui {
             position: absolute;
@@ -19,123 +20,266 @@
             width: 100vw; height: 100vh;
             pointer-events: none;
         }
-        #ui-right-panel {
-            position: absolute;
-            top: 50%;
-            left: calc(50% + 384px); /* 16*48/2 = 384, grid centered */
-            transform: translateY(-50%); /* Center vertically */
-            width: 300px; /* Increased width for two columns */
-            height: 768px; /* Same as grid height (16*48) */
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 8px; /* Reduced gap */
-            z-index: 20;
-            pointer-events: auto;
-            overflow-y: auto; /* Allow scrolling if needed */
-            overflow-x: hidden;
+        
+        /* Mobile-first responsive design */
+        @media (max-width: 768px) {
+            #ui-right-panel {
+                position: absolute;
+                top: auto;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                transform: none;
+                width: 100%;
+                height: auto;
+                max-height: 40vh;
+                display: flex;
+                flex-direction: row;
+                flex-wrap: wrap;
+                align-items: flex-start;
+                gap: 4px;
+                z-index: 20;
+                pointer-events: auto;
+                overflow-y: auto;
+                overflow-x: hidden;
+                padding: 8px;
+                box-sizing: border-box;
+                background: rgba(24, 28, 37, 0.9);
+            }
+            
+            #live-stats {
+                position: static;
+                background: rgba(30,34,44,0.95);
+                border-radius: 6px;
+                box-shadow: 0 2px 16px #0008;
+                color: #fff;
+                padding: 6px 12px;
+                font-size: 0.9em;
+                z-index: 10;
+                margin: 0;
+                pointer-events: auto;
+                width: calc(50% - 2px);
+                flex: 0 0 auto;
+            }
+            
+            #wave-info-panel {
+                position: static;
+                background: rgba(30,34,44,0.95);
+                border-radius: 6px;
+                box-shadow: 0 2px 16px #0008;
+                color: #fff;
+                padding: 6px 12px;
+                margin: 0;
+                pointer-events: auto;
+                width: calc(50% - 2px);
+                flex: 0 0 auto;
+            }
+            
+            #bomb-ui {
+                background: rgba(30,34,44,0.95);
+                border-radius: 6px;
+                box-shadow: 0 2px 16px #0008;
+                color: #fff;
+                padding: 6px 12px;
+                margin: 0;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                pointer-events: auto;
+                width: calc(33.33% - 3px);
+                flex: 0 0 auto;
+            }
+            
+            #tower-select {
+                position: static;
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+                gap: 4px;
+                z-index: 10;
+                pointer-events: auto;
+                width: calc(66.67% - 3px);
+                flex: 0 0 auto;
+            }
+            
+            .button-container {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+                gap: 4px;
+                width: 100%;
+                pointer-events: auto;
+                flex: 0 0 auto;
+            }
+            
+            .tower-btn {
+                background: rgba(30,34,44,0.95);
+                border: 2px solid #4e6fae;
+                border-radius: 6px;
+                color: #fff;
+                padding: 8px 4px;
+                margin: 0;
+                cursor: pointer;
+                transition: all 0.2s;
+                font-size: 0.7em;
+                min-height: 60px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                line-height: 1.1;
+                touch-action: manipulation;
+            }
+            
+            #start-btn, #end-btn, #next-wave-btn, #boost-btn, #shop-btn {
+                background: #4e6fae;
+                border: none;
+                border-radius: 6px;
+                color: #fff;
+                font-size: 0.8em;
+                padding: 12px 8px;
+                margin: 0;
+                cursor: pointer;
+                transition: background 0.2s;
+                pointer-events: auto;
+                text-align: center;
+                touch-action: manipulation;
+                min-height: 44px;
+            }
+            
+            #place-bomb-btn {
+                background: #ff3300;
+                border: none;
+                border-radius: 6px;
+                color: #fff;
+                padding: 8px 12px;
+                cursor: pointer;
+                transition: background 0.2s;
+                font-size: 0.7em;
+                touch-action: manipulation;
+                min-height: 44px;
+            }
         }
-        #live-stats {
-            position: static;
-            background: rgba(30,34,44,0.95);
-            border-radius: 8px; /* Smaller radius */
-            box-shadow: 0 2px 16px #0008;
-            color: #fff;
-            padding: 8px 16px; /* Reduced padding */
-            font-size: 1em; /* Smaller font */
-            z-index: 10;
-            margin: 0; /* Remove margins */
-            pointer-events: auto;
-            width: 260px; /* Adjusted for new panel width */
-        }
-        #tower-select {
-            position: static;
-            display: grid; /* Changed to grid layout */
-            grid-template-columns: 1fr 1fr; /* Two equal columns */
-            gap: 6px; /* Small gap between items */
-            z-index: 10;
-            pointer-events: auto;
-            width: 260px; /* Adjusted for new panel width */
-        }
-        #start-btn, #end-btn, #next-wave-btn {
-            background: #4e6fae;
-            border: none;
-            border-radius: 6px; /* Smaller radius */
-            color: #fff;
-            font-size: 0.8em; /* Even smaller font for two columns */
-            padding: 6px 12px; /* Reduced padding */
-            margin: 2px 0; /* Reduced margin */
-            cursor: pointer;
-            transition: background 0.2s;
-            pointer-events: auto;
-            width: 125px; /* Smaller width for two columns */
-            text-align: center; /* Center align for better look */
-        }
-        #start-btn:hover, #end-btn:hover, #next-wave-btn:hover {
-            background: #6e8fde;
-        }
-        #end-btn {
-            background: #de6e6e;
-            border: none;
-            border-radius: 6px;
-            color: #fff;
-            font-size: 0.9em;
-            padding: 6px 12px;
-            margin: 2px 0; /* Reduced margin */
-            cursor: pointer;
-            transition: background 0.2s;
-            pointer-events: auto;
-            width: 125px; /* Smaller width for two columns */
-            text-align: center;
-        }
-        #end-btn:hover {
-            background: #ff4444;
-        }
-        #stats-panel {
-            position: absolute;
-            right: 0; top: 0;
-            min-width: 220px;
-        }
-        #boost-btn {
-            background: #6ede8a;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            padding: 6px 12px; /* Reduced padding */
-            margin: 2px 0; /* Reduced margin */
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 0.8em; /* Smaller font */
-            font-weight: bold;
-            width: 125px; /* Smaller width for two columns */
-            text-align: center;
-        }
-        #boost-btn:disabled {
-            background: #666;
-            cursor: not-allowed;
-        }
-        #boost-btn:hover:not(:disabled) {
-            background: #8eeda6;
-        }
-        #message-container {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 100;
-            pointer-events: none;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-        }
-        .game-message {
-            padding: 10px 20px;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            border-radius: 8px;
-            font-size: 1.2em;
-            transition: opacity 0.5s;
+        
+        /* Desktop styles */
+        @media (min-width: 769px) {
+            #ui-right-panel {
+                position: absolute;
+                top: 50%;
+                left: calc(50% + 384px);
+                transform: translateY(-50%);
+                width: 300px;
+                height: 768px;
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+                z-index: 20;
+                pointer-events: auto;
+                overflow-y: auto;
+                overflow-x: hidden;
+            }
+            
+            #live-stats {
+                position: static;
+                background: rgba(30,34,44,0.95);
+                border-radius: 8px;
+                box-shadow: 0 2px 16px #0008;
+                color: #fff;
+                padding: 8px 16px;
+                font-size: 1em;
+                z-index: 10;
+                margin: 0;
+                pointer-events: auto;
+                width: 260px;
+            }
+            
+            #wave-info-panel {
+                position: static;
+                background: rgba(30,34,44,0.95);
+                border-radius: 8px;
+                box-shadow: 0 2px 16px #0008;
+                color: #fff;
+                padding: 8px 16px;
+                margin: 4px 0;
+                pointer-events: auto;
+                width: 260px;
+            }
+            
+            #bomb-ui {
+                background: rgba(30,34,44,0.95);
+                border-radius: 8px;
+                box-shadow: 0 2px 16px #0008;
+                color: #fff;
+                padding: 8px 16px;
+                margin: 4px 0;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                pointer-events: auto;
+                width: 260px;
+            }
+            
+            #tower-select {
+                position: static;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 6px;
+                z-index: 10;
+                pointer-events: auto;
+                width: 260px;
+            }
+            
+            .button-container {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 6px;
+                width: 260px;
+                pointer-events: auto;
+            }
+            
+            .tower-btn {
+                background: rgba(30,34,44,0.95);
+                border: 2px solid #4e6fae;
+                border-radius: 6px;
+                color: #fff;
+                padding: 4px 8px;
+                margin: 0;
+                cursor: pointer;
+                transition: all 0.2s;
+                font-size: 0.7em;
+                width: 125px;
+                height: 50px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                line-height: 1.1;
+            }
+            
+            #start-btn, #end-btn, #next-wave-btn, #boost-btn, #shop-btn {
+                background: #4e6fae;
+                border: none;
+                border-radius: 6px;
+                color: #fff;
+                font-size: 0.8em;
+                padding: 6px 12px;
+                margin: 2px 0;
+                cursor: pointer;
+                transition: background 0.2s;
+                pointer-events: auto;
+                width: 125px;
+                text-align: center;
+            }
+            
+            #place-bomb-btn {
+                background: #ff3300;
+                border: none;
+                border-radius: 6px;
+                color: #fff;
+                padding: 4px 12px;
+                cursor: pointer;
+                transition: background 0.2s;
+                font-size: 0.8em;
+            }
         }
         
         /* Shop Styles */
@@ -456,9 +600,42 @@
             color: #88dd88;
             font-size: 11px;
         }
+        
+        /* Responsive canvas container */
+        #game-canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        /* Mobile adjustments for modals */
+        @media (max-width: 768px) {
+            #shop-modal {
+                position: fixed;
+                top: 5%;
+                left: 5%;
+                right: 5%;
+                bottom: 5%;
+                transform: none;
+                width: auto;
+                max-height: 90vh;
+                overflow-y: auto;
+            }
+            
+            #tower-tooltip {
+                font-size: 11px;
+                max-width: 200px;
+            }
+        }
     </style>
 </head>
 <body>
+    <div id="game-canvas-container"></div>
     <div id="game-ui">
         <div id="message-container"></div>
         <div id="ui-right-panel">
@@ -706,14 +883,41 @@ const app = new PIXI.Application({
 document.body.appendChild(app.view);
 
 function initGame() {
-    // Set canvas dimensions from configuration
-    app.renderer.resize(MAP_WIDTH, MAP_HEIGHT);
+    // Set canvas dimensions from configuration with responsive scaling
+    const maxWidth = window.innerWidth;
+    const maxHeight = window.innerHeight;
+    const isMobile = window.innerWidth <= 768;
+    
+    let canvasWidth, canvasHeight;
+    
+    if (isMobile) {
+        // On mobile, adjust canvas size to fit screen better
+        const aspectRatio = MAP_WIDTH / MAP_HEIGHT;
+        const availableHeight = maxHeight * 0.6; // Leave space for UI at bottom
+        
+        if (maxWidth / aspectRatio <= availableHeight) {
+            canvasWidth = maxWidth;
+            canvasHeight = maxWidth / aspectRatio;
+        } else {
+            canvasHeight = availableHeight;
+            canvasWidth = availableHeight * aspectRatio;
+        }
+    } else {
+        canvasWidth = MAP_WIDTH;
+        canvasHeight = MAP_HEIGHT;
+    }
+    
+    app.renderer.resize(canvasWidth, canvasHeight);
     app.view.style.display = 'block';
     app.view.style.margin = '0 auto';
     app.view.style.position = 'absolute';
     app.view.style.left = '50%';
-    app.view.style.top = '50%';
-    app.view.style.transform = 'translate(-50%, -50%)';
+    app.view.style.top = isMobile ? '10%' : '50%';
+    app.view.style.transform = isMobile ? 'translateX(-50%)' : 'translate(-50%, -50%)';
+    
+    // Store scale factor for touch/click coordinate conversion
+    window.gameScaleX = canvasWidth / MAP_WIDTH;
+    window.gameScaleY = canvasHeight / MAP_HEIGHT;
     
     // Initialize game state
     gold = CONFIG.gameSettings.startingGold;
@@ -1408,10 +1612,33 @@ let previewTile = null;
 let selectedTower = null;
 
 function setupPlacementHandlers() {
-    app.view.addEventListener('mousemove', e => {
+    // Helper function to get coordinates from event (mouse or touch)
+    function getEventCoordinates(e) {
         const rect = app.view.getBoundingClientRect();
-        const mx = e.clientX - rect.left;
-        const my = e.clientY - rect.top;
+        let clientX, clientY;
+        
+        if (e.touches && e.touches.length > 0) {
+            // Touch event
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else if (e.changedTouches && e.changedTouches.length > 0) {
+            // Touch end event
+            clientX = e.changedTouches[0].clientX;
+            clientY = e.changedTouches[0].clientY;
+        } else {
+            // Mouse event
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+        
+        const mx = (clientX - rect.left) / (window.gameScaleX || 1);
+        const my = (clientY - rect.top) / (window.gameScaleY || 1);
+        return { mx, my };
+    }
+    
+    // Mouse/touch move handler
+    function handleMove(e) {
+        const { mx, my } = getEventCoordinates(e);
         const tx = Math.floor(mx / TILE_SIZE);
         const ty = Math.floor(my / TILE_SIZE);
         
@@ -1427,16 +1654,13 @@ function setupPlacementHandlers() {
         } else {
             previewTile = null;
         }
-    });
+    }
     
-    app.view.addEventListener('mouseleave', () => {
-        previewTile = null;
-    });
-    
-    app.view.addEventListener('click', e => {
-        const rect = app.view.getBoundingClientRect();
-        const mx = e.clientX - rect.left;
-        const my = e.clientY - rect.top;
+    // Mouse/touch click handler
+    function handleClick(e) {
+        e.preventDefault(); // Prevent default touch behavior
+        
+        const { mx, my } = getEventCoordinates(e);
         const tx = Math.floor(mx / TILE_SIZE);
         const ty = Math.floor(my / TILE_SIZE);
         
@@ -1477,7 +1701,9 @@ function setupPlacementHandlers() {
         let tower = towers.find(t => t.x === tx && t.y === ty);
         if (tower) {
             selectedTower = tower;
-            showTowerStats(tower, e.clientX, e.clientY);
+            const eventClientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const eventClientY = e.touches ? e.touches[0].clientY : e.clientY;
+            showTowerStats(tower, eventClientX, eventClientY);
             selectedTowerType = -1; // Deselect tower type when selecting a placed tower
             renderTowerSelect();
             updateUI();
@@ -1546,7 +1772,18 @@ function setupPlacementHandlers() {
             renderTowerSelect();
             updateUI();
         }
+    }
+    
+    // Add both mouse and touch event listeners
+    app.view.addEventListener('mousemove', handleMove);
+    app.view.addEventListener('touchmove', handleMove, { passive: false });
+    
+    app.view.addEventListener('mouseleave', () => {
+        previewTile = null;
     });
+    
+    app.view.addEventListener('click', handleClick);
+    app.view.addEventListener('touchend', handleClick, { passive: false });
 }
 
 // --- Bomb Functions ---

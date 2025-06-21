@@ -107,3 +107,6 @@ Lets randomize the waves more and make most of them mixed. Also lets make the en
 - when upgrading slow tower, increase slow %
 - hover over tower for stats
 - make the map more rectangular
+- Fix the game so you cant place towers in spots not allowed while enmies are moving
+
+6/21
