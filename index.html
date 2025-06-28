@@ -3,111 +3,155 @@
 <head>
     <meta charset="UTF-8">
     <title>PixiJS Tower Defense</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.2.4/pixi.min.js"></script>
-    <style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.2.4/pixi.min.js"></script>    <style>
+        * {
+            box-sizing: border-box;
+        }
+
         html, body {
             margin: 0;
             padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
             background: #181c25;
             font-family: 'Segoe UI', Arial, sans-serif;
-            overflow: hidden;
         }
-        #game-ui {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100vw; height: 100vh;
-            pointer-events: none;
-        }
-        #ui-right-panel {
-            position: absolute;
-            top: 50%;
-            left: calc(50% + 384px); /* 16*48/2 = 384, grid centered */
-            transform: translateY(-50%); /* Center vertically */
-            width: 300px; /* Increased width for two columns */
-            height: 768px; /* Same as grid height (16*48) */
+
+        /* Mobile First - Stack vertically */
+        #game-wrapper {
             display: flex;
             flex-direction: column;
-            align-items: flex-start;
-            gap: 8px; /* Reduced gap */
-            z-index: 20;
-            pointer-events: auto;
-            overflow-y: auto; /* Allow scrolling if needed */
-            overflow-x: hidden;
+            width: 100vw;
+            height: 100vh;
         }
-        #live-stats {
-            position: static;
+
+        #game-canvas-container {
+            flex: 1;
+            width: 100%;
+            position: relative;
+            background: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #game-canvas-container canvas {
+            max-width: 100%;
+            max-height: 100%;
+            display: block;
+        }
+
+        #game-ui {
+            flex: 0 0 auto;
+            width: 100%;
+            max-height: 40vh;
+            min-height: 200px;
+            background: rgba(24, 28, 37, 0.95);
+            border-top: 2px solid #4e6fae;
+            padding: 10px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: auto;
+        }
+
+        /* Desktop - Side by side */
+        @media (min-width: 769px) {
+            #game-wrapper {
+                flex-direction: row;
+                padding: 10px;
+                gap: 20px;
+            }
+
+            #game-canvas-container {
+                flex: 1;
+                max-width: 800px;
+                max-height: 800px;
+                aspect-ratio: 1;
+            }
+
+            #game-ui {
+                flex: 0 0 350px;
+                max-height: 800px;
+                border-top: none;
+                border-left: 2px solid #4e6fae;
+            }
+        }
+
+        #ui-right-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+            width: 100%;
+            pointer-events: auto;
+        }        #live-stats {
             background: rgba(30,34,44,0.95);
-            border-radius: 8px; /* Smaller radius */
+            border-radius: 8px;
             box-shadow: 0 2px 16px #0008;
             color: #fff;
-            padding: 8px 16px; /* Reduced padding */
-            font-size: 1em; /* Smaller font */
-            z-index: 10;
-            margin: 0; /* Remove margins */
+            padding: 8px 16px;
+            font-size: 1em;
+            margin: 0;
             pointer-events: auto;
-            width: 260px; /* Adjusted for new panel width */
-        }
-        #tower-select {
-            position: static;
-            display: grid; /* Changed to grid layout */
-            grid-template-columns: 1fr 1fr; /* Two equal columns */
-            gap: 6px; /* Small gap between items */
-            z-index: 10;
+            width: 100%;
+        }        #tower-select {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
             pointer-events: auto;
-            width: 260px; /* Adjusted for new panel width */
-        }
-        #start-btn, #end-btn, #next-wave-btn {
+            width: 100%;
+        }        #start-btn, #end-btn, #next-wave-btn {
             background: #4e6fae;
             border: none;
-            border-radius: 6px; /* Smaller radius */
+            border-radius: 6px;
             color: #fff;
-            font-size: 0.8em; /* Even smaller font for two columns */
-            padding: 6px 12px; /* Reduced padding */
-            margin: 2px 0; /* Reduced margin */
+            font-size: 0.8em;
+            padding: 6px 12px;
+            margin: 2px 0;
             cursor: pointer;
             transition: background 0.2s;
             pointer-events: auto;
-            width: 125px; /* Smaller width for two columns */
-            text-align: center; /* Center align for better look */
+            width: 100%;
+            text-align: center;
         }
         #start-btn:hover, #end-btn:hover, #next-wave-btn:hover {
             background: #6e8fde;
-        }
-        #end-btn {
+        }        #end-btn {
             background: #de6e6e;
             border: none;
             border-radius: 6px;
             color: #fff;
             font-size: 0.9em;
             padding: 6px 12px;
-            margin: 2px 0; /* Reduced margin */
+            margin: 2px 0;
             cursor: pointer;
             transition: background 0.2s;
             pointer-events: auto;
-            width: 125px; /* Smaller width for two columns */
+            width: 100%;
             text-align: center;
         }
         #end-btn:hover {
             background: #ff4444;
-        }
-        #stats-panel {
+        }        #stats-panel {
             position: absolute;
             right: 0; top: 0;
             min-width: 220px;
-        }
-        #boost-btn {
+        }        #boost-btn {
             background: #6ede8a;
             color: white;
             border: none;
             border-radius: 6px;
-            padding: 6px 12px; /* Reduced padding */
-            margin: 2px 0; /* Reduced margin */
+            padding: 6px 12px;
+            margin: 2px 0;
             cursor: pointer;
             transition: all 0.2s;
-            font-size: 0.8em; /* Smaller font */
+            font-size: 0.8em;
             font-weight: bold;
-            width: 125px; /* Smaller width for two columns */
+            width: 100%;
             text-align: center;
         }
         #boost-btn:disabled {
@@ -116,9 +160,8 @@
         }
         #boost-btn:hover:not(:disabled) {
             background: #8eeda6;
-        }
-        #message-container {
-            position: fixed;
+        }        #message-container {
+            position: absolute;
             top: 20px;
             left: 50%;
             transform: translateX(-50%);
@@ -138,19 +181,18 @@
             transition: opacity 0.5s;
         }
         
-        /* Shop Styles */
-        #shop-btn {
+        /* Shop Styles */        #shop-btn {
             background: #9e6ede;
             border: none;
             border-radius: 6px;
             color: #fff;
-            font-size: 0.8em; /* Smaller font */
+            font-size: 0.8em;
             padding: 6px 12px;
             margin: 2px 0;
             cursor: pointer;
             transition: background 0.2s;
             pointer-events: auto;
-            width: 125px; /* Smaller width for two columns */
+            width: 100%;
             text-align: center;
         }
         #shop-btn:hover {
@@ -242,19 +284,18 @@
             margin-right: 15px;
         }
         
-        /* Bomb UI styles */
-        #bomb-ui {
+        /* Bomb UI styles */        #bomb-ui {
             background: rgba(30,34,44,0.95);
             border-radius: 8px;
             box-shadow: 0 2px 16px #0008;
             color: #fff;
-            padding: 8px 16px; /* Reduced padding */
-            margin: 4px 0; /* Reduced margin */
+            padding: 8px 16px;
+            margin: 4px 0;
             display: flex;
             align-items: center;
             justify-content: space-between;
             pointer-events: auto;
-            width: 260px; /* Adjusted for new panel width */
+            width: 100%;
         }
         
         #bomb-count {
@@ -336,17 +377,15 @@
             max-width: 200px;
         }
         
-        /* Wave Info Panel Styles */
-        #wave-info-panel {
-            position: static;
+        /* Wave Info Panel Styles */        #wave-info-panel {
             background: rgba(30,34,44,0.95);
             border-radius: 8px;
             box-shadow: 0 2px 16px #0008;
             color: #fff;
-            padding: 8px 16px; /* Reduced padding */
-            margin: 4px 0; /* Reduced margin */
+            padding: 8px 16px;
+            margin: 4px 0;
             pointer-events: auto;
-            width: 260px; /* Adjusted for new panel width */
+            width: 100%;
         }
         
         #wave-info-title {
@@ -386,34 +425,30 @@
         
         .wave-info-name {
             font-size: 0.8em; /* Smaller font */
-        }
-
-        /* Make tower buttons more compact for two columns */
+        }        /* Make tower buttons more compact for two columns */
         .tower-btn {
             background: rgba(30,34,44,0.95);
             border: 2px solid #4e6fae;
             border-radius: 6px;
             color: #fff;
-            padding: 4px 8px; /* Even more reduced padding */
-            margin: 0; /* Remove margin */
+            padding: 4px 8px;
+            margin: 0;
             cursor: pointer;
             transition: all 0.2s;
-            font-size: 0.7em; /* Smaller font for two columns */
-            width: 125px; /* Specific width for grid layout */
-            height: 50px; /* Reduced height for more compact look */
+            font-size: 0.7em;
+            width: 100%;
+            height: 50px;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            line-height: 1.1; /* Tighter line spacing */
-        }
-
-        /* Create a button container for two-column layout */
+            line-height: 1.1;
+        }/* Create a button container for two-column layout */
         .button-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 6px;
-            width: 260px;
+            width: 100%;
             pointer-events: auto;
         }
         
@@ -458,42 +493,46 @@
         }
     </style>
 </head>
-<body>
-    <div id="game-ui">
-        <div id="message-container"></div>
-        <div id="ui-right-panel">
-            <div class="ui-panel" id="live-stats">
-                <span>Wave: <span id="wave-num">1</span></span> |
-                <span>Gold: <span id="gold">500</span></span><br>
-                <span>Lives: <span id="lives">20</span></span> |
-                <span>Left: <span id="enemies-left">0</span></span>
-            </div>
-            
-            <!-- Wave Information Panel -->
-            <div id="wave-info-panel">
-                <div id="wave-info-title">Next Waves</div>
-                <div id="wave-info-content"></div>
-            </div>
-            
-            <!-- Bomb UI section -->
-            <div id="bomb-ui">
-                <div id="bomb-count">Bombs: 0</div>
-                <button id="place-bomb-btn" disabled>Place [X]</button>
-            </div>
-            
-            <div class="ui-panel" id="tower-select"></div>
-            
-            <!-- Button container for two-column layout -->
-            <div class="button-container">
-                <button id="boost-btn">Boost [B]</button>
-                <button id="shop-btn">Shop [P]</button>
-                <button id="start-btn">Start Wave</button>
-                <button id="next-wave-btn" style="display:none;">Next Wave</button>
-            </div>
-            
-            <button id="end-btn" style="display:none;">End Game</button>
+<body>    <div id="game-wrapper">
+        <div id="game-canvas-container">
+            <!-- PixiJS Canvas will be inserted here -->
+            <div id="message-container"></div>
         </div>
-        <div class="ui-panel" id="stats-panel" style="display:none;"></div>
+        <div id="game-ui">
+            <div id="ui-right-panel">
+                <div class="ui-panel" id="live-stats">
+                    <span>Wave: <span id="wave-num">1</span></span> |
+                    <span>Gold: <span id="gold">500</span></span><br>
+                    <span>Lives: <span id="lives">20</span></span> |
+                    <span>Left: <span id="enemies-left">0</span></span>
+                </div>
+                
+                <!-- Wave Information Panel -->
+                <div id="wave-info-panel">
+                    <div id="wave-info-title">Next Waves</div>
+                    <div id="wave-info-content"></div>
+                </div>
+                
+                <!-- Bomb UI section -->
+                <div id="bomb-ui">
+                    <div id="bomb-count">Bombs: 0</div>
+                    <button id="place-bomb-btn" disabled>Place [X]</button>
+                </div>
+                
+                <div class="ui-panel" id="tower-select"></div>
+                
+                <!-- Button container for two-column layout -->
+                <div class="button-container">
+                    <button id="boost-btn">Boost [B]</button>
+                    <button id="shop-btn">Shop [P]</button>
+                    <button id="start-btn">Start Wave</button>
+                    <button id="next-wave-btn" style="display:none;">Next Wave</button>
+                </div>
+                
+                <button id="end-btn" style="display:none;">End Game</button>
+            </div>
+            <div class="ui-panel" id="stats-panel" style="display:none;"></div>
+        </div>
     </div>
     
     <!-- Shop Modal -->
@@ -703,17 +742,12 @@ const app = new PIXI.Application({
     backgroundColor: 0x23273a,
     antialias: true
 });
-document.body.appendChild(app.view);
+document.getElementById('game-canvas-container').appendChild(app.view);
 
 function initGame() {
     // Set canvas dimensions from configuration
     app.renderer.resize(MAP_WIDTH, MAP_HEIGHT);
     app.view.style.display = 'block';
-    app.view.style.margin = '0 auto';
-    app.view.style.position = 'absolute';
-    app.view.style.left = '50%';
-    app.view.style.top = '50%';
-    app.view.style.transform = 'translate(-50%, -50%)';
     
     // Initialize game state
     gold = CONFIG.gameSettings.startingGold;
@@ -1114,8 +1148,7 @@ function renderTowerSelect() {
             <div style="font-weight: bold; margin-bottom: 1px;">${t.name}</div>
             <div style="font-size: 0.85em; margin-bottom: 1px;">[${t.key}]</div>
             <div style="font-size: 0.9em;">Cost: ${t.cost}</div>
-        </div>`;
-        btn.onclick = () => {
+        </div>`;        btn.onclick = () => {
             selectedTowerType = i;
             // Close tower stats window if one is open
             if (towerStatsWindow) {
@@ -1124,6 +1157,18 @@ function renderTowerSelect() {
             }
             renderTowerSelect();
         };
+        
+        // Add touch support for mobile
+        btn.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Prevent default touch behavior
+            selectedTowerType = i;
+            // Close tower stats window if one is open
+            if (towerStatsWindow) {
+                document.body.removeChild(towerStatsWindow);
+                towerStatsWindow = null;
+            }
+            renderTowerSelect();
+        });
         
         // Add hover tooltip functionality
         btn.addEventListener('mouseenter', (e) => {
@@ -1407,11 +1452,43 @@ function aStar(start, end) {
 let previewTile = null;
 let selectedTower = null;
 
-function setupPlacementHandlers() {
-    app.view.addEventListener('mousemove', e => {
+function setupPlacementHandlers() {    // Helper function to get coordinates from mouse or touch event
+    function getEventCoordinates(e) {
         const rect = app.view.getBoundingClientRect();
-        const mx = e.clientX - rect.left;
-        const my = e.clientY - rect.top;
+        let clientX, clientY;
+        
+        if (e.touches && e.touches.length > 0) {
+            // Touch event
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else if (e.changedTouches && e.changedTouches.length > 0) {
+            // Touch end event
+            clientX = e.changedTouches[0].clientX;
+            clientY = e.changedTouches[0].clientY;
+        } else {
+            // Mouse event
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+        
+        // Get the relative position within the canvas
+        const relativeX = clientX - rect.left;
+        const relativeY = clientY - rect.top;
+        
+        // Scale the coordinates to match the actual canvas size
+        // The canvas might be scaled by CSS, so we need to convert from display size to actual size
+        const scaleX = app.view.width / rect.width;
+        const scaleY = app.view.height / rect.height;
+        
+        return {
+            mx: relativeX * scaleX,
+            my: relativeY * scaleY
+        };
+    }
+    
+    // Helper function to handle move events (mouse or touch)
+    function handleMoveEvent(e) {
+        const {mx, my} = getEventCoordinates(e);
         const tx = Math.floor(mx / TILE_SIZE);
         const ty = Math.floor(my / TILE_SIZE);
         
@@ -1427,16 +1504,13 @@ function setupPlacementHandlers() {
         } else {
             previewTile = null;
         }
-    });
+    }
     
-    app.view.addEventListener('mouseleave', () => {
-        previewTile = null;
-    });
-    
-    app.view.addEventListener('click', e => {
-        const rect = app.view.getBoundingClientRect();
-        const mx = e.clientX - rect.left;
-        const my = e.clientY - rect.top;
+    // Helper function to handle click/tap events
+    function handleClickEvent(e) {
+        e.preventDefault(); // Prevent default touch behavior
+        
+        const {mx, my} = getEventCoordinates(e);
         const tx = Math.floor(mx / TILE_SIZE);
         const ty = Math.floor(my / TILE_SIZE);
         
@@ -1477,7 +1551,7 @@ function setupPlacementHandlers() {
         let tower = towers.find(t => t.x === tx && t.y === ty);
         if (tower) {
             selectedTower = tower;
-            showTowerStats(tower, e.clientX, e.clientY);
+            showTowerStats(tower, mx + app.view.getBoundingClientRect().left, my + app.view.getBoundingClientRect().top);
             selectedTowerType = -1; // Deselect tower type when selecting a placed tower
             renderTowerSelect();
             updateUI();
@@ -1546,6 +1620,19 @@ function setupPlacementHandlers() {
             renderTowerSelect();
             updateUI();
         }
+    }
+    
+    // Mouse events
+    app.view.addEventListener('mousemove', handleMoveEvent);
+    app.view.addEventListener('mouseleave', () => {
+        previewTile = null;
+    });
+    app.view.addEventListener('click', handleClickEvent);
+    
+    // Touch events
+    app.view.addEventListener('touchmove', handleMoveEvent);
+    app.view.addEventListener('touchstart', handleClickEvent);    app.view.addEventListener('touchend', (e) => {
+        previewTile = null;
     });
 }
 
