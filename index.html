@@ -56,9 +56,7 @@
             flex-direction: column;
             gap: 10px;
             pointer-events: auto;
-        }
-
-        /* Desktop - Side by side */
+        }        /* Desktop - Side by side */
         @media (min-width: 769px) {
             #game-wrapper {
                 flex-direction: row;
@@ -78,6 +76,243 @@
                 max-height: 800px;
                 border-top: none;
                 border-left: 2px solid #4e6fae;
+            }
+        }        /* Mobile Layout - reorganize UI */
+        @media (max-width: 768px) {
+            #game-ui {
+                flex-direction: row;
+                gap: 10px;
+                padding: 8px;
+            }
+            
+            /* Hide desktop layout components on mobile */
+            .desktop-layout {
+                display: none !important;
+            }
+            
+            /* Mobile layout container */
+            .mobile-layout {
+                display: flex;
+                flex-direction: row;
+                width: 100%;
+                gap: 10px;
+                height: 100%;
+            }
+            
+            /* Left side - Towers section */
+            .towers-mobile-section {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+                max-width: 45%;
+            }
+            
+            .towers-mobile-title {
+                font-size: 1.1em;
+                font-weight: bold;
+                color: white;
+                text-align: center;
+                margin-bottom: 4px;
+                padding: 4px;
+                background: rgba(30,34,44,0.8);
+                border-radius: 4px;
+            }
+            
+            .towers-mobile-content {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+              /* Right side - Controls grid */
+            .controls-mobile-grid {
+                flex: 1;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: auto auto auto auto;
+                gap: 6px;
+                max-width: 55%;
+                align-content: start;
+            }
+            
+            /* Mobile control sections */
+            .mobile-control-section {
+                display: flex;
+                flex-direction: column;
+                gap: 3px;
+                padding: 6px;
+                background: rgba(30,34,44,0.8);
+                border-radius: 6px;
+                min-height: 50px;
+                border: 1px solid rgba(78, 111, 174, 0.3);
+            }
+            
+            .mobile-control-title {
+                font-size: 0.75em;
+                font-weight: bold;
+                color: #6e8fde;
+                text-align: center;
+                margin-bottom: 3px;
+                opacity: 1;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            /* Compact mobile buttons */
+            .mobile-control-section button {
+                font-size: 0.7em !important;
+                padding: 4px 8px !important;
+                margin: 0 !important;
+                min-height: 32px;
+                background: #4e6fae !important;
+                border: none !important;
+                border-radius: 4px !important;
+                color: white !important;
+                font-weight: 500;
+                transition: background 0.2s;
+            }
+            
+            .mobile-control-section button:hover {
+                background: #6e8fde !important;
+            }
+            
+            .mobile-control-section button:disabled {
+                background: #666 !important;
+                cursor: not-allowed;
+            }
+            
+            /* Compact mobile stats */
+            .mobile-control-section #live-stats-mobile {
+                font-size: 0.7em;
+                padding: 4px 6px;
+                margin: 0;
+                text-align: center;
+                line-height: 1.3;
+                background: rgba(30,34,44,0.9);
+                border-radius: 4px;
+                border: 1px solid rgba(78, 111, 174, 0.2);
+            }
+            
+            /* Compact bomb UI for mobile */
+            .mobile-control-section #bomb-ui-mobile {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 4px;
+                font-size: 0.7em;
+            }
+            
+            .mobile-control-section #bomb-count-mobile {
+                font-size: 0.7em;
+                margin: 0;
+                text-align: center;
+                color: white;
+                font-weight: 500;
+            }
+            
+            .mobile-control-section #place-bomb-btn-mobile {
+                background: #ff3300 !important;
+                font-size: 0.65em !important;
+                padding: 3px 6px !important;
+                min-height: 28px;
+            }
+            
+            .mobile-control-section #place-bomb-btn-mobile:hover:not(:disabled) {
+                background: #ff5500 !important;
+            }
+            
+            /* Compact wave info for mobile */
+            .mobile-control-section #wave-info-panel-mobile {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .mobile-control-section #wave-info-content-mobile {
+                flex: 1;
+                max-height: 45px;
+                overflow-y: auto;
+                font-size: 0.65em;
+                line-height: 1.2;
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+            }
+            
+            .mobile-control-section #wave-info-content-mobile .wave-info-item {
+                display: flex;
+                align-items: center;
+                padding: 1px 3px;
+                border-radius: 2px;
+                font-size: 0.9em;
+            }
+            
+            .mobile-control-section #wave-info-content-mobile .wave-info-item.current {
+                background: rgba(110, 143, 222, 0.3);
+                border: 1px solid #6e8fde;
+            }
+            
+            /* Mobile tower buttons */
+            .towers-mobile-content .tower-btn {
+                height: 40px;
+                font-size: 0.7em;
+                padding: 4px 6px;
+                line-height: 1;
+                background: rgba(30,34,44,0.95);
+                border: 2px solid #4e6fae;
+                border-radius: 6px;
+                color: #fff;
+                cursor: pointer;
+                transition: all 0.2s;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                margin-bottom: 4px;
+            }
+            
+            .towers-mobile-content .tower-btn:hover,
+            .towers-mobile-content .tower-btn.selected {
+                background: rgba(110, 143, 222, 0.8);
+                border-color: #6e8fde;
+            }
+            
+            .towers-mobile-content #tower-select-mobile {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+            
+            /* End game button spans full width */
+            .mobile-control-section[style*="grid-column"] {
+                background: rgba(222, 110, 110, 0.2);
+                border: 1px solid rgba(222, 110, 110, 0.5);
+            }
+            
+            .mobile-control-section[style*="grid-column"] button {
+                background: #de6e6e !important;
+                font-weight: bold;
+            }
+            
+            .mobile-control-section[style*="grid-column"] button:hover {
+                background: #ff4444 !important;
+            }
+        }
+
+        /* Desktop Layout - ensure normal layout is preserved */
+        @media (min-width: 769px) {
+            /* Hide mobile layout on desktop */
+            .mobile-layout {
+                display: none !important;
+            }
+            
+            /* Show desktop layout */
+            .desktop-layout {
+                display: flex !important;
+                flex-direction: column;
+                gap: 8px;
+                width: 100%;
             }
         }
 
@@ -497,9 +732,9 @@
         <div id="game-canvas-container">
             <!-- PixiJS Canvas will be inserted here -->
             <div id="message-container"></div>
-        </div>
-        <div id="game-ui">
-            <div id="ui-right-panel">
+        </div>        <div id="game-ui">
+            <!-- Desktop Layout (unchanged) -->
+            <div class="desktop-layout" id="ui-right-panel">
                 <div class="ui-panel" id="live-stats">
                     <span>Wave: <span id="wave-num">1</span></span> |
                     <span>Gold: <span id="gold">500</span></span><br>
@@ -531,6 +766,73 @@
                 
                 <button id="end-btn" style="display:none;">End Game</button>
             </div>
+            
+            <!-- Mobile Layout -->
+            <div class="mobile-layout">
+                <!-- Left side - Towers -->
+                <div class="towers-mobile-section">
+                    <div class="towers-mobile-title">Towers</div>
+                    <div class="towers-mobile-content">
+                        <div class="ui-panel" id="tower-select-mobile"></div>
+                    </div>
+                </div>
+                
+                <!-- Right side - Controls Grid -->
+                <div class="controls-mobile-grid">
+                    <!-- Row 1, Column 1 - Stats -->
+                    <div class="mobile-control-section">
+                        <div class="mobile-control-title">Stats</div>
+                        <div class="ui-panel" id="live-stats-mobile">
+                            <span>Wave: <span id="wave-num-mobile">1</span></span><br>
+                            <span>Gold: <span id="gold-mobile">500</span></span><br>
+                            <span>Lives: <span id="lives-mobile">20</span></span><br>
+                            <span>Left: <span id="enemies-left-mobile">0</span></span>
+                        </div>
+                    </div>
+                    
+                    <!-- Row 1, Column 2 - Wave Control -->
+                    <div class="mobile-control-section">
+                        <div class="mobile-control-title">Wave</div>
+                        <button id="start-btn-mobile">Start</button>
+                        <button id="next-wave-btn-mobile" style="display:none;">Next</button>
+                    </div>
+                    
+                    <!-- Row 2, Column 1 - Boost -->
+                    <div class="mobile-control-section">
+                        <div class="mobile-control-title">Boost</div>
+                        <button id="boost-btn-mobile">Boost [B]</button>
+                    </div>
+                    
+                    <!-- Row 2, Column 2 - Shop -->
+                    <div class="mobile-control-section">
+                        <div class="mobile-control-title">Shop</div>
+                        <button id="shop-btn-mobile">Shop [P]</button>
+                    </div>
+                    
+                    <!-- Row 3, Column 1 - Bombs -->
+                    <div class="mobile-control-section">
+                        <div class="mobile-control-title">Bombs</div>
+                        <div id="bomb-ui-mobile">
+                            <div id="bomb-count-mobile">Bombs: 0</div>
+                            <button id="place-bomb-btn-mobile" disabled>Place [X]</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Row 3, Column 2 - Next Waves -->
+                    <div class="mobile-control-section">
+                        <div class="mobile-control-title">Next Waves</div>
+                        <div id="wave-info-panel-mobile">
+                            <div id="wave-info-content-mobile"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Row 4, Column 1-2 - End Game -->
+                    <div class="mobile-control-section" style="grid-column: 1 / -1;">
+                        <button id="end-btn-mobile" style="display:none;">End Game</button>
+                    </div>
+                </div>
+            </div>
+            
             <div class="ui-panel" id="stats-panel" style="display:none;"></div>
         </div>
     </div>
@@ -1018,36 +1320,72 @@ const shopModal = document.getElementById('shop-modal');
 const shopCloseBtn = document.querySelector('.shop-close');
 const messageContainer = document.getElementById('message-container');
 
+// Mobile UI elements
+const waveNumMobile = document.getElementById('wave-num-mobile');
+const goldSpanMobile = document.getElementById('gold-mobile');
+const startBtnMobile = document.getElementById('start-btn-mobile');
+const endBtnMobile = document.getElementById('end-btn-mobile');
+const nextWaveBtnMobile = document.getElementById('next-wave-btn-mobile');
+const boostBtnMobile = document.getElementById('boost-btn-mobile');
+const shopBtnMobile = document.getElementById('shop-btn-mobile');
+
 function updateUI() {
+    // Update desktop UI
     waveNum.textContent = wave;
     goldSpan.textContent = gold;
     document.getElementById('lives').textContent = lives;
     document.getElementById('enemies-left').textContent = enemies.filter(e => e.alive).length;
     document.getElementById('bomb-count').textContent = `Bombs: ${bombCount}`;
     
-    // Update bomb button state
+    // Update mobile UI
+    if (waveNumMobile) waveNumMobile.textContent = wave;
+    if (goldSpanMobile) goldSpanMobile.textContent = gold;
+    const livesMobile = document.getElementById('lives-mobile');
+    const enemiesLeftMobile = document.getElementById('enemies-left-mobile');
+    const bombCountMobile = document.getElementById('bomb-count-mobile');
+    if (livesMobile) livesMobile.textContent = lives;
+    if (enemiesLeftMobile) enemiesLeftMobile.textContent = enemies.filter(e => e.alive).length;
+    if (bombCountMobile) bombCountMobile.textContent = `Bombs: ${bombCount}`;
+    
+    // Update bomb button state (desktop)
     const bombBtn = document.getElementById('place-bomb-btn');
     bombBtn.disabled = bombCount <= 0;
     
-    if (placingBomb) {
-        bombBtn.textContent = 'Cancel [X]';
-        bombBtn.style.background = '#666';
-    } else {
-        bombBtn.textContent = 'Place [X]';
-        bombBtn.style.background = bombBtn.disabled ? '#666' : '#ff3300';
-    }
+    // Update bomb button state (mobile)
+    const bombBtnMobile = document.getElementById('place-bomb-btn-mobile');
+    if (bombBtnMobile) bombBtnMobile.disabled = bombCount <= 0;
     
-    // Update boost button
-    if (boostActive) {
-        boostBtn.textContent = 'Boosting...';
-        boostBtn.disabled = true;
-    } else if (boostCooldown > 0) {
-        boostBtn.textContent = `Boost [${Math.ceil(boostCooldown)}s]`;
-        boostBtn.disabled = true;
-    } else {
-        boostBtn.textContent = 'Boost [B]';
-        boostBtn.disabled = false;
-    }
+    // Update bomb button text and style
+    const updateBombButton = (btn) => {
+        if (!btn) return;
+        if (placingBomb) {
+            btn.textContent = 'Cancel [X]';
+            btn.style.background = '#666';
+        } else {
+            btn.textContent = 'Place [X]';
+            btn.style.background = btn.disabled ? '#666' : '#ff3300';
+        }
+    };
+    
+    updateBombButton(bombBtn);
+    updateBombButton(bombBtnMobile);
+    
+    // Update boost buttons
+    const updateBoostButton = (btn) => {
+        if (!btn) return;
+        if (boostActive) {
+            btn.textContent = 'Boosting...';
+            btn.disabled = true;
+        } else if (boostCooldown > 0) {
+            btn.textContent = `Boost [${Math.ceil(boostCooldown)}s]`;
+            btn.disabled = true;
+        } else {
+            btn.textContent = 'Boost [B]';
+            btn.disabled = false;
+        }
+    };
+      updateBoostButton(boostBtn);
+    updateBoostButton(boostBtnMobile);
     
     // Update shop button price indicators
     const numAvailable = SHOP_TOWERS.filter(t => 
@@ -1134,6 +1472,7 @@ function hideStats() {
 
 // --- Tower Selection UI ---
 function renderTowerSelect() {
+    // Update desktop tower selection
     towerSelect.innerHTML = '';
     TOWER_TYPES.forEach((t, i) => {
         const btn = document.createElement('button');
@@ -1181,6 +1520,46 @@ function renderTowerSelect() {
         
         towerSelect.appendChild(btn);
     });
+    
+    // Update mobile tower selection
+    const towerSelectMobile = document.getElementById('tower-select-mobile');
+    if (towerSelectMobile) {
+        towerSelectMobile.innerHTML = '';
+        TOWER_TYPES.forEach((t, i) => {
+            const btn = document.createElement('button');
+            btn.className = 'tower-btn' + (selectedTowerType === i ? ' selected' : '');
+            
+            // Condensed text layout for mobile
+            btn.innerHTML = `<div style="text-align: center; line-height: 1;">
+                <div style="font-weight: bold; font-size: 0.7em;">${t.name}</div>
+                <div style="font-size: 0.6em;">[${t.key}] ${t.cost}g</div>
+            </div>`;
+            
+            btn.onclick = () => {
+                selectedTowerType = i;
+                // Close tower stats window if one is open
+                if (towerStatsWindow) {
+                    document.body.removeChild(towerStatsWindow);
+                    towerStatsWindow = null;
+                }
+                renderTowerSelect();
+            };
+            
+            // Add touch support for mobile
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault(); // Prevent default touch behavior
+                selectedTowerType = i;
+                // Close tower stats window if one is open
+                if (towerStatsWindow) {
+                    document.body.removeChild(towerStatsWindow);
+                    towerStatsWindow = null;
+                }
+                renderTowerSelect();
+            });
+            
+            towerSelectMobile.appendChild(btn);
+        });
+    }
 }
 
 // --- Tower Tooltip Functions ---
@@ -1320,8 +1699,7 @@ function setupGameHandlers() {
             renderTowerSelect();
         }
     });
-    
-    // --- Button Handlers ---
+      // --- Button Handlers ---
     startBtn.onclick = startWave;
     endBtn.onclick = () => {
         // Show warning before ending the game
@@ -1330,6 +1708,89 @@ function setupGameHandlers() {
         }
     };
     nextWaveBtn.onclick = nextWave;
+    
+    // --- Mobile Button Handlers ---
+    if (startBtnMobile) {
+        startBtnMobile.onclick = startWave;
+        startBtnMobile.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startWave();
+        });
+    }
+    
+    if (endBtnMobile) {
+        endBtnMobile.onclick = () => {
+            if (confirm("Warning: This will end your current game and you will lose all progress in this run. Are you sure you want to continue?")) {
+                endGame();
+            }
+        };
+        endBtnMobile.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (confirm("Warning: This will end your current game and you will lose all progress in this run. Are you sure you want to continue?")) {
+                endGame();
+            }
+        });
+    }
+    
+    if (nextWaveBtnMobile) {
+        nextWaveBtnMobile.onclick = nextWave;
+        nextWaveBtnMobile.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            nextWave();
+        });
+    }
+    
+    if (boostBtnMobile) {
+        boostBtnMobile.addEventListener('click', activateBoost);
+        boostBtnMobile.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            activateBoost();
+        });
+    }
+    
+    if (shopBtnMobile) {
+        shopBtnMobile.addEventListener('click', () => {
+            shopModal.style.display = 'block';
+            renderShop();
+        });
+        shopBtnMobile.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            shopModal.style.display = 'block';
+            renderShop();
+        });
+    }
+    
+    // Mobile bomb button
+    const bombBtnMobile = document.getElementById('place-bomb-btn-mobile');
+    if (bombBtnMobile) {
+        bombBtnMobile.addEventListener('click', () => {
+            if (bombCount <= 0) return;
+            
+            placingBomb = !placingBomb;
+            
+            // Cancel tower placement if active
+            if (placingBomb) {
+                selectedTowerType = -1;
+                renderTowerSelect();
+            }
+            
+            updateUI();
+        });
+        bombBtnMobile.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (bombCount <= 0) return;
+            
+            placingBomb = !placingBomb;
+            
+            // Cancel tower placement if active
+            if (placingBomb) {
+                selectedTowerType = -1;
+                renderTowerSelect();
+            }
+            
+            updateUI();
+        });
+    }
     
     // Set up other event handlers
     setupPlacementHandlers();
@@ -1357,6 +1818,11 @@ function startWave() {
     isGameRunning = true;
     startBtn.style.display = 'none';
     endBtn.style.display = '';
+    
+    // Update mobile buttons
+    if (startBtnMobile) startBtnMobile.style.display = 'none';
+    if (endBtnMobile) endBtnMobile.style.display = '';
+    
     spawnWave();
 }
 
@@ -1364,12 +1830,21 @@ function endGame() {
     isGameRunning = false;
     endBtn.style.display = 'none';
     startBtn.style.display = '';
+    
+    // Update mobile buttons
+    if (endBtnMobile) endBtnMobile.style.display = 'none';
+    if (startBtnMobile) startBtnMobile.style.display = '';
+    
     showGameOver('Game Ended');
 }
 
 function nextWave() {
     isGameRunning = true;
     nextWaveBtn.style.display = 'none';
+    
+    // Update mobile buttons
+    if (nextWaveBtnMobile) nextWaveBtnMobile.style.display = 'none';
+    
     wave++;
     updateUI();
     renderWaveInfo(); // Only update wave info when wave actually changes
@@ -2227,17 +2702,25 @@ function gameLoop(delta) {
     });
     // Then filter out dead enemies
     enemies = enemies.filter(e => e.alive);
-    
-    // --- Win/Lose ---
+      // --- Win/Lose ---
     if (lives <= 0) {
         isGameRunning = false;
         endBtn.style.display = '';
         startBtn.style.display = 'none';
         nextWaveBtn.style.display = 'none';
+        
+        // Update mobile buttons
+        if (endBtnMobile) endBtnMobile.style.display = '';
+        if (startBtnMobile) startBtnMobile.style.display = 'none';
+        if (nextWaveBtnMobile) nextWaveBtnMobile.style.display = 'none';
+        
         showGameOver('Game Over!');
     } else if (!spawningWave && enemies.length === 0 && projectiles.length === 0 && isGameRunning) {
         isGameRunning = false;
         nextWaveBtn.style.display = '';
+        
+        // Update mobile buttons
+        if (nextWaveBtnMobile) nextWaveBtnMobile.style.display = '';
         
         // Award completion gold
         gold += CONFIG.gameSettings.waveCompleteGold;
@@ -2607,6 +3090,7 @@ function getWavePattern(waveNumber) {
 }
 
 function renderWaveInfo() {
+    // Update desktop wave info
     const waveInfoContent = document.getElementById('wave-info-content');
     waveInfoContent.innerHTML = '';
     
@@ -2639,6 +3123,33 @@ function renderWaveInfo() {
         waveItem.appendChild(waveName);
         
         waveInfoContent.appendChild(waveItem);
+    }
+    
+    // Update mobile wave info
+    const waveInfoContentMobile = document.getElementById('wave-info-content-mobile');
+    if (waveInfoContentMobile) {
+        waveInfoContentMobile.innerHTML = '';
+        
+        // Show next 3 waves for mobile (less space)
+        for (let i = 0; i < 3; i++) {
+            const waveNum = wave + i;
+            const pattern = getWavePattern(waveNum);
+            
+            const waveItem = document.createElement('div');
+            waveItem.className = 'wave-info-item';
+            if (i === 0) {
+                waveItem.classList.add('current');
+            }
+            
+            // Simplified layout for mobile
+            waveItem.innerHTML = `
+                <span style="font-weight: bold; margin-right: 4px;">${waveNum}</span>
+                <span style="margin-right: 2px;">${pattern.icon}</span>
+                <span style="font-size: 0.8em; color: #${pattern.color.toString(16).padStart(6, '0')}">${pattern.name}</span>
+            `;
+            
+            waveInfoContentMobile.appendChild(waveItem);
+        }
     }
 }
 
@@ -3070,14 +3581,18 @@ function restartGame(clearStorage = true) {
         // Reload purchased towers
         loadPurchasedTowers();
     }
-    
-    updatePathGrid();
+      updatePathGrid();
     updateUI();
     renderTowerSelect();
     renderWaveInfo(); // Only render wave info when actually restarting
     startBtn.style.display = '';
     endBtn.style.display = 'none';
     nextWaveBtn.style.display = 'none';
+    
+    // Update mobile button visibility
+    if (startBtnMobile) startBtnMobile.style.display = '';
+    if (endBtnMobile) endBtnMobile.style.display = 'none';
+    if (nextWaveBtnMobile) nextWaveBtnMobile.style.display = 'none';
     
     // Reset the text pool when restarting
     damageTextPool.forEach(text => {
