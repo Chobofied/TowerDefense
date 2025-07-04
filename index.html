@@ -289,15 +289,12 @@
                 background: rgba(110, 143, 222, 0.3);
                 border: 1px solid #6e8fde;
             }
-            
-            /* Mobile tower buttons */
+              /* Mobile tower buttons */
             .towers-mobile-content .tower-btn {
                 height: 40px;
                 font-size: 0.7em;
                 padding: 4px 6px;
                 line-height: 1;
-                background: rgba(30,34,44,0.95);
-                border: 2px solid #4e6fae;
                 border-radius: 6px;
                 color: #fff;
                 cursor: pointer;
@@ -307,18 +304,32 @@
                 justify-content: center;
                 align-items: center;
                 margin-bottom: 4px;
+                text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+                border: 2px solid rgba(255,255,255,0.3);
+                box-shadow: inset 0 1px 3px rgba(255,255,255,0.2);
             }
             
+            .towers-mobile-content .tower-btn:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 2px 6px rgba(0,0,0,0.3), inset 0 1px 3px rgba(255,255,255,0.3);
+            }
+            
+            .towers-mobile-content .tower-btn.selected {
+                border: 2px solid #ffd700;
+                box-shadow: 0 0 8px rgba(255,215,0,0.5), inset 0 1px 3px rgba(255,255,255,0.3);
+            }
+            
+            /* Mobile tower select container */
+            .towers-mobile-content #tower-select-mobile {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 4px;
+                width: 100%;
+            }            
             .towers-mobile-content .tower-btn:hover,
             .towers-mobile-content .tower-btn.selected {
-                background: rgba(110, 143, 222, 0.8);
-                border-color: #6e8fde;
-            }
-            
-            .towers-mobile-content #tower-select-mobile {
-                display: flex;
-                flex-direction: column;
-                gap: 4px;            }            /* Next Waves section - fills empty space to right of bombs and end game */
+                /* Color handled by individual button styling */
+            }/* Next Waves section - fills empty space to right of bombs and end game */
             .mobile-control-section[data-section="next-waves"] {
                 grid-column: 2;
                 grid-row: 3 / 5; /* Span rows 3-4 (next to bombs and end game) */
@@ -707,10 +718,7 @@
         
         .wave-info-name {
             font-size: 0.8em; /* Smaller font */
-        }        /* Make tower buttons more compact for two columns */
-        .tower-btn {
-            background: rgba(30,34,44,0.95);
-            border: 2px solid #4e6fae;
+        }        /* Make tower buttons more compact for two columns */        .tower-btn {
             border-radius: 6px;
             color: #fff;
             padding: 4px 8px;
@@ -725,13 +733,34 @@
             justify-content: center;
             align-items: center;
             line-height: 1.1;
-        }/* Create a button container for two-column layout */
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            border: 2px solid rgba(255,255,255,0.3);
+            box-shadow: inset 0 1px 3px rgba(255,255,255,0.2);
+        }
+        
+        .tower-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3), inset 0 1px 3px rgba(255,255,255,0.3);
+        }
+        
+        .tower-btn.selected {
+            border: 2px solid #ffd700;
+            box-shadow: 0 0 10px rgba(255,215,0,0.5), inset 0 1px 3px rgba(255,255,255,0.3);
+        }        /* Create a button container for two-column layout */
         .button-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 6px;
             width: 100%;
             pointer-events: auto;
+        }
+        
+        /* Desktop tower select container */
+        #tower-select {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            width: 100%;
         }
         
         /* Tower tooltip styles */
@@ -1516,12 +1545,15 @@ function hideStats() {
 }
 
 // --- Tower Selection UI ---
-function renderTowerSelect() {
-    // Update desktop tower selection
+function renderTowerSelect() {    // Update desktop tower selection
     towerSelect.innerHTML = '';
     TOWER_TYPES.forEach((t, i) => {
         const btn = document.createElement('button');
         btn.className = 'tower-btn' + (selectedTowerType === i ? ' selected' : '');
+        
+        // Set background color based on tower color
+        const towerColor = '#' + t.color.toString(16).padStart(6, '0');
+        btn.style.background = towerColor;
         
         // Get configuration data for tooltips
         const configTower = CONFIG.towers.find(ct => ct.name === t.name) || 
@@ -1532,7 +1564,7 @@ function renderTowerSelect() {
             <div style="font-weight: bold; margin-bottom: 1px;">${t.name}</div>
             <div style="font-size: 0.85em; margin-bottom: 1px;">[${t.key}]</div>
             <div style="font-size: 0.9em;">Cost: ${t.cost}</div>
-        </div>`;        btn.onclick = () => {
+        </div>`;btn.onclick = () => {
             selectedTowerType = i;
             // Close tower stats window if one is open
             if (towerStatsWindow) {
@@ -1565,14 +1597,17 @@ function renderTowerSelect() {
         
         towerSelect.appendChild(btn);
     });
-    
-    // Update mobile tower selection
+      // Update mobile tower selection
     const towerSelectMobile = document.getElementById('tower-select-mobile');
     if (towerSelectMobile) {
         towerSelectMobile.innerHTML = '';
         TOWER_TYPES.forEach((t, i) => {
             const btn = document.createElement('button');
             btn.className = 'tower-btn' + (selectedTowerType === i ? ' selected' : '');
+            
+            // Set background color based on tower color
+            const towerColor = '#' + t.color.toString(16).padStart(6, '0');
+            btn.style.background = towerColor;
             
             // Condensed text layout for mobile
             btn.innerHTML = `<div style="text-align: center; line-height: 1;">
