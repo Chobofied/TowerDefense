@@ -165,8 +165,7 @@
                 min-height: 60px;
                 border: 1px solid rgba(78, 111, 174, 0.3);
                 justify-content: center;
-            }
-              .mobile-control-title {
+            }            .mobile-control-title {
                 font-size: 0.85em;
                 font-weight: bold;
                 color: #ffffff;
@@ -182,6 +181,13 @@
             /* Hide titles for most sections except Next Waves */
             .mobile-control-section:not([data-section="next-waves"]) .mobile-control-title {
                 display: none;
+            }
+            
+            /* Make Next Waves header smaller and more compact */
+            .mobile-control-section[data-section="next-waves"] .mobile-control-title {
+                font-size: 0.7em;
+                margin-bottom: 2px;
+                padding: 1px 3px;
             }
               /* Compact mobile buttons */
             .mobile-control-section button {
@@ -3166,11 +3172,10 @@ function renderWaveInfo() {
     
     // Update mobile wave info
     const waveInfoContentMobile = document.getElementById('wave-info-content-mobile');
-    if (waveInfoContentMobile) {
-        waveInfoContentMobile.innerHTML = '';
+    if (waveInfoContentMobile) {        waveInfoContentMobile.innerHTML = '';
         
-        // Show next 3 waves for mobile (less space)
-        for (let i = 0; i < 3; i++) {
+        // Show next 5 waves for mobile (same as desktop)
+        for (let i = 0; i < 5; i++) {
             const waveNum = wave + i;
             const pattern = getWavePattern(waveNum);
             
@@ -3180,11 +3185,11 @@ function renderWaveInfo() {
                 waveItem.classList.add('current');
             }
             
-            // Simplified layout for mobile
+            // Simplified layout for mobile with smaller text
             waveItem.innerHTML = `
-                <span style="font-weight: bold; margin-right: 4px;">${waveNum}</span>
-                <span style="margin-right: 2px;">${pattern.icon}</span>
-                <span style="font-size: 0.8em; color: #${pattern.color.toString(16).padStart(6, '0')}">${pattern.name}</span>
+                <span style="font-weight: bold; margin-right: 3px; font-size: 0.8em;">${waveNum}</span>
+                <span style="margin-right: 2px; font-size: 0.7em;">${pattern.icon}</span>
+                <span style="font-size: 0.7em; color: #${pattern.color.toString(16).padStart(6, '0')}">${pattern.name}</span>
             `;
             
             waveInfoContentMobile.appendChild(waveItem);
