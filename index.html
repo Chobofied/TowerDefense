@@ -124,53 +124,46 @@
                 display: flex;
                 flex-direction: column;
                 gap: 4px;
-            }
-              /* Right side - Controls grid */
+            }            /* Right side - Controls grid */
             .controls-mobile-grid {
                 flex: 1;
                 display: grid;
                 grid-template-columns: 1fr 1fr;
-                grid-template-rows: auto auto auto auto;
+                grid-template-rows: auto auto auto 1fr auto;
                 gap: 6px;
                 max-width: 55%;
                 align-content: start;
+                height: 100%;
             }
-            
-            /* Mobile control sections */
+              /* Mobile control sections */
             .mobile-control-section {
                 display: flex;
                 flex-direction: column;
                 gap: 3px;
-                padding: 6px;
-                background: rgba(30,34,44,0.8);
+                padding: 8px;
+                background: rgba(30,34,44,0.9);
                 border-radius: 6px;
-                min-height: 50px;
+                min-height: 60px;
                 border: 1px solid rgba(78, 111, 174, 0.3);
+                justify-content: center;
             }
             
             .mobile-control-title {
-                font-size: 0.75em;
-                font-weight: bold;
-                color: #6e8fde;
-                text-align: center;
-                margin-bottom: 3px;
-                opacity: 1;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
+                display: none; /* Hide titles as requested */
             }
-            
-            /* Compact mobile buttons */
+              /* Compact mobile buttons */
             .mobile-control-section button {
-                font-size: 0.7em !important;
-                padding: 4px 8px !important;
+                font-size: 0.8em !important;
+                padding: 6px 10px !important;
                 margin: 0 !important;
-                min-height: 32px;
+                min-height: 36px;
                 background: #4e6fae !important;
                 border: none !important;
                 border-radius: 4px !important;
                 color: white !important;
-                font-weight: 500;
+                font-weight: 600;
                 transition: background 0.2s;
+                text-shadow: 0 1px 2px rgba(0,0,0,0.5);
             }
             
             .mobile-control-section button:hover {
@@ -181,34 +174,36 @@
                 background: #666 !important;
                 cursor: not-allowed;
             }
-            
-            /* Compact mobile stats */
+              /* Compact mobile stats */
             .mobile-control-section #live-stats-mobile {
-                font-size: 0.7em;
-                padding: 4px 6px;
+                font-size: 0.8em;
+                padding: 6px 8px;
                 margin: 0;
                 text-align: center;
-                line-height: 1.3;
-                background: rgba(30,34,44,0.9);
+                line-height: 1.4;
+                background: rgba(30,34,44,0.95);
                 border-radius: 4px;
                 border: 1px solid rgba(78, 111, 174, 0.2);
+                color: #ffffff;
+                text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+                font-weight: 500;
             }
-            
-            /* Compact bomb UI for mobile */
+              /* Compact bomb UI for mobile */
             .mobile-control-section #bomb-ui-mobile {
                 display: flex;
                 flex-direction: column;
                 align-items: center;
-                gap: 4px;
-                font-size: 0.7em;
+                gap: 6px;
+                font-size: 0.8em;
             }
             
             .mobile-control-section #bomb-count-mobile {
-                font-size: 0.7em;
+                font-size: 0.8em;
                 margin: 0;
                 text-align: center;
-                color: white;
-                font-weight: 500;
+                color: #ffffff;
+                font-weight: 600;
+                text-shadow: 0 1px 2px rgba(0,0,0,0.7);
             }
             
             .mobile-control-section #place-bomb-btn-mobile {
@@ -221,31 +216,35 @@
             .mobile-control-section #place-bomb-btn-mobile:hover:not(:disabled) {
                 background: #ff5500 !important;
             }
-            
-            /* Compact wave info for mobile */
+              /* Compact wave info for mobile */
             .mobile-control-section #wave-info-panel-mobile {
                 flex: 1;
                 display: flex;
                 flex-direction: column;
+                min-height: 80px;
             }
             
             .mobile-control-section #wave-info-content-mobile {
                 flex: 1;
-                max-height: 45px;
+                max-height: none;
                 overflow-y: auto;
-                font-size: 0.65em;
-                line-height: 1.2;
+                font-size: 0.75em;
+                line-height: 1.3;
                 display: flex;
                 flex-direction: column;
-                gap: 2px;
+                gap: 3px;
+                padding: 4px;
             }
             
             .mobile-control-section #wave-info-content-mobile .wave-info-item {
                 display: flex;
                 align-items: center;
-                padding: 1px 3px;
-                border-radius: 2px;
+                padding: 2px 4px;
+                border-radius: 3px;
                 font-size: 0.9em;
+                color: #ffffff;
+                text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+                font-weight: 500;
             }
             
             .mobile-control-section #wave-info-content-mobile .wave-info-item.current {
@@ -283,19 +282,26 @@
                 flex-direction: column;
                 gap: 4px;
             }
-            
-            /* End game button spans full width */
-            .mobile-control-section[style*="grid-column"] {
-                background: rgba(222, 110, 110, 0.2);
-                border: 1px solid rgba(222, 110, 110, 0.5);
+              /* Next Waves expanded section */
+            .mobile-control-section[style*="grid-row: 4"] {
+                background: rgba(30,34,44,0.95);
+                border: 1px solid rgba(78, 111, 174, 0.4);
+                min-height: 120px;
             }
             
-            .mobile-control-section[style*="grid-column"] button {
+            /* End game button positioning */
+            .mobile-control-section[style*="grid-row: 5"] {
+                background: rgba(222, 110, 110, 0.2);
+                border: 1px solid rgba(222, 110, 110, 0.5);
+                align-self: end;
+            }
+            
+            .mobile-control-section[style*="grid-row: 5"] button {
                 background: #de6e6e !important;
                 font-weight: bold;
             }
             
-            .mobile-control-section[style*="grid-column"] button:hover {
+            .mobile-control-section[style*="grid-row: 5"] button:hover {
                 background: #ff4444 !important;
             }
         }
@@ -776,8 +782,7 @@
                         <div class="ui-panel" id="tower-select-mobile"></div>
                     </div>
                 </div>
-                
-                <!-- Right side - Controls Grid -->
+                  <!-- Right side - Controls Grid -->
                 <div class="controls-mobile-grid">
                     <!-- Row 1, Column 1 - Stats -->
                     <div class="mobile-control-section">
@@ -793,8 +798,8 @@
                     <!-- Row 1, Column 2 - Wave Control -->
                     <div class="mobile-control-section">
                         <div class="mobile-control-title">Wave</div>
-                        <button id="start-btn-mobile">Start</button>
-                        <button id="next-wave-btn-mobile" style="display:none;">Next</button>
+                        <button id="start-btn-mobile">Start Wave</button>
+                        <button id="next-wave-btn-mobile" style="display:none;">Next Wave</button>
                     </div>
                     
                     <!-- Row 2, Column 1 - Boost -->
@@ -818,16 +823,16 @@
                         </div>
                     </div>
                     
-                    <!-- Row 3, Column 2 - Next Waves -->
-                    <div class="mobile-control-section">
+                    <!-- Row 4, Column 1-2 - Next Waves (expanded) -->
+                    <div class="mobile-control-section" style="grid-column: 1 / -1; grid-row: 4;">
                         <div class="mobile-control-title">Next Waves</div>
                         <div id="wave-info-panel-mobile">
                             <div id="wave-info-content-mobile"></div>
                         </div>
                     </div>
                     
-                    <!-- Row 4, Column 1-2 - End Game -->
-                    <div class="mobile-control-section" style="grid-column: 1 / -1;">
+                    <!-- Row 5, Column 2 - End Game (moved to bottom right) -->
+                    <div class="mobile-control-section" style="grid-column: 2; grid-row: 5;">
                         <button id="end-btn-mobile" style="display:none;">End Game</button>
                     </div>
                 </div>
@@ -2789,7 +2794,7 @@ function showTowerStats(tower, x, y) {
     statsWindow.style.color = '#fff';
     statsWindow.style.padding = '15px 20px';
     statsWindow.style.borderRadius = '8px';
-    statsWindow.style.boxShadow = '0 2px 24px #0008';
+    statsWindow.style.boxShadow = '0 2px 24px #000a';
     statsWindow.style.zIndex = '1000';
     statsWindow.style.minWidth = '200px';
     statsWindow.style.pointerEvents = 'auto';
