@@ -117,19 +117,38 @@
                 padding: 4px;
                 background: rgba(30,34,44,0.8);
                 border-radius: 4px;
-            }
-            
-            .towers-mobile-content {
+            }            .towers-mobile-content {
                 flex: 1;
                 display: flex;
                 flex-direction: column;
                 gap: 4px;
-            }            /* Right side - Controls grid */
+                overflow-y: auto; /* Add scrolling for towers */
+                max-height: 100%;
+                padding-right: 2px; /* Space for scrollbar */
+            }
+            
+            /* Custom scrollbar for tower selection */
+            .towers-mobile-content::-webkit-scrollbar {
+                width: 4px;
+            }
+            
+            .towers-mobile-content::-webkit-scrollbar-track {
+                background: rgba(30,34,44,0.5);
+                border-radius: 2px;
+            }
+            
+            .towers-mobile-content::-webkit-scrollbar-thumb {
+                background: rgba(78, 111, 174, 0.7);
+                border-radius: 2px;
+            }
+            
+            .towers-mobile-content::-webkit-scrollbar-thumb:hover {
+                background: rgba(110, 143, 222, 0.9);            }            /* Right side - Controls grid */
             .controls-mobile-grid {
                 flex: 1;
                 display: grid;
                 grid-template-columns: 1fr 1fr;
-                grid-template-rows: auto auto auto 1fr auto;
+                grid-template-rows: auto auto auto auto;
                 gap: 6px;
                 max-width: 55%;
                 align-content: start;
@@ -147,9 +166,22 @@
                 border: 1px solid rgba(78, 111, 174, 0.3);
                 justify-content: center;
             }
+              .mobile-control-title {
+                font-size: 0.85em;
+                font-weight: bold;
+                color: #ffffff;
+                text-align: center;
+                margin-bottom: 4px;
+                padding: 2px 4px;
+                background: rgba(78, 111, 174, 0.6);
+                border-radius: 4px;
+                text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+                display: block; /* Show titles for Next Waves */
+            }
             
-            .mobile-control-title {
-                display: none; /* Hide titles as requested */
+            /* Hide titles for most sections except Next Waves */
+            .mobile-control-section:not([data-section="next-waves"]) .mobile-control-title {
+                display: none;
             }
               /* Compact mobile buttons */
             .mobile-control-section button {
@@ -280,28 +312,31 @@
             .towers-mobile-content #tower-select-mobile {
                 display: flex;
                 flex-direction: column;
-                gap: 4px;
-            }
-              /* Next Waves expanded section */
-            .mobile-control-section[style*="grid-row: 4"] {
+                gap: 4px;            }            /* Next Waves section - fills empty space to right of bombs and end game */
+            .mobile-control-section[data-section="next-waves"] {
+                grid-column: 2;
+                grid-row: 3 / 5; /* Span rows 3-4 (next to bombs and end game) */
                 background: rgba(30,34,44,0.95);
                 border: 1px solid rgba(78, 111, 174, 0.4);
                 min-height: 120px;
+                display: flex;
+                flex-direction: column;
             }
-            
-            /* End game button positioning */
-            .mobile-control-section[style*="grid-row: 5"] {
+              /* End game button positioning - goes under bombs in row 4, column 1 */
+            .mobile-control-section[data-section="end-game"] {
+                grid-column: 1;
+                grid-row: 4;
                 background: rgba(222, 110, 110, 0.2);
                 border: 1px solid rgba(222, 110, 110, 0.5);
-                align-self: end;
+                align-self: start;
             }
             
-            .mobile-control-section[style*="grid-row: 5"] button {
+            .mobile-control-section[data-section="end-game"] button {
                 background: #de6e6e !important;
                 font-weight: bold;
             }
             
-            .mobile-control-section[style*="grid-row: 5"] button:hover {
+            .mobile-control-section[data-section="end-game"] button:hover {
                 background: #ff4444 !important;
             }
         }
@@ -781,11 +816,10 @@
                     <div class="towers-mobile-content">
                         <div class="ui-panel" id="tower-select-mobile"></div>
                     </div>
-                </div>
-                  <!-- Right side - Controls Grid -->
+                </div>                <!-- Right side - Controls Grid -->
                 <div class="controls-mobile-grid">
                     <!-- Row 1, Column 1 - Stats -->
-                    <div class="mobile-control-section">
+                    <div class="mobile-control-section" data-section="stats">
                         <div class="mobile-control-title">Stats</div>
                         <div class="ui-panel" id="live-stats-mobile">
                             <span>Wave: <span id="wave-num-mobile">1</span></span><br>
@@ -796,26 +830,26 @@
                     </div>
                     
                     <!-- Row 1, Column 2 - Wave Control -->
-                    <div class="mobile-control-section">
+                    <div class="mobile-control-section" data-section="wave-control">
                         <div class="mobile-control-title">Wave</div>
                         <button id="start-btn-mobile">Start Wave</button>
                         <button id="next-wave-btn-mobile" style="display:none;">Next Wave</button>
                     </div>
                     
                     <!-- Row 2, Column 1 - Boost -->
-                    <div class="mobile-control-section">
+                    <div class="mobile-control-section" data-section="boost">
                         <div class="mobile-control-title">Boost</div>
                         <button id="boost-btn-mobile">Boost [B]</button>
                     </div>
                     
                     <!-- Row 2, Column 2 - Shop -->
-                    <div class="mobile-control-section">
+                    <div class="mobile-control-section" data-section="shop">
                         <div class="mobile-control-title">Shop</div>
                         <button id="shop-btn-mobile">Shop [P]</button>
                     </div>
                     
                     <!-- Row 3, Column 1 - Bombs -->
-                    <div class="mobile-control-section">
+                    <div class="mobile-control-section" data-section="bombs">
                         <div class="mobile-control-title">Bombs</div>
                         <div id="bomb-ui-mobile">
                             <div id="bomb-count-mobile">Bombs: 0</div>
@@ -823,17 +857,17 @@
                         </div>
                     </div>
                     
-                    <!-- Row 4, Column 1-2 - Next Waves (expanded) -->
-                    <div class="mobile-control-section" style="grid-column: 1 / -1; grid-row: 4;">
-                        <div class="mobile-control-title">Next Waves</div>
+                    <!-- Row 4, Column 2 - End Game (moved under bombs) -->
+                    <div class="mobile-control-section" data-section="end-game">
+                        <button id="end-btn-mobile" style="display:none;">End Game</button>
+                    </div>
+                    
+                    <!-- Row 5, Column 1-2 - Next Waves (expanded at bottom) -->
+                    <div class="mobile-control-section" data-section="next-waves">
+                        <div class="mobile-control-title">NEXT WAVES</div>
                         <div id="wave-info-panel-mobile">
                             <div id="wave-info-content-mobile"></div>
                         </div>
-                    </div>
-                    
-                    <!-- Row 5, Column 2 - End Game (moved to bottom right) -->
-                    <div class="mobile-control-section" style="grid-column: 2; grid-row: 5;">
-                        <button id="end-btn-mobile" style="display:none;">End Game</button>
                     </div>
                 </div>
             </div>
