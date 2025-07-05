@@ -988,12 +988,12 @@
                 <div class="controls-mobile-grid">
                     <!-- Row 1, Column 1 - Stats -->
                     <div class="mobile-control-section" data-section="stats">
-                        <div class="mobile-control-title">Stats</div>
-                        <div class="ui-panel" id="live-stats-mobile">
+                        <div class="mobile-control-title">Stats</div>                        <div class="ui-panel" id="live-stats-mobile">
                             <span>Wave: <span id="wave-num-mobile">1</span></span><br>
                             <span>Gold: <span id="gold-mobile">500</span></span><br>
                             <span>Lives: <span id="lives-mobile">20</span></span><br>
-                            <span>Left: <span id="enemies-left-mobile">0</span></span>
+                            <span>Left: <span id="enemies-left-mobile">0</span></span><br>
+                            <span>v<span id="version-mobile">0.1.0</span></span>
                         </div>
                     </div>
                     
@@ -1638,6 +1638,12 @@ function updateUI() {
     document.getElementById('enemies-left').textContent = enemies.filter(e => e.alive).length;
     document.getElementById('bomb-count').textContent = `Bombs: ${bombCount}`;
     
+    // Update version display (desktop)
+    if (VERSION) {
+        const versionSpan = document.getElementById('version');
+        if (versionSpan) versionSpan.textContent = VERSION;
+    }
+    
     // Update mobile UI
     if (waveNumMobile) waveNumMobile.textContent = wave;
     if (goldSpanMobile) goldSpanMobile.textContent = gold;
@@ -1647,6 +1653,12 @@ function updateUI() {
     if (livesMobile) livesMobile.textContent = lives;
     if (enemiesLeftMobile) enemiesLeftMobile.textContent = enemies.filter(e => e.alive).length;
     if (bombCountMobile) bombCountMobile.textContent = `Bombs: ${bombCount}`;
+    
+    // Update version display (mobile)
+    if (VERSION) {
+        const versionMobile = document.getElementById('version-mobile');
+        if (versionMobile) versionMobile.textContent = VERSION;
+    }
     
     // Update bomb button state (desktop)
     const bombBtn = document.getElementById('place-bomb-btn');
