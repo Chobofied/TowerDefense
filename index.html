@@ -132,7 +132,92 @@
                 /* Adjust max height to account for Safari UI */
                 max-height: min(40vh, 40dvh);
             }
+        }
+        
+        /* Landscape orientation specific fixes for mobile */
+        @media (max-width: 768px) and (orientation: landscape) {
+            #game-ui {
+                /* Reduce UI height significantly in landscape mode */
+                max-height: min(25vh, 25dvh);
+                min-height: 180px;
+                padding: 6px;
+                padding-bottom: max(6px, env(safe-area-inset-bottom));
+                gap: 8px;
+            }
             
+            #game-canvas-container {
+                /* Give more space to the game canvas in landscape */
+                flex: 1;
+                min-height: 0;
+            }
+            
+            /* Make UI elements more compact in landscape */
+            .mobile-control-section {
+                padding: 6px;
+                min-height: 50px;
+                gap: 2px;
+            }
+            
+            .mobile-control-section button {
+                font-size: 0.75em !important;
+                padding: 4px 8px !important;
+                min-height: 32px;
+            }
+            
+            .mobile-control-section #live-stats-mobile {
+                font-size: 0.75em;
+                padding: 4px 6px;
+                line-height: 1.3;
+            }
+            
+            .mobile-control-section #bomb-count-mobile {
+                font-size: 0.75em;
+            }
+            
+            .mobile-control-section #place-bomb-btn-mobile {
+                font-size: 0.6em !important;
+                padding: 2px 4px !important;
+                min-height: 26px;
+            }
+            
+            .mobile-control-section #wave-info-content-mobile {
+                font-size: 0.7em;
+                line-height: 1.2;
+                gap: 2px;
+                padding: 3px;
+            }
+            
+            .mobile-control-section #wave-info-content-mobile .wave-info-item {
+                padding: 1px 3px;
+                font-size: 0.85em;
+            }
+            
+            .towers-mobile-title {
+                font-size: 1em;
+                margin-bottom: 3px;
+                padding: 3px;
+            }
+            
+            .towers-mobile-content .tower-btn {
+                height: 36px;
+                font-size: 0.65em;
+                padding: 3px 5px;
+            }
+            
+            .mobile-control-title {
+                font-size: 0.8em !important;
+                margin-bottom: 3px;
+                padding: 1px 3px;
+            }
+            
+            .mobile-control-section[data-section="next-waves"] .mobile-control-title {
+                font-size: 0.65em !important;
+                margin-bottom: 1px;
+                padding: 1px 2px;
+            }        }
+        
+        /* Base mobile styles for both portrait and landscape */
+        @media (max-width: 768px) {
             /* Hide desktop layout components on mobile */
             .desktop-layout {
                 display: none !important;
@@ -976,12 +1061,22 @@ function handleSafariViewport() {
         const setVH = () => {
             const vh = window.innerHeight * 0.01;
             document.documentElement.style.setProperty('--vh', `${vh}px`);
+            
+            // Force canvas resize on orientation change
+            if (typeof resizeCanvas === 'function') {
+                setTimeout(() => {
+                    resizeCanvas();
+                }, 200);
+            }
         };
         
         setVH();
         window.addEventListener('resize', setVH);
         window.addEventListener('orientationchange', () => {
-            setTimeout(setVH, 100); // Delay to ensure orientation change is complete
+            // Multiple timeouts to handle iOS Safari's delayed viewport updates
+            setTimeout(setVH, 100);
+            setTimeout(setVH, 300);
+            setTimeout(setVH, 500);
         });
         
         // Prevent iOS Safari from bouncing when scrolling
@@ -1208,10 +1303,53 @@ const app = new PIXI.Application({
 });
 document.getElementById('game-canvas-container').appendChild(app.view);
 
+// Canvas resize function for orientation changes
+function resizeCanvas() {
+    if (!app || !app.renderer) return;
+    
+    // Get current container dimensions
+    const container = document.getElementById('game-canvas-container');
+    const containerRect = container.getBoundingClientRect();
+    
+    // Use the container dimensions to maintain aspect ratio
+    const containerWidth = containerRect.width;
+    const containerHeight = containerRect.height;
+    
+    // Calculate the best fit while maintaining aspect ratio
+    const gameAspectRatio = MAP_WIDTH / MAP_HEIGHT;
+    const containerAspectRatio = containerWidth / containerHeight;
+    
+    let newWidth, newHeight;
+    
+    if (containerAspectRatio > gameAspectRatio) {
+        // Container is wider than needed, fit to height
+        newHeight = containerHeight;
+        newWidth = newHeight * gameAspectRatio;
+    } else {
+        // Container is taller than needed, fit to width
+        newWidth = containerWidth;
+        newHeight = newWidth / gameAspectRatio;
+    }
+    
+    // Ensure minimum size to keep the game playable
+    newWidth = Math.max(newWidth, 300);
+    newHeight = Math.max(newHeight, 300);
+    
+    // Update canvas display size
+    app.view.style.width = newWidth + 'px';
+    app.view.style.height = newHeight + 'px';
+    
+    // Keep the internal renderer size the same for consistent game logic
+    // Only the display scaling changes
+}
+
 function initGame() {
     // Set canvas dimensions from configuration
     app.renderer.resize(MAP_WIDTH, MAP_HEIGHT);
     app.view.style.display = 'block';
+    
+    // Initial canvas resize
+    resizeCanvas();
     
     // Initialize game state
     gold = CONFIG.gameSettings.startingGold;
@@ -1959,9 +2097,15 @@ function setupGameHandlers() {
             updateUI();
         });
     }
-    
-    // Set up other event handlers
+      // Set up other event handlers
     setupPlacementHandlers();
+    
+    // Add window resize listener for canvas resizing
+    window.addEventListener('resize', () => {
+        if (typeof resizeCanvas === 'function') {
+            setTimeout(resizeCanvas, 100);
+        }
+    });
     
     // Start the game loop
     app.ticker.add(gameLoop);

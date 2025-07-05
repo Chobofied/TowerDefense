@@ -1,6 +1,6 @@
 {
   "gameSettings": {
-    "gridSize": 16,
+    "gridSize": 14,
     "tileSize": 48,
     "startingGold": 500,
     "startingLives": 20,
