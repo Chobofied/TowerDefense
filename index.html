@@ -943,12 +943,12 @@
             <div id="message-container"></div>
         </div>        <div id="game-ui">
             <!-- Desktop Layout (unchanged) -->
-            <div class="desktop-layout" id="ui-right-panel">
-                <div class="ui-panel" id="live-stats">
+            <div class="desktop-layout" id="ui-right-panel">                <div class="ui-panel" id="live-stats">
                     <span>Wave: <span id="wave-num">1</span></span> |
                     <span>Gold: <span id="gold">500</span></span><br>
                     <span>Lives: <span id="lives">20</span></span> |
-                    <span>Left: <span id="enemies-left">0</span></span>
+                    <span>Left: <span id="enemies-left">0</span></span><br>
+                    <span>v<span id="version">0.1.0</span></span>
                 </div>
                 
                 <!-- Wave Information Panel -->
@@ -1107,6 +1107,7 @@ handleSafariViewport();
 
 // --- Load Game Configuration ---
 let CONFIG; // Will hold the loaded configuration
+let VERSION; // Game version from configuration
 let GRID_SIZE;
 let TILE_SIZE;
 let MAP_WIDTH;
@@ -1137,6 +1138,7 @@ async function loadConfig() {
         CONFIG = await response.json();
         
         // Set all configuration variables
+  
         GRID_SIZE = CONFIG.gameSettings.gridSize;
         TILE_SIZE = CONFIG.gameSettings.tileSize;
         MAP_WIDTH = GRID_SIZE * TILE_SIZE;
