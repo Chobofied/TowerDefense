@@ -1134,11 +1134,10 @@ async function loadConfig() {
         if (!response.ok) {
             throw new Error(`Failed to load configuration: ${response.status}`);
         }
-        
-        CONFIG = await response.json();
+          CONFIG = await response.json();
         
         // Set all configuration variables
-  
+        VERSION = CONFIG.gameSettings.version;
         GRID_SIZE = CONFIG.gameSettings.gridSize;
         TILE_SIZE = CONFIG.gameSettings.tileSize;
         MAP_WIDTH = GRID_SIZE * TILE_SIZE;
@@ -3160,8 +3159,6 @@ function showTowerStats(tower, x, y) {
     // Create stats window
     let statsWindow = document.createElement('div');
     statsWindow.style.position = 'absolute';
-    statsWindow.style.left = (x + 20) + 'px';
-    statsWindow.style.top = (y - 20) + 'px';
     statsWindow.style.background = '#23273a';
     statsWindow.style.color = '#fff';
     statsWindow.style.padding = '15px 20px';
@@ -3170,6 +3167,7 @@ function showTowerStats(tower, x, y) {
     statsWindow.style.zIndex = '1000';
     statsWindow.style.minWidth = '200px';
     statsWindow.style.pointerEvents = 'auto';
+    statsWindow.style.maxWidth = '280px';
     
     // Add close button (X) in the top right
     let closeBtn = document.createElement('div');
@@ -3277,16 +3275,57 @@ function showTowerStats(tower, x, y) {
         updateUI();
     };
     
-    // Assemble the window
-    statsWindow.appendChild(closeBtn);
+    // Assemble the window    statsWindow.appendChild(closeBtn);
     statsWindow.appendChild(title);
     statsWindow.appendChild(statsContainer);
     buttonsContainer.appendChild(upgradeBtn);
     buttonsContainer.appendChild(sellBtn);
     statsWindow.appendChild(buttonsContainer);
     
+    // Add to DOM first (positioned off-screen temporarily)
+    statsWindow.style.left = '-9999px';
+    statsWindow.style.top = '-9999px';
     document.body.appendChild(statsWindow);
     towerStatsWindow = statsWindow;
+    
+    // Now measure the window dimensions and position it properly
+    const windowRect = statsWindow.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Calculate preferred position (offset from click)
+    let preferredLeft = x + 20;
+    let preferredTop = y - 20;
+    
+    // Adjust horizontal position if it would go off-screen
+    if (preferredLeft + windowRect.width > viewportWidth) {
+        // Position to the left of the click point instead
+        preferredLeft = x - windowRect.width - 20;
+        
+        // If it still goes off-screen to the left, clamp it
+        if (preferredLeft < 10) {
+            preferredLeft = 10;
+        }
+    }
+    
+    // Adjust vertical position if it would go off-screen
+    if (preferredTop + windowRect.height > viewportHeight) {
+        // Position above the click point instead
+        preferredTop = y - windowRect.height - 20;
+        
+        // If it still goes off-screen at the top, clamp it
+        if (preferredTop < 10) {
+            preferredTop = 10;
+        }
+    }
+    
+    // Ensure minimum margins from edges
+    preferredLeft = Math.max(10, Math.min(preferredLeft, viewportWidth - windowRect.width - 10));
+    preferredTop = Math.max(10, Math.min(preferredTop, viewportHeight - windowRect.height - 10));
+    
+    // Apply the final position
+    statsWindow.style.left = preferredLeft + 'px';
+    statsWindow.style.top = preferredTop + 'px';
     
     // Close the window when clicking outside
     document.addEventListener('mousedown', function closeStatsWindow(e) {
