@@ -136,138 +136,82 @@
         
         /* Landscape orientation specific fixes for mobile */
         @media (max-width: 768px) and (orientation: landscape) {
-            /* Switch to horizontal layout in landscape mode */
-            #game-wrapper {
-                flex-direction: row;
+            #game-ui {
+                /* Reduce UI height significantly in landscape mode */
+                max-height: min(25vh, 25dvh);
+                min-height: 180px;
+                padding: 6px;
+                padding-bottom: max(6px, env(safe-area-inset-bottom));
+                gap: 8px;
             }
             
             #game-canvas-container {
-                /* Give most space to the game canvas in landscape */
+                /* Give more space to the game canvas in landscape */
                 flex: 1;
-                min-width: 0;
-                order: 1;
-            }
-            
-            #game-ui {
-                /* Convert to sidebar in landscape mode */
-                flex: 0 0 auto;
-                width: min(35vw, 280px);
-                max-width: 280px;
-                min-width: 220px;
-                height: 100vh;
-                height: 100dvh;
-                max-height: none;
-                min-height: 0;
-                padding: 6px;
-                padding-right: max(6px, env(safe-area-inset-right));
-                gap: 4px;
-                overflow-y: auto;
-                order: 2;
-                border-top: none;
-                border-left: 2px solid #4e6fae;
-            }
-            
-            /* Adjust mobile layout for landscape sidebar */
-            .mobile-layout {
-                flex-direction: column;
-                height: 100%;
-                gap: 6px;
-            }
-            
-            /* Towers section becomes horizontal in landscape */
-            .towers-mobile-section {
-                flex: 0 0 auto;
-                max-width: none;
-                max-height: 35%;
-            }
-            
-            .towers-mobile-title {
-                font-size: 0.9em;
-                margin-bottom: 3px;
-                padding: 3px 6px;
-            }
-            
-            .towers-mobile-content {
-                max-height: 120px;
-                overflow-y: auto;
-            }
-            
-            .towers-mobile-content .tower-btn {
-                height: 32px;
-                font-size: 0.6em;
-                padding: 2px 4px;
-                margin-bottom: 2px;
-            }
-            
-            /* Controls grid becomes vertical stack in landscape */
-            .controls-mobile-grid {
-                flex: 1;
-                max-width: none;
-                display: flex;
-                flex-direction: column;
-                gap: 4px;
                 min-height: 0;
             }
             
-            /* Make control sections more compact */
+            /* Make UI elements more compact in landscape */
             .mobile-control-section {
-                padding: 4px;
-                min-height: 36px;
+                padding: 6px;
+                min-height: 50px;
                 gap: 2px;
-                flex: 0 0 auto;
             }
             
             .mobile-control-section button {
-                font-size: 0.7em !important;
-                padding: 3px 6px !important;
-                min-height: 28px;
+                font-size: 0.75em !important;
+                padding: 4px 8px !important;
+                min-height: 32px;
             }
             
             .mobile-control-section #live-stats-mobile {
-                font-size: 0.7em;
-                padding: 3px 5px;
-                line-height: 1.2;
+                font-size: 0.75em;
+                padding: 4px 6px;
+                line-height: 1.3;
             }
             
             .mobile-control-section #bomb-count-mobile {
-                font-size: 0.7em;
+                font-size: 0.75em;
             }
             
             .mobile-control-section #place-bomb-btn-mobile {
                 font-size: 0.6em !important;
                 padding: 2px 4px !important;
-                min-height: 24px;
-            }
-            
-            /* Make wave info section scrollable and compact */
-            .mobile-control-section[data-section="next-waves"] {
-                flex: 1;
-                min-height: 80px;
-                max-height: none;
+                min-height: 26px;
             }
             
             .mobile-control-section #wave-info-content-mobile {
-                font-size: 0.65em;
-                line-height: 1.1;
-                gap: 1px;
-                padding: 2px;
-                max-height: 120px;
-                overflow-y: auto;
+                font-size: 0.7em;
+                line-height: 1.2;
+                gap: 2px;
+                padding: 3px;
             }
             
             .mobile-control-section #wave-info-content-mobile .wave-info-item {
                 padding: 1px 3px;
-                font-size: 0.9em;
+                font-size: 0.85em;
+            }
+            
+            .towers-mobile-title {
+                font-size: 1em;
+                margin-bottom: 3px;
+                padding: 3px;
+            }
+            
+            .towers-mobile-content .tower-btn {
+                height: 36px;
+                font-size: 0.65em;
+                padding: 3px 5px;
             }
             
             .mobile-control-title {
-                font-size: 0.75em !important;
-                margin-bottom: 2px;
+                font-size: 0.8em !important;
+                margin-bottom: 3px;
                 padding: 1px 3px;
             }
             
             .mobile-control-section[data-section="next-waves"] .mobile-control-title {
-                font-size: 0.7em !important;
+                font-size: 0.65em !important;
                 margin-bottom: 1px;
                 padding: 1px 2px;
             }        }
@@ -2491,11 +2435,46 @@ function setupPlacementHandlers() {    // Helper function to get coordinates fro
         if (tx === endTile.x && ty === endTile.y) return;
         if (gold < TOWER_TYPES[selectedTowerType].cost) return;
         
-        towers.push({
+        // Create temporary tower to test path blocking
+        const tempTower = {
             x: tx, y: ty, type: TOWER_TYPES[selectedTowerType], level: 1, cooldown: 0
-        });
-        gold -= TOWER_TYPES[selectedTowerType].cost;
+        };
+        
+        // Add the temporary tower
+        towers.push(tempTower);
         updatePathGrid();
+        
+        // Test if path is still valid from start to end
+        let mainPath = aStar(startTile, endTile);
+        
+        // Test if any existing moving enemies would be stranded
+        let enemiesBlocked = false;
+        if (isGameRunning) {
+            for (let enemy of enemies) {
+                if (!enemy.flying && enemy.alive) {
+                    let enemyGridPos = {
+                        x: Math.round((enemy.x - TILE_SIZE/2) / TILE_SIZE), 
+                        y: Math.round((enemy.y - TILE_SIZE/2) / TILE_SIZE)
+                    };
+                    let enemyPath = aStar(enemyGridPos, endTile);
+                    if (!enemyPath) {
+                        enemiesBlocked = true;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // If path is blocked or enemies would be stranded, remove tower and return
+        if (!mainPath || enemiesBlocked) {
+            towers.pop(); // Remove the temporary tower
+            updatePathGrid();
+            showMessage("Cannot place tower - would block path!", "#ff6666");
+            return;
+        }
+        
+        // Tower placement is valid, finalize it
+        gold -= TOWER_TYPES[selectedTowerType].cost;
         
         // Recalculate path for all non-flying, alive enemies
         enemies.forEach(e => {
@@ -2504,30 +2483,6 @@ function setupPlacementHandlers() {    // Helper function to get coordinates fro
                 e.pathIdx = 0;
             }
         });
-        
-        let path = aStar(startTile, endTile);
-        if (!path) {
-            let t = towers.pop();
-            gold += TOWER_TYPES[selectedTowerType].cost;
-            updatePathGrid();
-            let blocking = towers.filter(tw => {
-                towers = towers.filter(tt => tt !== tw);
-                updatePathGrid();
-                let p = aStar(startTile, endTile);
-                towers.push(tw);
-                updatePathGrid();
-                return !p;
-            });
-            if (blocking.length) {
-                let destroyed = blocking[Math.floor(Math.random()*blocking.length)];
-                towers = towers.filter(tw => tw !== destroyed);
-                updatePathGrid();
-                let g = new PIXI.Graphics();
-                g.beginFill(0xde6e6e).drawRect(destroyed.x*TILE_SIZE, destroyed.y*TILE_SIZE, TILE_SIZE, TILE_SIZE).endFill();
-                app.stage.addChild(g);
-                setTimeout(()=>app.stage.removeChild(g), 500);
-            }
-        }
         
         selectedTowerType = -1;
         renderTowerSelect();
