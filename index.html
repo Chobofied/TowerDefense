@@ -136,82 +136,138 @@
         
         /* Landscape orientation specific fixes for mobile */
         @media (max-width: 768px) and (orientation: landscape) {
-            #game-ui {
-                /* Reduce UI height significantly in landscape mode */
-                max-height: min(25vh, 25dvh);
-                min-height: 180px;
-                padding: 6px;
-                padding-bottom: max(6px, env(safe-area-inset-bottom));
-                gap: 8px;
+            /* Switch to horizontal layout in landscape mode */
+            #game-wrapper {
+                flex-direction: row;
             }
             
             #game-canvas-container {
-                /* Give more space to the game canvas in landscape */
+                /* Give most space to the game canvas in landscape */
                 flex: 1;
+                min-width: 0;
+                order: 1;
+            }
+            
+            #game-ui {
+                /* Convert to sidebar in landscape mode */
+                flex: 0 0 auto;
+                width: min(35vw, 280px);
+                max-width: 280px;
+                min-width: 220px;
+                height: 100vh;
+                height: 100dvh;
+                max-height: none;
+                min-height: 0;
+                padding: 6px;
+                padding-right: max(6px, env(safe-area-inset-right));
+                gap: 4px;
+                overflow-y: auto;
+                order: 2;
+                border-top: none;
+                border-left: 2px solid #4e6fae;
+            }
+            
+            /* Adjust mobile layout for landscape sidebar */
+            .mobile-layout {
+                flex-direction: column;
+                height: 100%;
+                gap: 6px;
+            }
+            
+            /* Towers section becomes horizontal in landscape */
+            .towers-mobile-section {
+                flex: 0 0 auto;
+                max-width: none;
+                max-height: 35%;
+            }
+            
+            .towers-mobile-title {
+                font-size: 0.9em;
+                margin-bottom: 3px;
+                padding: 3px 6px;
+            }
+            
+            .towers-mobile-content {
+                max-height: 120px;
+                overflow-y: auto;
+            }
+            
+            .towers-mobile-content .tower-btn {
+                height: 32px;
+                font-size: 0.6em;
+                padding: 2px 4px;
+                margin-bottom: 2px;
+            }
+            
+            /* Controls grid becomes vertical stack in landscape */
+            .controls-mobile-grid {
+                flex: 1;
+                max-width: none;
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
                 min-height: 0;
             }
             
-            /* Make UI elements more compact in landscape */
+            /* Make control sections more compact */
             .mobile-control-section {
-                padding: 6px;
-                min-height: 50px;
+                padding: 4px;
+                min-height: 36px;
                 gap: 2px;
+                flex: 0 0 auto;
             }
             
             .mobile-control-section button {
-                font-size: 0.75em !important;
-                padding: 4px 8px !important;
-                min-height: 32px;
+                font-size: 0.7em !important;
+                padding: 3px 6px !important;
+                min-height: 28px;
             }
             
             .mobile-control-section #live-stats-mobile {
-                font-size: 0.75em;
-                padding: 4px 6px;
-                line-height: 1.3;
+                font-size: 0.7em;
+                padding: 3px 5px;
+                line-height: 1.2;
             }
             
             .mobile-control-section #bomb-count-mobile {
-                font-size: 0.75em;
+                font-size: 0.7em;
             }
             
             .mobile-control-section #place-bomb-btn-mobile {
                 font-size: 0.6em !important;
                 padding: 2px 4px !important;
-                min-height: 26px;
+                min-height: 24px;
+            }
+            
+            /* Make wave info section scrollable and compact */
+            .mobile-control-section[data-section="next-waves"] {
+                flex: 1;
+                min-height: 80px;
+                max-height: none;
             }
             
             .mobile-control-section #wave-info-content-mobile {
-                font-size: 0.7em;
-                line-height: 1.2;
-                gap: 2px;
-                padding: 3px;
+                font-size: 0.65em;
+                line-height: 1.1;
+                gap: 1px;
+                padding: 2px;
+                max-height: 120px;
+                overflow-y: auto;
             }
             
             .mobile-control-section #wave-info-content-mobile .wave-info-item {
                 padding: 1px 3px;
-                font-size: 0.85em;
-            }
-            
-            .towers-mobile-title {
-                font-size: 1em;
-                margin-bottom: 3px;
-                padding: 3px;
-            }
-            
-            .towers-mobile-content .tower-btn {
-                height: 36px;
-                font-size: 0.65em;
-                padding: 3px 5px;
+                font-size: 0.9em;
             }
             
             .mobile-control-title {
-                font-size: 0.8em !important;
-                margin-bottom: 3px;
+                font-size: 0.75em !important;
+                margin-bottom: 2px;
                 padding: 1px 3px;
             }
             
             .mobile-control-section[data-section="next-waves"] .mobile-control-title {
-                font-size: 0.65em !important;
+                font-size: 0.7em !important;
                 margin-bottom: 1px;
                 padding: 1px 2px;
             }        }

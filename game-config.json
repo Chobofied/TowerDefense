@@ -6,7 +6,7 @@
     "startingLives": 20,
     "waveCompleteGold": 50,
     "itemDropChance": 0.15,
-    "version": "0.1.1"
+    "version": "0.1.2"
   },
   "towers": [
     {
