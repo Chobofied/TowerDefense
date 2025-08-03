@@ -8,17 +8,6 @@
     "itemDropChance": 0.15,
     "version": "0.1.2"
   },
-  "towerImages": {
-    "Cannon": "cannon.png",
-    "Melee": "melee.png",
-    "Missile(Splash)": "missile.png",
-    "Anti-Air": "anti_air.png",
-    "Slow": "slow.png",
-    "Sniper": "sniper.png",
-    "Fire": "fire.png",
-    "Water": "water.png",
-    "Earth": "earth.png"
-  },
   "towers": [
     {
       "name": "Cannon",
@@ -32,6 +21,7 @@
       "critChance": 0.1,
       "critMultiplier": 2.0,
       "element": "physical",
+      "image": "cannon.png",
       "description": "Basic ranged tower with balanced stats",
       "tips": "Good all-around starter tower, affordable and reliable"
     },
@@ -47,6 +37,7 @@
       "critChance": 0.15,
       "critMultiplier": 1.8,
       "element": "physical",
+      "image": "melee.png",
       "description": "Close-range tower that hits all nearby ground enemies",
       "tips": "Great for chokepoints, can't target flying enemies"
     },
@@ -64,6 +55,7 @@
       "element": "physical",
       "splashRadius": 80,
       "splashDamageRatio": 0.7,
+      "image": "missile.png",
       "description": "Explosive missiles that deal splash damage to nearby enemies",
       "tips": "Best against groups of enemies, slower fire rate but area damage"
     }
@@ -88,6 +80,7 @@
       "shopPrice": 200,
       "element": "physical",
       "flyingOnly": true,
+      "image": "anti_air.png",
       "description": "Specialized tower that only targets flying enemies",
       "tips": "Essential for air waves, useless against ground enemies"
     },
@@ -104,6 +97,7 @@
       "critMultiplier": 1.5,
       "shopPrice": 250,
       "element": "slow",
+      "image": "slow.png",
       "description": "Applies slow effect to enemies, reducing their movement speed",
       "tips": "Great support tower, pairs well with high-damage towers"
     },
@@ -120,6 +114,7 @@
       "critMultiplier": 3.0,
       "shopPrice": 600,
       "element": "physical",
+      "image": "sniper.png",
       "description": "Long-range tower with high damage and critical hit chance",
       "tips": "Excellent for picking off strong enemies from far away"
     },
@@ -136,6 +131,7 @@
       "critMultiplier": 1.7,
       "shopPrice": 400,
       "element": "fire",
+      "image": "fire.png",
       "description": "Fire elemental tower, strong against earth enemies",
       "tips": "Weak against water enemies, strong against earth enemies"
     },
@@ -152,6 +148,7 @@
       "critMultiplier": 1.7,
       "shopPrice": 400,
       "element": "water",
+      "image": "water.png",
       "description": "Water elemental tower, strong against fire enemies",
       "tips": "Weak against earth enemies, strong against fire enemies"
     },
@@ -168,6 +165,7 @@
       "critMultiplier": 1.7,
       "shopPrice": 400,
       "element": "earth",
+      "image": "earth.png",
       "description": "Earth elemental tower, strong against water enemies",
       "tips": "Weak against fire enemies, strong against water enemies"
     }

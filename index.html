@@ -3606,12 +3606,25 @@ function renderWaveInfo() {
 const towerImageMap = {};
 
 function loadTowerImages() {
-    // Load tower images from config
-    if (CONFIG && CONFIG.towerImages) {
-        Object.entries(CONFIG.towerImages).forEach(([towerName, fileName]) => {
-            const imagePath = `Game_Images/${fileName}`;
-            const texture = PIXI.Texture.from(imagePath);
-            towerImageMap[towerName] = texture;
+    // Load tower images from individual tower definitions
+    if (CONFIG && CONFIG.towers) {
+        CONFIG.towers.forEach(tower => {
+            if (tower.image) {
+                const imagePath = `Game_Images/${tower.image}`;
+                const texture = PIXI.Texture.from(imagePath);
+                towerImageMap[tower.name] = texture;
+            }
+        });
+    }
+    
+    // Also load shop tower images
+    if (CONFIG && CONFIG.shopTowers) {
+        CONFIG.shopTowers.forEach(tower => {
+            if (tower.image) {
+                const imagePath = `Game_Images/${tower.image}`;
+                const texture = PIXI.Texture.from(imagePath);
+                towerImageMap[tower.name] = texture;
+            }
         });
     }
 }
