@@ -1235,6 +1235,9 @@ async function loadConfig() {
         ITEM_TYPES = CONFIG.items;
         BOOST_CONFIG = CONFIG.boost;
         
+        // Load tower images from config
+        loadTowerImages();
+        
         // Initialize the game
         initGame();
         
@@ -3601,27 +3604,17 @@ function renderWaveInfo() {
 
 // --- Tower Images ---
 const towerImageMap = {};
-const towerImageNames = {
-    'Cannon': 'cannon.png',
-    'Melee': 'melee.png',
-    'Missile(Splash)': 'missile.png',
-    'Anti-Air': 'anti_air.png',
-    'Slow': 'slow.png',
-    'Sniper': 'sniper.png',
-    'Fire': 'fire.png',
-    'Water': 'water.png',
-    'Earth': 'earth.png'
-};
 
 function loadTowerImages() {
-    Object.entries(towerImageNames).forEach(([towerName, fileName]) => {
-        const imagePath = `Game_Images/${fileName}`;
-        const texture = PIXI.Texture.from(imagePath);
-        towerImageMap[towerName] = texture;
-    });
+    // Load tower images from config
+    if (CONFIG && CONFIG.towerImages) {
+        Object.entries(CONFIG.towerImages).forEach(([towerName, fileName]) => {
+            const imagePath = `Game_Images/${fileName}`;
+            const texture = PIXI.Texture.from(imagePath);
+            towerImageMap[towerName] = texture;
+        });
+    }
 }
-
-loadTowerImages();
 
 // --- Drawing ---
 const graphics = new PIXI.Graphics();
@@ -3677,12 +3670,10 @@ function draw() {
         graphics.drawCircle(mobilePreviewTile.x*TILE_SIZE+TILE_SIZE/2, mobilePreviewTile.y*TILE_SIZE+TILE_SIZE/2, TOWER_TYPES[selectedTowerType].range);
     }
     
-    // Draw towers with visual upgrades (constrained to tile size)
+    // Draw towers with visual upgrades (rings only, no size changes)
     for (let t of towers) {
-        // Calculate size based on level (constrained to tile size)
-        const maxRadius = TILE_SIZE / 2.2; // Base radius
-        const levelBonus = Math.min(t.level - 1, 4) * 0.1; // Cap bonus at 40% (level 5)
-        const radius = maxRadius * (1 + levelBonus);
+        // Keep tower size constant regardless of level
+        const radius = TILE_SIZE / 2.2; // Base radius stays the same
         
         // Try to draw tower image if available
         const towerTexture = towerImageMap[t.type.name];
@@ -3696,14 +3687,14 @@ function draw() {
                 t._sprite = towerSprite;
             }
             
-            // Position and size the sprite
+            // Position and size the sprite (constant size)
             towerSprite.x = t.x * TILE_SIZE + TILE_SIZE / 2;
             towerSprite.y = t.y * TILE_SIZE + TILE_SIZE / 2;
             towerSprite.width = radius * 2;
             towerSprite.height = radius * 2;
             towerSprite.visible = true;
             
-            // Add level-based visual enhancements around the image
+            // Add level-based visual enhancements around the image (rings only)
             if (t.level >= 2) {
                 // Level 2+: Add glowing outline
                 graphics.lineStyle(2, 0xffffff, 0.4)
@@ -3721,13 +3712,20 @@ function draw() {
                 graphics.lineStyle(3, 0xffdd00, 0.8)
                     .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius * 1.3);
             }
+            
+            if (t.level >= 5) {
+                // Level 5+: Add pulsing golden ring
+                const pulseAlpha = 0.6 + Math.sin(Date.now() / 300) * 0.3;
+                graphics.lineStyle(4, 0xffdd00, pulseAlpha)
+                    .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius * 1.4);
+            }
         } else {
-            // Fallback: Draw original circle if image not available
+            // Fallback: Draw original circle if image not available (also constant size)
             graphics.beginFill(t.type.color)
                 .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius)
                 .endFill();
             
-            // Add visual features based on level (original code)
+            // Add visual features based on level (original code with constant radius)
             if (t.level >= 2) {
                 graphics.beginFill(0xffffff, 0.3)
                     .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius * 0.6)
@@ -3742,6 +3740,13 @@ function draw() {
             if (t.level >= 4) {
                 graphics.lineStyle(2, 0xffdd00, 0.8)
                     .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius * 0.9);
+            }
+            
+            if (t.level >= 5) {
+                // Level 5+: Add pulsing effect for fallback towers too
+                const pulseAlpha = 0.6 + Math.sin(Date.now() / 300) * 0.3;
+                graphics.lineStyle(3, 0xffdd00, pulseAlpha)
+                    .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius * 1.1);
             }
         }
         

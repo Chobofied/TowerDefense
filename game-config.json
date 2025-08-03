@@ -2,11 +2,22 @@
   "gameSettings": {
     "gridSize": 14,
     "tileSize": 48,
-    "startingGold": 500,
+    "startingGold": 5000,
     "startingLives": 20,
     "waveCompleteGold": 50,
     "itemDropChance": 0.15,
     "version": "0.1.2"
+  },
+  "towerImages": {
+    "Cannon": "cannon.png",
+    "Melee": "melee.png",
+    "Missile(Splash)": "missile.png",
+    "Anti-Air": "anti_air.png",
+    "Slow": "slow.png",
+    "Sniper": "sniper.png",
+    "Fire": "fire.png",
+    "Water": "water.png",
+    "Earth": "earth.png"
   },
   "towers": [
     {
