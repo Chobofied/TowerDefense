@@ -1303,7 +1303,9 @@ function applySlowEffect(enemy, tower) {
 // --- PixiJS Setup ---
 const app = new PIXI.Application({
     backgroundColor: 0x23273a,
-    antialias: true
+    antialias: true, // Enable antialiasing for smooth images
+    resolution: window.devicePixelRatio || 1, // Use device pixel ratio for crisp rendering
+    autoDensity: true // Enable auto density for high DPI displays
 });
 document.getElementById('game-canvas-container').appendChild(app.view);
 
@@ -2280,10 +2282,12 @@ function setupPlacementHandlers() {    // Helper function to get coordinates fro
         const relativeX = clientX - rect.left;
         const relativeY = clientY - rect.top;
         
-        // Scale the coordinates to match the actual canvas size
-        // The canvas might be scaled by CSS, so we need to convert from display size to actual size
-        const scaleX = app.view.width / rect.width;
-        const scaleY = app.view.height / rect.height;
+        // Scale the coordinates to match the logical canvas size
+        // With autoDensity: true, we need to use logical dimensions, not physical
+        const logicalWidth = MAP_WIDTH;
+        const logicalHeight = MAP_HEIGHT;
+        const scaleX = logicalWidth / rect.width;
+        const scaleY = logicalHeight / rect.height;
         
         return {
             mx: relativeX * scaleX,
@@ -3612,6 +3616,10 @@ function loadTowerImages() {
             if (tower.image) {
                 const imagePath = `Game_Images/${tower.image}`;
                 const texture = PIXI.Texture.from(imagePath);
+                // High quality settings for smooth rendering
+                texture.baseTexture.scaleMode = PIXI.SCALE_MODES.LINEAR;
+                texture.baseTexture.mipmap = PIXI.MIPMAP_MODES.OFF;
+                texture.baseTexture.resolution = 1;
                 towerImageMap[tower.name] = texture;
             }
         });
@@ -3623,6 +3631,10 @@ function loadTowerImages() {
             if (tower.image) {
                 const imagePath = `Game_Images/${tower.image}`;
                 const texture = PIXI.Texture.from(imagePath);
+                // High quality settings for smooth rendering
+                texture.baseTexture.scaleMode = PIXI.SCALE_MODES.LINEAR;
+                texture.baseTexture.mipmap = PIXI.MIPMAP_MODES.OFF;
+                texture.baseTexture.resolution = 1;
                 towerImageMap[tower.name] = texture;
             }
         });
@@ -3685,9 +3697,6 @@ function draw() {
     
     // Draw towers with visual upgrades (rings only, no size changes)
     for (let t of towers) {
-        // Keep tower size constant regardless of level
-        const radius = TILE_SIZE / 2.2; // Base radius stays the same
-        
         // Try to draw tower image if available
         const towerTexture = towerImageMap[t.type.name];
         if (towerTexture) {
@@ -3700,40 +3709,48 @@ function draw() {
                 t._sprite = towerSprite;
             }
             
-            // Position and size the sprite (constant size)
+            // Position the sprite accurately at tile center
             towerSprite.x = t.x * TILE_SIZE + TILE_SIZE / 2;
             towerSprite.y = t.y * TILE_SIZE + TILE_SIZE / 2;
-            towerSprite.width = radius * 2;
-            towerSprite.height = radius * 2;
+            
+            // Scale the sprite to fit nicely within the tile while maintaining aspect ratio
+            const targetSize = TILE_SIZE * 0.9; // Use 90% of tile size
+            const imageScale = Math.min(targetSize / towerTexture.width, targetSize / towerTexture.height);
+            towerSprite.scale.set(imageScale);
+            
             towerSprite.visible = true;
+            
+            // Calculate radius for rings based on the scaled sprite size
+            const radius = Math.max(towerTexture.width, towerTexture.height) * imageScale / 2;
             
             // Add level-based visual enhancements around the image (rings only)
             if (t.level >= 2) {
                 // Level 2+: Add glowing outline
                 graphics.lineStyle(2, 0xffffff, 0.4)
-                    .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius * 1.1);
+                    .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius * 1.15);
             }
             
             if (t.level >= 3) {
                 // Level 3+: Add white ring
                 graphics.lineStyle(2, 0xffffff, 0.7)
-                    .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius * 1.2);
+                    .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius * 1.25);
             }
             
             if (t.level >= 4) {
                 // Level 4+: Add golden ring
                 graphics.lineStyle(3, 0xffdd00, 0.8)
-                    .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius * 1.3);
+                    .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius * 1.35);
             }
             
             if (t.level >= 5) {
                 // Level 5+: Add pulsing golden ring
                 const pulseAlpha = 0.6 + Math.sin(Date.now() / 300) * 0.3;
                 graphics.lineStyle(4, 0xffdd00, pulseAlpha)
-                    .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius * 1.4);
+                    .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius * 1.45);
             }
         } else {
             // Fallback: Draw original circle if image not available (also constant size)
+            const radius = TILE_SIZE / 2.2;
             graphics.beginFill(t.type.color)
                 .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius)
                 .endFill();
