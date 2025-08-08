@@ -1,11 +1,12 @@
 {
   "gameSettings": {
-    "gridSize": 16,
+    "gridSize": 14,
     "tileSize": 48,
-    "startingGold": 500,
+    "startingGold": 5000,
     "startingLives": 20,
     "waveCompleteGold": 50,
-    "itemDropChance": 0.15
+    "itemDropChance": 0.15,
+    "version": "0.1.2"
   },
   "towers": [
     {
@@ -19,7 +20,10 @@
       "damageVariation": 0.2,
       "critChance": 0.1,
       "critMultiplier": 2.0,
-      "element": "physical"
+      "element": "physical",
+      "image": "cannon.png",
+      "description": "Basic ranged tower with balanced stats",
+      "tips": "Good all-around starter tower, affordable and reliable"
     },
     {
       "name": "Melee",
@@ -32,7 +36,10 @@
       "damageVariation": 0.15,
       "critChance": 0.15,
       "critMultiplier": 1.8,
-      "element": "physical"
+      "element": "physical",
+      "image": "melee.png",
+      "description": "Close-range tower that hits all nearby ground enemies",
+      "tips": "Great for chokepoints, can't target flying enemies"
     },
     {
       "name": "Missile(Splash)",
@@ -47,7 +54,10 @@
       "critMultiplier": 2.5,
       "element": "physical",
       "splashRadius": 80,
-      "splashDamageRatio": 0.7
+      "splashDamageRatio": 0.7,
+      "image": "missile.png",
+      "description": "Explosive missiles that deal splash damage to nearby enemies",
+      "tips": "Best against groups of enemies, slower fire rate but area damage"
     }
   ],
   "slowTower": {
@@ -69,7 +79,10 @@
       "critMultiplier": 2.2,
       "shopPrice": 200,
       "element": "physical",
-      "flyingOnly": true
+      "flyingOnly": true,
+      "image": "anti_air.png",
+      "description": "Specialized tower that only targets flying enemies",
+      "tips": "Essential for air waves, useless against ground enemies"
     },
     {
       "name": "Slow",
@@ -83,7 +96,10 @@
       "critChance": 0.1,
       "critMultiplier": 1.5,
       "shopPrice": 250,
-      "element": "slow"
+      "element": "slow",
+      "image": "slow.png",
+      "description": "Applies slow effect to enemies, reducing their movement speed",
+      "tips": "Great support tower, pairs well with high-damage towers"
     },
     {
       "name": "Sniper",
@@ -97,7 +113,10 @@
       "critChance": 0.3,
       "critMultiplier": 3.0,
       "shopPrice": 600,
-      "element": "physical"
+      "element": "physical",
+      "image": "sniper.png",
+      "description": "Long-range tower with high damage and critical hit chance",
+      "tips": "Excellent for picking off strong enemies from far away"
     },
     {
       "name": "Fire",
@@ -111,7 +130,10 @@
       "critChance": 0.15,
       "critMultiplier": 1.7,
       "shopPrice": 400,
-      "element": "fire"
+      "element": "fire",
+      "image": "fire.png",
+      "description": "Fire elemental tower, strong against earth enemies",
+      "tips": "Weak against water enemies, strong against earth enemies"
     },
     {
       "name": "Water",
@@ -125,7 +147,10 @@
       "critChance": 0.15,
       "critMultiplier": 1.7,
       "shopPrice": 400,
-      "element": "water"
+      "element": "water",
+      "image": "water.png",
+      "description": "Water elemental tower, strong against fire enemies",
+      "tips": "Weak against earth enemies, strong against fire enemies"
     },
     {
       "name": "Earth",
@@ -139,20 +164,23 @@
       "critChance": 0.15,
       "critMultiplier": 1.7,
       "shopPrice": 400,
-      "element": "earth"
+      "element": "earth",
+      "image": "earth.png",
+      "description": "Earth elemental tower, strong against water enemies",
+      "tips": "Weak against fire enemies, strong against water enemies"
     }
   ],
   "enemies": [
     {
       "name": "Fire",
-      "baseSpeed": 1.1,
-      "baseHp": 55,
+      "baseSpeed": 1.0,
+      "baseHp": 45,
       "reward": 13,
       "color": "0xff4400",
       "element": "fire",
       "emoji": "🔥",
       "waveScaling": {
-        "hp": 0.17,
+        "hp": 0.19,
         "speed": 0.025
       },
       "elementalProperties": {
@@ -166,14 +194,14 @@
     },
     {
       "name": "Water",
-      "baseSpeed": 1.1,
-      "baseHp": 55,
+      "baseSpeed": 1.0,
+      "baseHp": 45,
       "reward": 13,
       "color": "0x0099ff",
       "element": "water",
       "emoji": "🌊",
       "waveScaling": {
-        "hp": 0.17,
+        "hp": 0.20,
         "speed": 0.025
       },
       "elementalProperties": {
@@ -187,14 +215,14 @@
     },
     {
       "name": "Earth",
-      "baseSpeed": 1.1,
-      "baseHp": 55,
+      "baseSpeed": 1.0,
+      "baseHp": 45,
       "reward": 13,
       "color": "0x996633",
       "element": "earth",
       "emoji": "🌲",
       "waveScaling": {
-        "hp": 0.17,
+        "hp": 0.20,
         "speed": 0.025
       },
       "elementalProperties": {
@@ -209,12 +237,12 @@
     {
       "name": "Normal",
       "baseSpeed": 1.2,
-      "baseHp": 50,
+      "baseHp": 45,
       "reward": 12,
       "color": "0xcccccc",
       "element": "physical",
       "waveScaling": {
-        "hp": 0.17,
+        "hp": 0.20,
         "speed": 0.03
       },
       "elementalProperties": {
@@ -224,14 +252,14 @@
     },
     {
       "name": "Flying",
-      "baseSpeed": 1.5,
+      "baseSpeed": 1.2,
       "baseHp": 30,
       "reward": 12,
       "color": "0xaaddff",
       "flying": true,
       "element": "physical",
       "waveScaling": {
-        "hp": 0.12,
+        "hp": 0.13,
         "speed": 0.03
       },
       "elementalProperties": {
@@ -243,12 +271,12 @@
   "boss": {
     "name": "Boss",
     "baseSpeed": 1.1,
-    "baseHp": 400,
+    "baseHp": 300,
     "reward": 100,
     "color": "0xf2e96d",
     "element": "physical",
     "waveScaling": {
-      "hp": 0.28,
+      "hp": 0.34,
       "speed": 0.03
     },
     "elementalProperties": {
