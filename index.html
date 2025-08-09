@@ -1122,6 +1122,7 @@ let BOMB_CONFIG; // New variable for bomb configuration
 let ELEMENTS; // New variable for element definitions
 let SLOW_CONFIG; // Configuration for slow tower slow effect
 let WAVE_PATTERNS; // Wave pattern configuration
+let backgroundSprite = null; // Background image sprite
 
 // Add purchased towers tracking
 let purchasedTowers = [];
@@ -1356,6 +1357,28 @@ function initGame() {
     
     // Initial canvas resize
     resizeCanvas();
+
+    // Set background image (behind grid) if configured
+    if (CONFIG && CONFIG.gameSettings && CONFIG.gameSettings.backgroundImage) {
+        const bgPath = CONFIG.gameSettings.backgroundImage.replace(/\\/g, '/');
+        const texture = PIXI.Texture.from(bgPath);
+        texture.baseTexture.scaleMode = PIXI.SCALE_MODES.LINEAR;
+        texture.baseTexture.mipmap = PIXI.MIPMAP_MODES.OFF;
+        if (!backgroundSprite) {
+            backgroundSprite = new PIXI.Sprite(texture);
+            backgroundSprite.x = 0;
+            backgroundSprite.y = 0;
+            backgroundSprite.width = MAP_WIDTH;
+            backgroundSprite.height = MAP_HEIGHT;
+            // Ensure it's the very first layer
+            app.stage.addChildAt(backgroundSprite, 0);
+        } else {
+            backgroundSprite.texture = texture;
+            backgroundSprite.width = MAP_WIDTH;
+            backgroundSprite.height = MAP_HEIGHT;
+            app.stage.setChildIndex(backgroundSprite, 0);
+        }
+    }
     
     // Initialize game state
     gold = CONFIG.gameSettings.startingGold;
