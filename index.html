@@ -3,111 +3,581 @@
 <head>
     <meta charset="UTF-8">
     <title>PixiJS Tower Defense</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.2.4/pixi.min.js"></script>
-    <style>
-        html, body {
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#181c25">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.2.4/pixi.min.js"></script>    <style>
+        * {
+            box-sizing: border-box;
+        }        html, body {
             margin: 0;
             padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
             background: #181c25;
             font-family: 'Segoe UI', Arial, sans-serif;
-            overflow: hidden;
+            /* Handle iOS Safari viewport issues */
+            -webkit-overflow-scrolling: touch;
+            position: fixed;
+            top: 0;
+            left: 0;
         }
-        #game-ui {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100vw; height: 100vh;
-            pointer-events: none;
+        
+        /* Ensure full viewport coverage on iOS Safari */
+        @supports (height: 100dvh) {
+            html, body {
+                height: 100dvh; /* Dynamic viewport height for modern browsers */
+            }
         }
-        #ui-right-panel {
-            position: absolute;
-            top: 50%;
-            left: calc(50% + 384px); /* 16*48/2 = 384, grid centered */
-            transform: translateY(-50%); /* Center vertically */
-            width: 300px; /* Increased width for two columns */
-            height: 768px; /* Same as grid height (16*48) */
+          /* Fallback for older browsers and additional Safari support */
+        @media screen and (max-width: 768px) {
+            html, body {
+                height: 100vh;
+                height: -webkit-fill-available; /* Safari iOS specific */
+                height: calc(var(--vh, 1vh) * 100); /* Use JS calculated height as fallback */
+            }
+        }/* Mobile First - Stack vertically */
+        #game-wrapper {
             display: flex;
             flex-direction: column;
-            align-items: flex-start;
-            gap: 8px; /* Reduced gap */
-            z-index: 20;
-            pointer-events: auto;
-            overflow-y: auto; /* Allow scrolling if needed */
-            overflow-x: hidden;
+            width: 100vw;
+            height: 100vh;
+            height: -webkit-fill-available; /* Safari iOS specific */
         }
-        #live-stats {
-            position: static;
+        
+        /* Support for newer viewport units */
+        @supports (height: 100dvh) {
+            #game-wrapper {
+                height: 100dvh;
+            }
+        }
+
+        #game-canvas-container {
+            flex: 1;
+            width: 100%;
+            position: relative;
+            background: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #game-canvas-container canvas {
+            max-width: 100%;
+            max-height: 100%;
+            display: block;
+        }        #game-ui {
+            flex: 0 0 auto;
+            width: 100%;
+            max-height: 40vh;
+            max-height: 40dvh; /* Use dynamic viewport height when available */
+            min-height: 200px;
+            background: rgba(24, 28, 37, 0.95);
+            border-top: 2px solid #4e6fae;
+            padding: 10px;
+            padding-bottom: max(10px, env(safe-area-inset-bottom)); /* Handle iPhone notch/home indicator */
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: auto;
+        }/* Desktop - Side by side */
+        @media (min-width: 769px) {
+            #game-wrapper {
+                flex-direction: row;
+                padding: 10px;
+                gap: 20px;
+            }
+
+            #game-canvas-container {
+                flex: 1;
+                max-width: 800px;
+                max-height: 800px;
+                aspect-ratio: 1;
+            }
+
+            #game-ui {
+                flex: 0 0 350px;
+                max-height: 800px;
+                border-top: none;
+                border-left: 2px solid #4e6fae;
+            }
+        }        /* Mobile Layout - reorganize UI */
+        @media (max-width: 768px) {            /* Additional iOS Safari specific fixes */
+            #game-wrapper {
+                height: 100vh;
+                height: -webkit-fill-available;
+                height: calc(var(--vh, 1vh) * 100); /* Use JS calculated height */
+            }
+            
+            @supports (height: 100dvh) {
+                #game-wrapper {
+                    height: 100dvh;
+                }
+            }
+            
+            #game-canvas-container {
+                /* Ensure canvas container takes available space minus UI */
+                flex: 1;
+                min-height: 0; /* Important for flex children */
+            }
+            
+            #game-ui {
+                flex-direction: row;
+                gap: 10px;
+                padding: 8px;
+                padding-bottom: max(8px, env(safe-area-inset-bottom));
+                /* Adjust max height to account for Safari UI */
+                max-height: min(40vh, 40dvh);
+            }
+        }
+        
+        /* Landscape orientation specific fixes for mobile */
+        @media (max-width: 768px) and (orientation: landscape) {
+            #game-ui {
+                /* Reduce UI height significantly in landscape mode */
+                max-height: min(25vh, 25dvh);
+                min-height: 180px;
+                padding: 6px;
+                padding-bottom: max(6px, env(safe-area-inset-bottom));
+                gap: 8px;
+            }
+            
+            #game-canvas-container {
+                /* Give more space to the game canvas in landscape */
+                flex: 1;
+                min-height: 0;
+            }
+            
+            /* Make UI elements more compact in landscape */
+            .mobile-control-section {
+                padding: 6px;
+                min-height: 50px;
+                gap: 2px;
+            }
+            
+            .mobile-control-section button {
+                font-size: 0.75em !important;
+                padding: 4px 8px !important;
+                min-height: 32px;
+            }
+            
+            .mobile-control-section #live-stats-mobile {
+                font-size: 0.75em;
+                padding: 4px 6px;
+                line-height: 1.3;
+            }
+            
+            .mobile-control-section #bomb-count-mobile {
+                font-size: 0.75em;
+            }
+            
+            .mobile-control-section #place-bomb-btn-mobile {
+                font-size: 0.6em !important;
+                padding: 2px 4px !important;
+                min-height: 26px;
+            }
+            
+            .mobile-control-section #wave-info-content-mobile {
+                font-size: 0.7em;
+                line-height: 1.2;
+                gap: 2px;
+                padding: 3px;
+            }
+            
+            .mobile-control-section #wave-info-content-mobile .wave-info-item {
+                padding: 1px 3px;
+                font-size: 0.85em;
+            }
+            
+            .towers-mobile-title {
+                font-size: 1em;
+                margin-bottom: 3px;
+                padding: 3px;
+            }
+            
+            .towers-mobile-content .tower-btn {
+                height: 36px;
+                font-size: 0.65em;
+                padding: 3px 5px;
+            }
+            
+            .mobile-control-title {
+                font-size: 0.8em !important;
+                margin-bottom: 3px;
+                padding: 1px 3px;
+            }
+            
+            .mobile-control-section[data-section="next-waves"] .mobile-control-title {
+                font-size: 0.65em !important;
+                margin-bottom: 1px;
+                padding: 1px 2px;
+            }        }
+        
+        /* Base mobile styles for both portrait and landscape */
+        @media (max-width: 768px) {
+            /* Hide desktop layout components on mobile */
+            .desktop-layout {
+                display: none !important;
+            }
+            
+            /* Mobile layout container */
+            .mobile-layout {
+                display: flex;
+                flex-direction: row;
+                width: 100%;
+                gap: 10px;
+                height: 100%;
+            }
+            
+            /* Left side - Towers section */
+            .towers-mobile-section {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+                max-width: 45%;
+            }
+            
+            .towers-mobile-title {
+                font-size: 1.1em;
+                font-weight: bold;
+                color: white;
+                text-align: center;
+                margin-bottom: 4px;
+                padding: 4px;
+                background: rgba(30,34,44,0.8);
+                border-radius: 4px;
+            }            .towers-mobile-content {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+                overflow-y: auto; /* Add scrolling for towers */
+                max-height: 100%;
+                padding-right: 2px; /* Space for scrollbar */
+            }
+            
+            /* Custom scrollbar for tower selection */
+            .towers-mobile-content::-webkit-scrollbar {
+                width: 4px;
+            }
+            
+            .towers-mobile-content::-webkit-scrollbar-track {
+                background: rgba(30,34,44,0.5);
+                border-radius: 2px;
+            }
+            
+            .towers-mobile-content::-webkit-scrollbar-thumb {
+                background: rgba(78, 111, 174, 0.7);
+                border-radius: 2px;
+            }
+            
+            .towers-mobile-content::-webkit-scrollbar-thumb:hover {
+                background: rgba(110, 143, 222, 0.9);            }            /* Right side - Controls grid */
+            .controls-mobile-grid {
+                flex: 1;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: auto auto auto auto;
+                gap: 6px;
+                max-width: 55%;
+                align-content: start;
+                height: 100%;
+            }
+              /* Mobile control sections */
+            .mobile-control-section {
+                display: flex;
+                flex-direction: column;
+                gap: 3px;
+                padding: 8px;
+                background: rgba(30,34,44,0.9);
+                border-radius: 6px;
+                min-height: 60px;
+                border: 1px solid rgba(78, 111, 174, 0.3);
+                justify-content: center;
+            }            .mobile-control-title {
+                font-size: 0.85em;
+                font-weight: bold;
+                color: #ffffff;
+                text-align: center;
+                margin-bottom: 4px;
+                padding: 2px 4px;
+                background: rgba(78, 111, 174, 0.6);
+                border-radius: 4px;
+                text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+                display: block; /* Show titles for Next Waves */
+            }
+            
+            /* Hide titles for most sections except Next Waves */
+            .mobile-control-section:not([data-section="next-waves"]) .mobile-control-title {
+                display: none;
+            }
+            
+            /* Make Next Waves header smaller and more compact */
+            .mobile-control-section[data-section="next-waves"] .mobile-control-title {
+                font-size: 0.7em;
+                margin-bottom: 2px;
+                padding: 1px 3px;
+            }
+              /* Compact mobile buttons */
+            .mobile-control-section button {
+                font-size: 0.8em !important;
+                padding: 6px 10px !important;
+                margin: 0 !important;
+                min-height: 36px;
+                background: #4e6fae !important;
+                border: none !important;
+                border-radius: 4px !important;
+                color: white !important;
+                font-weight: 600;
+                transition: background 0.2s;
+                text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+            }
+            
+            .mobile-control-section button:hover {
+                background: #6e8fde !important;
+            }
+            
+            .mobile-control-section button:disabled {
+                background: #666 !important;
+                cursor: not-allowed;
+            }
+              /* Compact mobile stats */
+            .mobile-control-section #live-stats-mobile {
+                font-size: 0.8em;
+                padding: 6px 8px;
+                margin: 0;
+                text-align: center;
+                line-height: 1.4;
+                background: rgba(30,34,44,0.95);
+                border-radius: 4px;
+                border: 1px solid rgba(78, 111, 174, 0.2);
+                color: #ffffff;
+                text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+                font-weight: 500;
+            }
+              /* Compact bomb UI for mobile */
+            .mobile-control-section #bomb-ui-mobile {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 6px;
+                font-size: 0.8em;
+            }
+            
+            .mobile-control-section #bomb-count-mobile {
+                font-size: 0.8em;
+                margin: 0;
+                text-align: center;
+                color: #ffffff;
+                font-weight: 600;
+                text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+            }
+            
+            .mobile-control-section #place-bomb-btn-mobile {
+                background: #ff3300 !important;
+                font-size: 0.65em !important;
+                padding: 3px 6px !important;
+                min-height: 28px;
+            }
+            
+            .mobile-control-section #place-bomb-btn-mobile:hover:not(:disabled) {
+                background: #ff5500 !important;
+            }
+              /* Compact wave info for mobile */
+            .mobile-control-section #wave-info-panel-mobile {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                min-height: 80px;
+            }
+            
+            .mobile-control-section #wave-info-content-mobile {
+                flex: 1;
+                max-height: none;
+                overflow-y: auto;
+                font-size: 0.75em;
+                line-height: 1.3;
+                display: flex;
+                flex-direction: column;
+                gap: 3px;
+                padding: 4px;
+            }
+            
+            .mobile-control-section #wave-info-content-mobile .wave-info-item {
+                display: flex;
+                align-items: center;
+                padding: 2px 4px;
+                border-radius: 3px;
+                font-size: 0.9em;
+                color: #ffffff;
+                text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+                font-weight: 500;
+            }
+            
+            .mobile-control-section #wave-info-content-mobile .wave-info-item.current {
+                background: rgba(110, 143, 222, 0.3);
+                border: 1px solid #6e8fde;
+            }
+              /* Mobile tower buttons */
+            .towers-mobile-content .tower-btn {
+                height: 40px;
+                font-size: 0.7em;
+                padding: 4px 6px;
+                line-height: 1;
+                border-radius: 6px;
+                color: #fff;
+                cursor: pointer;
+                transition: all 0.2s;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                margin-bottom: 4px;
+                text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+                border: 2px solid rgba(255,255,255,0.3);
+                box-shadow: inset 0 1px 3px rgba(255,255,255,0.2);
+            }
+            
+            .towers-mobile-content .tower-btn:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 2px 6px rgba(0,0,0,0.3), inset 0 1px 3px rgba(255,255,255,0.3);
+            }
+            
+            .towers-mobile-content .tower-btn.selected {
+                border: 2px solid #ffd700;
+                box-shadow: 0 0 8px rgba(255,215,0,0.5), inset 0 1px 3px rgba(255,255,255,0.3);
+            }
+            
+            /* Mobile tower select container */
+            .towers-mobile-content #tower-select-mobile {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 4px;
+                width: 100%;
+            }            
+            .towers-mobile-content .tower-btn:hover,
+            .towers-mobile-content .tower-btn.selected {
+                /* Color handled by individual button styling */
+            }/* Next Waves section - fills empty space to right of bombs and end game */
+            .mobile-control-section[data-section="next-waves"] {
+                grid-column: 2;
+                grid-row: 3 / 5; /* Span rows 3-4 (next to bombs and end game) */
+                background: rgba(30,34,44,0.95);
+                border: 1px solid rgba(78, 111, 174, 0.4);
+                min-height: 120px;
+                display: flex;
+                flex-direction: column;
+            }
+              /* End game button positioning - goes under bombs in row 4, column 1 */
+            .mobile-control-section[data-section="end-game"] {
+                grid-column: 1;
+                grid-row: 4;
+                background: rgba(222, 110, 110, 0.2);
+                border: 1px solid rgba(222, 110, 110, 0.5);
+                align-self: start;
+            }
+            
+            .mobile-control-section[data-section="end-game"] button {
+                background: #de6e6e !important;
+                font-weight: bold;
+            }
+            
+            .mobile-control-section[data-section="end-game"] button:hover {
+                background: #ff4444 !important;
+            }
+        }
+
+        /* Desktop Layout - ensure normal layout is preserved */
+        @media (min-width: 769px) {
+            /* Hide mobile layout on desktop */
+            .mobile-layout {
+                display: none !important;
+            }
+            
+            /* Show desktop layout */
+            .desktop-layout {
+                display: flex !important;
+                flex-direction: column;
+                gap: 8px;
+                width: 100%;
+            }
+        }
+
+        #ui-right-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+            width: 100%;
+            pointer-events: auto;
+        }        #live-stats {
             background: rgba(30,34,44,0.95);
-            border-radius: 8px; /* Smaller radius */
+            border-radius: 8px;
             box-shadow: 0 2px 16px #0008;
             color: #fff;
-            padding: 8px 16px; /* Reduced padding */
-            font-size: 1em; /* Smaller font */
-            z-index: 10;
-            margin: 0; /* Remove margins */
+            padding: 8px 16px;
+            font-size: 1em;
+            margin: 0;
             pointer-events: auto;
-            width: 260px; /* Adjusted for new panel width */
-        }
-        #tower-select {
-            position: static;
-            display: grid; /* Changed to grid layout */
-            grid-template-columns: 1fr 1fr; /* Two equal columns */
-            gap: 6px; /* Small gap between items */
-            z-index: 10;
+            width: 100%;
+        }        #tower-select {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
             pointer-events: auto;
-            width: 260px; /* Adjusted for new panel width */
-        }
-        #start-btn, #end-btn, #next-wave-btn {
+            width: 100%;
+        }        #start-btn, #end-btn, #next-wave-btn {
             background: #4e6fae;
             border: none;
-            border-radius: 6px; /* Smaller radius */
+            border-radius: 6px;
             color: #fff;
-            font-size: 0.8em; /* Even smaller font for two columns */
-            padding: 6px 12px; /* Reduced padding */
-            margin: 2px 0; /* Reduced margin */
+            font-size: 0.8em;
+            padding: 6px 12px;
+            margin: 2px 0;
             cursor: pointer;
             transition: background 0.2s;
             pointer-events: auto;
-            width: 125px; /* Smaller width for two columns */
-            text-align: center; /* Center align for better look */
+            width: 100%;
+            text-align: center;
         }
         #start-btn:hover, #end-btn:hover, #next-wave-btn:hover {
             background: #6e8fde;
-        }
-        #end-btn {
+        }        #end-btn {
             background: #de6e6e;
             border: none;
             border-radius: 6px;
             color: #fff;
             font-size: 0.9em;
             padding: 6px 12px;
-            margin: 2px 0; /* Reduced margin */
+            margin: 2px 0;
             cursor: pointer;
             transition: background 0.2s;
             pointer-events: auto;
-            width: 125px; /* Smaller width for two columns */
+            width: 100%;
             text-align: center;
         }
         #end-btn:hover {
             background: #ff4444;
-        }
-        #stats-panel {
+        }        #stats-panel {
             position: absolute;
             right: 0; top: 0;
             min-width: 220px;
-        }
-        #boost-btn {
+        }        #boost-btn {
             background: #6ede8a;
             color: white;
             border: none;
             border-radius: 6px;
-            padding: 6px 12px; /* Reduced padding */
-            margin: 2px 0; /* Reduced margin */
+            padding: 6px 12px;
+            margin: 2px 0;
             cursor: pointer;
             transition: all 0.2s;
-            font-size: 0.8em; /* Smaller font */
+            font-size: 0.8em;
             font-weight: bold;
-            width: 125px; /* Smaller width for two columns */
+            width: 100%;
             text-align: center;
         }
         #boost-btn:disabled {
@@ -116,9 +586,8 @@
         }
         #boost-btn:hover:not(:disabled) {
             background: #8eeda6;
-        }
-        #message-container {
-            position: fixed;
+        }        #message-container {
+            position: absolute;
             top: 20px;
             left: 50%;
             transform: translateX(-50%);
@@ -138,19 +607,18 @@
             transition: opacity 0.5s;
         }
         
-        /* Shop Styles */
-        #shop-btn {
+        /* Shop Styles */        #shop-btn {
             background: #9e6ede;
             border: none;
             border-radius: 6px;
             color: #fff;
-            font-size: 0.8em; /* Smaller font */
+            font-size: 0.8em;
             padding: 6px 12px;
             margin: 2px 0;
             cursor: pointer;
             transition: background 0.2s;
             pointer-events: auto;
-            width: 125px; /* Smaller width for two columns */
+            width: 100%;
             text-align: center;
         }
         #shop-btn:hover {
@@ -242,19 +710,18 @@
             margin-right: 15px;
         }
         
-        /* Bomb UI styles */
-        #bomb-ui {
+        /* Bomb UI styles */        #bomb-ui {
             background: rgba(30,34,44,0.95);
             border-radius: 8px;
             box-shadow: 0 2px 16px #0008;
             color: #fff;
-            padding: 8px 16px; /* Reduced padding */
-            margin: 4px 0; /* Reduced margin */
+            padding: 8px 16px;
+            margin: 4px 0;
             display: flex;
             align-items: center;
             justify-content: space-between;
             pointer-events: auto;
-            width: 260px; /* Adjusted for new panel width */
+            width: 100%;
         }
         
         #bomb-count {
@@ -336,17 +803,15 @@
             max-width: 200px;
         }
         
-        /* Wave Info Panel Styles */
-        #wave-info-panel {
-            position: static;
+        /* Wave Info Panel Styles */        #wave-info-panel {
             background: rgba(30,34,44,0.95);
             border-radius: 8px;
             box-shadow: 0 2px 16px #0008;
             color: #fff;
-            padding: 8px 16px; /* Reduced padding */
-            margin: 4px 0; /* Reduced margin */
+            padding: 8px 16px;
+            margin: 4px 0;
             pointer-events: auto;
-            width: 260px; /* Adjusted for new panel width */
+            width: 100%;
         }
         
         #wave-info-title {
@@ -386,74 +851,197 @@
         
         .wave-info-name {
             font-size: 0.8em; /* Smaller font */
-        }
-
-        /* Make tower buttons more compact for two columns */
-        .tower-btn {
-            background: rgba(30,34,44,0.95);
-            border: 2px solid #4e6fae;
+        }        /* Make tower buttons more compact for two columns */        .tower-btn {
             border-radius: 6px;
             color: #fff;
-            padding: 4px 8px; /* Even more reduced padding */
-            margin: 0; /* Remove margin */
+            padding: 4px 8px;
+            margin: 0;
             cursor: pointer;
             transition: all 0.2s;
-            font-size: 0.7em; /* Smaller font for two columns */
-            width: 125px; /* Specific width for grid layout */
-            height: 50px; /* Reduced height for more compact look */
+            font-size: 0.7em;
+            width: 100%;
+            height: 50px;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            line-height: 1.1; /* Tighter line spacing */
+            line-height: 1.1;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            border: 2px solid rgba(255,255,255,0.3);
+            box-shadow: inset 0 1px 3px rgba(255,255,255,0.2);
         }
-
-        /* Create a button container for two-column layout */
+        
+        .tower-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3), inset 0 1px 3px rgba(255,255,255,0.3);
+        }
+        
+        .tower-btn.selected {
+            border: 2px solid #ffd700;
+            box-shadow: 0 0 10px rgba(255,215,0,0.5), inset 0 1px 3px rgba(255,255,255,0.3);
+        }        /* Create a button container for two-column layout */
         .button-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 6px;
-            width: 260px;
+            width: 100%;
             pointer-events: auto;
+        }
+        
+        /* Desktop tower select container */
+        #tower-select {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            width: 100%;
+        }
+        
+        /* Tower tooltip styles */
+        #tower-tooltip {
+            position: absolute;
+            background: rgba(30,34,44,0.98);
+            border-radius: 8px;
+            padding: 12px;
+            color: white;
+            z-index: 1000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            font-size: 12px;
+            max-width: 250px;
+            border: 1px solid #4e6fae;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+        
+        #tower-tooltip .tooltip-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #6e8fde;
+        }
+        
+        #tower-tooltip .tooltip-stats {
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+        
+        #tower-tooltip .tooltip-description {
+            font-style: italic;
+            margin-bottom: 5px;
+            color: #ccc;
+        }
+        
+        #tower-tooltip .tooltip-tips {
+            color: #88dd88;
+            font-size: 11px;
         }
     </style>
 </head>
-<body>
-    <div id="game-ui">
-        <div id="message-container"></div>
-        <div id="ui-right-panel">
-            <div class="ui-panel" id="live-stats">
-                <span>Wave: <span id="wave-num">1</span></span> |
-                <span>Gold: <span id="gold">500</span></span><br>
-                <span>Lives: <span id="lives">20</span></span> |
-                <span>Left: <span id="enemies-left">0</span></span>
+<body>    <div id="game-wrapper">
+        <div id="game-canvas-container">
+            <!-- PixiJS Canvas will be inserted here -->
+            <div id="message-container"></div>
+        </div>        <div id="game-ui">
+            <!-- Desktop Layout (unchanged) -->
+            <div class="desktop-layout" id="ui-right-panel">                <div class="ui-panel" id="live-stats">
+                    <span>Wave: <span id="wave-num">1</span></span> |
+                    <span>Gold: <span id="gold">500</span></span><br>
+                    <span>Lives: <span id="lives">20</span></span> |
+                    <span>Left: <span id="enemies-left">0</span></span><br>
+                    <span>v<span id="version">0.1.0</span></span>
+                </div>
+                
+                <!-- Wave Information Panel -->
+                <div id="wave-info-panel">
+                    <div id="wave-info-title">Next Waves</div>
+                    <div id="wave-info-content"></div>
+                </div>
+                
+                <!-- Bomb UI section -->
+                <div id="bomb-ui">
+                    <div id="bomb-count">Bombs: 0</div>
+                    <button id="place-bomb-btn" disabled>Place [X]</button>
+                </div>
+                
+                <div class="ui-panel" id="tower-select"></div>
+                
+                <!-- Button container for two-column layout -->
+                <div class="button-container">
+                    <button id="boost-btn">Boost [B]</button>
+                    <button id="shop-btn">Shop [P]</button>
+                    <button id="start-btn">Start Wave</button>
+                    <button id="next-wave-btn" style="display:none;">Next Wave</button>
+                </div>
+                
+                <button id="end-btn" style="display:none;">End Game</button>
             </div>
             
-            <!-- Wave Information Panel -->
-            <div id="wave-info-panel">
-                <div id="wave-info-title">Next Waves</div>
-                <div id="wave-info-content"></div>
+            <!-- Mobile Layout -->
+            <div class="mobile-layout">
+                <!-- Left side - Towers -->
+                <div class="towers-mobile-section">
+                    <div class="towers-mobile-title">Towers</div>
+                    <div class="towers-mobile-content">
+                        <div class="ui-panel" id="tower-select-mobile"></div>
+                    </div>
+                </div>                <!-- Right side - Controls Grid -->
+                <div class="controls-mobile-grid">
+                    <!-- Row 1, Column 1 - Stats -->
+                    <div class="mobile-control-section" data-section="stats">
+                        <div class="mobile-control-title">Stats</div>                        <div class="ui-panel" id="live-stats-mobile">
+                            <span>Wave: <span id="wave-num-mobile">1</span></span><br>
+                            <span>Gold: <span id="gold-mobile">500</span></span><br>
+                            <span>Lives: <span id="lives-mobile">20</span></span><br>
+                            <span>Left: <span id="enemies-left-mobile">0</span></span><br>
+                            <span>v<span id="version-mobile">0.1.0</span></span>
+                        </div>
+                    </div>
+                    
+                    <!-- Row 1, Column 2 - Wave Control -->
+                    <div class="mobile-control-section" data-section="wave-control">
+                        <div class="mobile-control-title">Wave</div>
+                        <button id="start-btn-mobile">Start Wave</button>
+                        <button id="next-wave-btn-mobile" style="display:none;">Next Wave</button>
+                    </div>
+                    
+                    <!-- Row 2, Column 1 - Boost -->
+                    <div class="mobile-control-section" data-section="boost">
+                        <div class="mobile-control-title">Boost</div>
+                        <button id="boost-btn-mobile">Boost [B]</button>
+                    </div>
+                    
+                    <!-- Row 2, Column 2 - Shop -->
+                    <div class="mobile-control-section" data-section="shop">
+                        <div class="mobile-control-title">Shop</div>
+                        <button id="shop-btn-mobile">Shop [P]</button>
+                    </div>
+                    
+                    <!-- Row 3, Column 1 - Bombs -->
+                    <div class="mobile-control-section" data-section="bombs">
+                        <div class="mobile-control-title">Bombs</div>
+                        <div id="bomb-ui-mobile">
+                            <div id="bomb-count-mobile">Bombs: 0</div>
+                            <button id="place-bomb-btn-mobile" disabled>Place [X]</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Row 4, Column 2 - End Game (moved under bombs) -->
+                    <div class="mobile-control-section" data-section="end-game">
+                        <button id="end-btn-mobile" style="display:none;">End Game</button>
+                    </div>
+                    
+                    <!-- Row 5, Column 1-2 - Next Waves (expanded at bottom) -->
+                    <div class="mobile-control-section" data-section="next-waves">
+                        <div class="mobile-control-title">NEXT WAVES</div>
+                        <div id="wave-info-panel-mobile">
+                            <div id="wave-info-content-mobile"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
             
-            <!-- Bomb UI section -->
-            <div id="bomb-ui">
-                <div id="bomb-count">Bombs: 0</div>
-                <button id="place-bomb-btn" disabled>Place [X]</button>
-            </div>
-            
-            <div class="ui-panel" id="tower-select"></div>
-            
-            <!-- Button container for two-column layout -->
-            <div class="button-container">
-                <button id="boost-btn">Boost [B]</button>
-                <button id="shop-btn">Shop [P]</button>
-                <button id="start-btn">Start Wave</button>
-                <button id="next-wave-btn" style="display:none;">Next Wave</button>
-            </div>
-            
-            <button id="end-btn" style="display:none;">End Game</button>
+            <div class="ui-panel" id="stats-panel" style="display:none;"></div>
         </div>
-        <div class="ui-panel" id="stats-panel" style="display:none;"></div>
     </div>
     
     <!-- Shop Modal -->
@@ -462,10 +1050,64 @@
         <button class="shop-close">×</button>
         <div id="shop-content"></div>
     </div>
+      <!-- Tower Tooltip -->
+    <div id="tower-tooltip"></div>
     
     <script>
+// --- Safari iOS Viewport Fix ---
+function handleSafariViewport() {
+    // Fix for Safari on iOS viewport issues
+    if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+        const setVH = () => {
+            const vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+            
+            // Force canvas resize on orientation change
+            if (typeof resizeCanvas === 'function') {
+                setTimeout(() => {
+                    resizeCanvas();
+                }, 200);
+            }
+        };
+        
+        setVH();
+        window.addEventListener('resize', setVH);
+        window.addEventListener('orientationchange', () => {
+            // Multiple timeouts to handle iOS Safari's delayed viewport updates
+            setTimeout(setVH, 100);
+            setTimeout(setVH, 300);
+            setTimeout(setVH, 500);
+        });
+        
+        // Prevent iOS Safari from bouncing when scrolling
+        document.body.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+        
+        // Hide Safari UI on scroll for better immersion
+        let lastScrollTop = 0;
+        const hideAddressBar = () => {
+            if (window.scrollY > lastScrollTop && window.scrollY > 60) {
+                window.scrollTo(0, 1);
+            }
+            lastScrollTop = window.scrollY;
+        };
+        
+        window.addEventListener('scroll', hideAddressBar, { passive: true });
+        
+        // Initial hide attempt
+        setTimeout(() => window.scrollTo(0, 1), 100);
+    }
+}
+
+// Call the Safari fix immediately
+handleSafariViewport();
+
 // --- Load Game Configuration ---
 let CONFIG; // Will hold the loaded configuration
+let VERSION; // Game version from configuration
 let GRID_SIZE;
 let TILE_SIZE;
 let MAP_WIDTH;
@@ -480,6 +1122,11 @@ let BOMB_CONFIG; // New variable for bomb configuration
 let ELEMENTS; // New variable for element definitions
 let SLOW_CONFIG; // Configuration for slow tower slow effect
 let WAVE_PATTERNS; // Wave pattern configuration
+let backgroundSprite = null; // Background image sprite
+let gridOverlay = null; // Pre-rendered grid overlay
+// Start/End visual markers
+let startMarker = null;
+let endMarker = null;
 
 // Add purchased towers tracking
 let purchasedTowers = [];
@@ -492,10 +1139,10 @@ async function loadConfig() {
         if (!response.ok) {
             throw new Error(`Failed to load configuration: ${response.status}`);
         }
-        
-        CONFIG = await response.json();
+          CONFIG = await response.json();
         
         // Set all configuration variables
+        VERSION = CONFIG.gameSettings.version;
         GRID_SIZE = CONFIG.gameSettings.gridSize;
         TILE_SIZE = CONFIG.gameSettings.tileSize;
         MAP_WIDTH = GRID_SIZE * TILE_SIZE;
@@ -593,6 +1240,9 @@ async function loadConfig() {
         ITEM_TYPES = CONFIG.items;
         BOOST_CONFIG = CONFIG.boost;
         
+        // Load tower images from config
+        loadTowerImages();
+        
         // Initialize the game
         initGame();
         
@@ -658,19 +1308,81 @@ function applySlowEffect(enemy, tower) {
 // --- PixiJS Setup ---
 const app = new PIXI.Application({
     backgroundColor: 0x23273a,
-    antialias: true
+    antialias: true, // Enable antialiasing for smooth images
+    resolution: window.devicePixelRatio || 1, // Use device pixel ratio for crisp rendering
+    autoDensity: true // Enable auto density for high DPI displays
 });
-document.body.appendChild(app.view);
+document.getElementById('game-canvas-container').appendChild(app.view);
+
+// Canvas resize function for orientation changes
+function resizeCanvas() {
+    if (!app || !app.renderer) return;
+    
+    // Get current container dimensions
+    const container = document.getElementById('game-canvas-container');
+    const containerRect = container.getBoundingClientRect();
+    
+    // Use the container dimensions to maintain aspect ratio
+    const containerWidth = containerRect.width;
+    const containerHeight = containerRect.height;
+    
+    // Calculate the best fit while maintaining aspect ratio
+    const gameAspectRatio = MAP_WIDTH / MAP_HEIGHT;
+    const containerAspectRatio = containerWidth / containerHeight;
+    
+    let newWidth, newHeight;
+    
+    if (containerAspectRatio > gameAspectRatio) {
+        // Container is wider than needed, fit to height
+        newHeight = containerHeight;
+        newWidth = newHeight * gameAspectRatio;
+    } else {
+        // Container is taller than needed, fit to width
+        newWidth = containerWidth;
+        newHeight = newWidth / gameAspectRatio;
+    }
+    
+    // Ensure minimum size to keep the game playable
+    newWidth = Math.max(newWidth, 300);
+    newHeight = Math.max(newHeight, 300);
+    
+    // Update canvas display size
+    app.view.style.width = newWidth + 'px';
+    app.view.style.height = newHeight + 'px';
+    
+    // Keep the internal renderer size the same for consistent game logic
+    // Only the display scaling changes
+}
 
 function initGame() {
     // Set canvas dimensions from configuration
     app.renderer.resize(MAP_WIDTH, MAP_HEIGHT);
     app.view.style.display = 'block';
-    app.view.style.margin = '0 auto';
-    app.view.style.position = 'absolute';
-    app.view.style.left = '50%';
-    app.view.style.top = '50%';
-    app.view.style.transform = 'translate(-50%, -50%)';
+    
+    // Initial canvas resize
+    resizeCanvas();
+
+    // Set background image (behind grid) if configured
+    if (CONFIG && CONFIG.gameSettings && CONFIG.gameSettings.backgroundImage) {
+        const bgPath = CONFIG.gameSettings.backgroundImage.replace(/\\/g, '/');
+        const texture = PIXI.Texture.from(bgPath);
+        texture.baseTexture.scaleMode = PIXI.SCALE_MODES.LINEAR;
+        texture.baseTexture.mipmap = PIXI.MIPMAP_MODES.OFF;
+        if (!backgroundSprite) {
+            backgroundSprite = new PIXI.Sprite(texture);
+            backgroundSprite.x = 0;
+            backgroundSprite.y = 0;
+            backgroundSprite.width = MAP_WIDTH;
+            backgroundSprite.height = MAP_HEIGHT;
+            // Ensure it's the very first layer
+            app.stage.addChildAt(backgroundSprite, 0);
+        } else {
+            backgroundSprite.texture = texture;
+            backgroundSprite.width = MAP_WIDTH;
+            backgroundSprite.height = MAP_HEIGHT;
+            app.stage.setChildIndex(backgroundSprite, 0);
+        }
+    }
     
     // Initialize game state
     gold = CONFIG.gameSettings.startingGold;
@@ -688,6 +1400,12 @@ function initGame() {
     renderWaveInfo(); // Add wave info rendering
     updatePathGrid();
     
+    // Build static grid overlay once
+    createGridOverlay();
+
+    // Create start/end portal markers
+    createStartEndMarkers();
+
     // Set up all game event handlers and logic
     setupGameHandlers();
 }
@@ -857,19 +1575,51 @@ function renderShop() {
         nameDiv.className = 'shop-tower-name';
         nameDiv.textContent = `${tower.name} Tower [${tower.key}]`;
         
+        // Enhanced stats display with same format as tooltips
         const statsDiv = document.createElement('div');
         statsDiv.className = 'shop-tower-stats';
         
-        // Add element info to stats
+        // Calculate detailed stats (same as tooltip)
+        const baseDamage = tower.damage;
+        const variation = tower.damageVariation;
+        const minDamage = Math.floor(baseDamage * (1 - variation));
+        const maxDamage = Math.ceil(baseDamage * (1 + variation));
+        const critChance = tower.critChance * 100;
+        const damagePerSec = baseDamage / tower.fireRate;
+        
+        // Get element info for detailed stats (renamed to avoid conflict)
+        const detailedElementInfo = ELEMENTS[tower.element] || { name: "Physical", color: "0xcccccc" };
+        const elementName = detailedElementInfo.name;
+        const elementEmoji = detailedElementInfo.emoji || "";
+        
+        // Build element text
         let elementText = "";
         if (tower.element && tower.element !== "physical") {
-            const elementInfo = ELEMENTS[tower.element] || { name: tower.element };
-            elementText = `<span class="element-icon" style="background: #${tower.color.toString(16).padStart(6, '0')}">${elementInfo.emoji || ""}</span> ${elementInfo.name || tower.element} | `;
+            elementText = `<span class="element-icon" style="background: #${tower.color.toString(16).padStart(6, '0')}">${elementEmoji}</span> ${elementName}<br>`;
         }
         
+        // Build special abilities text
+        let specialText = "";
+        if (tower.name === "Slow") {
+            specialText = `<strong>Slow:</strong> ${SLOW_CONFIG.slowAmount * 100}% for ${SLOW_CONFIG.slowDuration}s<br>`;
+        }
+        if (tower.flyingOnly) {
+            specialText = `<strong>Special:</strong> Only targets flying enemies<br>`;
+        }
+        if (tower.splashRadius > 0) {
+            specialText = `<strong>Splash:</strong> ${(tower.splashDamageRatio * 100).toFixed(0)}% damage, ${tower.splashRadius}px radius<br>`;
+        }
+        
+        // Get config tower for description and tips
+        const configTower = CONFIG.shopTowers.find(ct => ct.name === tower.name);
+        
         statsDiv.innerHTML = `
-            ${elementText}Damage: ${tower.damage} | Range: ${tower.range}<br>
-            Fire Rate: ${(1/tower.fireRate).toFixed(1)}/sec | Crit: ${(tower.critChance*100).toFixed(0)}%
+            <div style="font-style: italic; color: #aaa; margin-bottom: 5px;">${configTower && configTower.description ? configTower.description : ''}</div>
+            ${elementText}
+            <strong>Damage:</strong> ${minDamage}-${maxDamage} | <strong>DPS:</strong> ${damagePerSec.toFixed(1)}<br>
+            <strong>Range:</strong> ${tower.range} | <strong>Crit:</strong> ${critChance.toFixed(0)}%<br>
+            ${specialText}
+            <div style="color: #88dd88; font-size: 11px; margin-top: 3px;"><strong>Tips:</strong> ${configTower && configTower.tips ? configTower.tips : ''}</div>
         `;
         
         const priceButton = document.createElement('button');
@@ -909,36 +1659,84 @@ const shopModal = document.getElementById('shop-modal');
 const shopCloseBtn = document.querySelector('.shop-close');
 const messageContainer = document.getElementById('message-container');
 
+// Mobile UI elements
+const waveNumMobile = document.getElementById('wave-num-mobile');
+const goldSpanMobile = document.getElementById('gold-mobile');
+const startBtnMobile = document.getElementById('start-btn-mobile');
+const endBtnMobile = document.getElementById('end-btn-mobile');
+const nextWaveBtnMobile = document.getElementById('next-wave-btn-mobile');
+const boostBtnMobile = document.getElementById('boost-btn-mobile');
+const shopBtnMobile = document.getElementById('shop-btn-mobile');
+
 function updateUI() {
+    // Update desktop UI
     waveNum.textContent = wave;
     goldSpan.textContent = gold;
     document.getElementById('lives').textContent = lives;
     document.getElementById('enemies-left').textContent = enemies.filter(e => e.alive).length;
     document.getElementById('bomb-count').textContent = `Bombs: ${bombCount}`;
     
-    // Update bomb button state
+    // Update version display (desktop)
+    if (VERSION) {
+        const versionSpan = document.getElementById('version');
+        if (versionSpan) versionSpan.textContent = VERSION;
+    }
+    
+    // Update mobile UI
+    if (waveNumMobile) waveNumMobile.textContent = wave;
+    if (goldSpanMobile) goldSpanMobile.textContent = gold;
+    const livesMobile = document.getElementById('lives-mobile');
+    const enemiesLeftMobile = document.getElementById('enemies-left-mobile');
+    const bombCountMobile = document.getElementById('bomb-count-mobile');
+    if (livesMobile) livesMobile.textContent = lives;
+    if (enemiesLeftMobile) enemiesLeftMobile.textContent = enemies.filter(e => e.alive).length;
+    if (bombCountMobile) bombCountMobile.textContent = `Bombs: ${bombCount}`;
+    
+    // Update version display (mobile)
+    if (VERSION) {
+        const versionMobile = document.getElementById('version-mobile');
+        if (versionMobile) versionMobile.textContent = VERSION;
+    }
+    
+    // Update bomb button state (desktop)
     const bombBtn = document.getElementById('place-bomb-btn');
     bombBtn.disabled = bombCount <= 0;
     
-    if (placingBomb) {
-        bombBtn.textContent = 'Cancel [X]';
-        bombBtn.style.background = '#666';
-    } else {
-        bombBtn.textContent = 'Place [X]';
-        bombBtn.style.background = bombBtn.disabled ? '#666' : '#ff3300';
-    }
+    // Update bomb button state (mobile)
+    const bombBtnMobile = document.getElementById('place-bomb-btn-mobile');
+    if (bombBtnMobile) bombBtnMobile.disabled = bombCount <= 0;
     
-    // Update boost button
-    if (boostActive) {
-        boostBtn.textContent = 'Boosting...';
-        boostBtn.disabled = true;
-    } else if (boostCooldown > 0) {
-        boostBtn.textContent = `Boost [${Math.ceil(boostCooldown)}s]`;
-        boostBtn.disabled = true;
-    } else {
-        boostBtn.textContent = 'Boost [B]';
-        boostBtn.disabled = false;
-    }
+    // Update bomb button text and style
+    const updateBombButton = (btn) => {
+        if (!btn) return;
+        if (placingBomb) {
+            btn.textContent = 'Cancel [X]';
+            btn.style.background = '#666';
+        } else {
+            btn.textContent = 'Place [X]';
+            btn.style.background = btn.disabled ? '#666' : '#ff3300';
+        }
+    };
+    
+    updateBombButton(bombBtn);
+    updateBombButton(bombBtnMobile);
+    
+    // Update boost buttons
+    const updateBoostButton = (btn) => {
+        if (!btn) return;
+        if (boostActive) {
+            btn.textContent = 'Boosting...';
+            btn.disabled = true;
+        } else if (boostCooldown > 0) {
+            btn.textContent = `Boost [${Math.ceil(boostCooldown)}s]`;
+            btn.disabled = true;
+        } else {
+            btn.textContent = 'Boost [B]';
+            btn.disabled = false;
+        }
+    };
+      updateBoostButton(boostBtn);
+    updateBoostButton(boostBtnMobile);
     
     // Update shop button price indicators
     const numAvailable = SHOP_TOWERS.filter(t => 
@@ -1024,18 +1822,26 @@ function hideStats() {
 }
 
 // --- Tower Selection UI ---
-function renderTowerSelect() {
+function renderTowerSelect() {    // Update desktop tower selection
     towerSelect.innerHTML = '';
     TOWER_TYPES.forEach((t, i) => {
         const btn = document.createElement('button');
         btn.className = 'tower-btn' + (selectedTowerType === i ? ' selected' : '');
+        
+        // Set background color based on tower color
+        const towerColor = '#' + t.color.toString(16).padStart(6, '0');
+        btn.style.background = towerColor;
+        
+        // Get configuration data for tooltips
+        const configTower = CONFIG.towers.find(ct => ct.name === t.name) || 
+                           CONFIG.shopTowers.find(st => st.name === t.name);
+        
         // Condensed text layout with tighter spacing
         btn.innerHTML = `<div style="text-align: center; line-height: 1.1;">
             <div style="font-weight: bold; margin-bottom: 1px;">${t.name}</div>
             <div style="font-size: 0.85em; margin-bottom: 1px;">[${t.key}]</div>
             <div style="font-size: 0.9em;">Cost: ${t.cost}</div>
-        </div>`;
-        btn.onclick = () => {
+        </div>`;btn.onclick = () => {
             selectedTowerType = i;
             // Close tower stats window if one is open
             if (towerStatsWindow) {
@@ -1044,10 +1850,131 @@ function renderTowerSelect() {
             }
             renderTowerSelect();
         };
+        
+        // Add touch support for mobile
+        btn.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Prevent default touch behavior
+            selectedTowerType = i;
+            // Close tower stats window if one is open
+            if (towerStatsWindow) {
+                document.body.removeChild(towerStatsWindow);
+                towerStatsWindow = null;
+            }
+            renderTowerSelect();
+        });
+        
+        // Add hover tooltip functionality
+        btn.addEventListener('mouseenter', (e) => {
+            showTowerTooltip(t, configTower, e.pageX, e.pageY);
+        });
+        
+        btn.addEventListener('mouseleave', () => {
+            hideTowerTooltip();
+        });
+        
         towerSelect.appendChild(btn);
     });
+      // Update mobile tower selection
+    const towerSelectMobile = document.getElementById('tower-select-mobile');
+    if (towerSelectMobile) {
+        towerSelectMobile.innerHTML = '';
+        TOWER_TYPES.forEach((t, i) => {
+            const btn = document.createElement('button');
+            btn.className = 'tower-btn' + (selectedTowerType === i ? ' selected' : '');
+            
+            // Set background color based on tower color
+            const towerColor = '#' + t.color.toString(16).padStart(6, '0');
+            btn.style.background = towerColor;
+            
+            // Condensed text layout for mobile
+            btn.innerHTML = `<div style="text-align: center; line-height: 1;">
+                <div style="font-weight: bold; font-size: 0.7em;">${t.name}</div>
+                <div style="font-size: 0.6em;">[${t.key}] ${t.cost}g</div>
+            </div>`;
+            
+            btn.onclick = () => {
+                selectedTowerType = i;
+                // Close tower stats window if one is open
+                if (towerStatsWindow) {
+                    document.body.removeChild(towerStatsWindow);
+                    towerStatsWindow = null;
+                }
+                renderTowerSelect();
+            };
+            
+            // Add touch support for mobile
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault(); // Prevent default touch behavior
+                selectedTowerType = i;
+                // Close tower stats window if one is open
+                if (towerStatsWindow) {
+                    document.body.removeChild(towerStatsWindow);
+                    towerStatsWindow = null;
+                }
+                renderTowerSelect();
+            });
+            
+            towerSelectMobile.appendChild(btn);
+        });
+    }
 }
 
+// --- Tower Tooltip Functions ---
+function showTowerTooltip(tower, configTower, x, y) {
+    const tooltip = document.getElementById('tower-tooltip');
+    
+    // Calculate detailed stats
+    const baseDamage = tower.damage;
+    const variation = tower.damageVariation;
+    const minDamage = Math.floor(baseDamage * (1 - variation));
+    const maxDamage = Math.ceil(baseDamage * (1 + variation));
+    const critChance = tower.critChance * 100;
+    const damagePerSec = baseDamage / tower.fireRate;
+    
+    // Get element info
+    const elementInfo = ELEMENTS[tower.element] || { name: "Physical", color: "0xcccccc" };
+    const elementName = elementInfo.name;
+    const elementEmoji = elementInfo.emoji || "";
+    
+    // Build special abilities text
+    let specialText = "";
+    if (tower.name === "Slow") {
+        specialText = `<br><strong>Slow:</strong> ${SLOW_CONFIG.slowAmount * 100}% for ${SLOW_CONFIG.slowDuration}s`;
+    }
+    if (tower.flyingOnly) {
+        specialText = `<br><strong>Special:</strong> Only targets flying enemies`;
+    }
+    if (tower.splashRadius > 0) {
+        specialText = `<br><strong>Splash:</strong> ${(tower.splashDamageRatio * 100).toFixed(0)}% damage, ${tower.splashRadius}px radius`;
+    }
+    if (tower.name === "Melee") {
+        specialText = `<br><strong>Special:</strong> Hits all nearby ground enemies`;
+    }
+    
+    tooltip.innerHTML = `
+        <div class="tooltip-title">${tower.name} Tower [${tower.key}]</div>
+        <div class="tooltip-stats">
+            <strong>Element:</strong> ${elementEmoji} ${elementName}<br>
+            <strong>Damage:</strong> ${minDamage}-${maxDamage} | <strong>DPS:</strong> ${damagePerSec.toFixed(1)}<br>
+            <strong>Range:</strong> ${tower.range} | <strong>Crit:</strong> ${critChance.toFixed(0)}%<br>
+            <strong>Cost:</strong> ${tower.cost} gold${specialText}
+        </div>
+        ${configTower && configTower.description ? `<div class="tooltip-description">${configTower.description}</div>` : ''}
+        ${configTower && configTower.tips ? `<div class="tooltip-tips">💡 ${configTower.tips}</div>` : ''}
+    `;
+    
+    // Position tooltip
+    tooltip.style.left = (x + 10) + 'px';
+    tooltip.style.top = (y - 10) + 'px';
+    tooltip.style.opacity = '1';
+}
+
+function hideTowerTooltip() {
+    const tooltip = document.getElementById('tower-tooltip');
+    tooltip.style.opacity = '0';
+}
+
+// --- Game Handlers ---
 function setupGameHandlers() {
     // --- Boost Button Handler ---
     boostBtn.addEventListener('click', activateBoost);
@@ -1129,8 +2056,7 @@ function setupGameHandlers() {
             renderTowerSelect();
         }
     });
-    
-    // --- Button Handlers ---
+      // --- Button Handlers ---
     startBtn.onclick = startWave;
     endBtn.onclick = () => {
         // Show warning before ending the game
@@ -1140,8 +2066,97 @@ function setupGameHandlers() {
     };
     nextWaveBtn.onclick = nextWave;
     
-    // Set up other event handlers
+    // --- Mobile Button Handlers ---
+    if (startBtnMobile) {
+        startBtnMobile.onclick = startWave;
+        startBtnMobile.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startWave();
+        });
+    }
+    
+    if (endBtnMobile) {
+        endBtnMobile.onclick = () => {
+            if (confirm("Warning: This will end your current game and you will lose all progress in this run. Are you sure you want to continue?")) {
+                endGame();
+            }
+        };
+        endBtnMobile.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (confirm("Warning: This will end your current game and you will lose all progress in this run. Are you sure you want to continue?")) {
+                endGame();
+            }
+        });
+    }
+    
+    if (nextWaveBtnMobile) {
+        nextWaveBtnMobile.onclick = nextWave;
+        nextWaveBtnMobile.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            nextWave();
+        });
+    }
+    
+    if (boostBtnMobile) {
+        boostBtnMobile.addEventListener('click', activateBoost);
+        boostBtnMobile.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            activateBoost();
+        });
+    }
+    
+    if (shopBtnMobile) {
+        shopBtnMobile.addEventListener('click', () => {
+            shopModal.style.display = 'block';
+            renderShop();
+        });
+        shopBtnMobile.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            shopModal.style.display = 'block';
+            renderShop();
+        });
+    }
+    
+    // Mobile bomb button
+    const bombBtnMobile = document.getElementById('place-bomb-btn-mobile');
+    if (bombBtnMobile) {
+        bombBtnMobile.addEventListener('click', () => {
+            if (bombCount <= 0) return;
+            
+            placingBomb = !placingBomb;
+            
+            // Cancel tower placement if active
+            if (placingBomb) {
+                selectedTowerType = -1;
+                renderTowerSelect();
+            }
+            
+            updateUI();
+        });
+        bombBtnMobile.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (bombCount <= 0) return;
+            
+            placingBomb = !placingBomb;
+            
+            // Cancel tower placement if active
+            if (placingBomb) {
+                selectedTowerType = -1;
+                renderTowerSelect();
+            }
+            
+            updateUI();
+        });
+    }
+      // Set up other event handlers
     setupPlacementHandlers();
+    
+    // Add window resize listener for canvas resizing
+    window.addEventListener('resize', () => {
+        if (typeof resizeCanvas === 'function') {
+            setTimeout(resizeCanvas, 100);
+        }
+    });
     
     // Start the game loop
     app.ticker.add(gameLoop);
@@ -1166,6 +2181,11 @@ function startWave() {
     isGameRunning = true;
     startBtn.style.display = 'none';
     endBtn.style.display = '';
+    
+    // Update mobile buttons
+    if (startBtnMobile) startBtnMobile.style.display = 'none';
+    if (endBtnMobile) endBtnMobile.style.display = '';
+    
     spawnWave();
 }
 
@@ -1173,12 +2193,21 @@ function endGame() {
     isGameRunning = false;
     endBtn.style.display = 'none';
     startBtn.style.display = '';
+    
+    // Update mobile buttons
+    if (endBtnMobile) endBtnMobile.style.display = 'none';
+    if (startBtnMobile) startBtnMobile.style.display = '';
+    
     showGameOver('Game Ended');
 }
 
 function nextWave() {
     isGameRunning = true;
     nextWaveBtn.style.display = 'none';
+    
+    // Update mobile buttons
+    if (nextWaveBtnMobile) nextWaveBtnMobile.style.display = 'none';
+    
     wave++;
     updateUI();
     renderWaveInfo(); // Only update wave info when wave actually changes
@@ -1260,12 +2289,47 @@ function aStar(start, end) {
 // --- Tower Placement ---
 let previewTile = null;
 let selectedTower = null;
+let mobilePreviewTile = null; // Mobile-specific preview tile
+let isTouchPlacement = false; // Flag to track if we're in mobile touch placement mode
 
-function setupPlacementHandlers() {
-    app.view.addEventListener('mousemove', e => {
+function setupPlacementHandlers() {    // Helper function to get coordinates from mouse or touch event
+    function getEventCoordinates(e) {
         const rect = app.view.getBoundingClientRect();
-        const mx = e.clientX - rect.left;
-        const my = e.clientY - rect.top;
+        let clientX, clientY;
+        
+        if (e.touches && e.touches.length > 0) {
+            // Touch event
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else if (e.changedTouches && e.changedTouches.length > 0) {
+            // Touch end event
+            clientX = e.changedTouches[0].clientX;
+            clientY = e.changedTouches[0].clientY;
+        } else {
+            // Mouse event
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+        
+        // Get the relative position within the canvas
+        const relativeX = clientX - rect.left;
+        const relativeY = clientY - rect.top;
+        
+        // Scale the coordinates to match the logical canvas size
+        // With autoDensity: true, we need to use logical dimensions, not physical
+        const logicalWidth = MAP_WIDTH;
+        const logicalHeight = MAP_HEIGHT;
+        const scaleX = logicalWidth / rect.width;
+        const scaleY = logicalHeight / rect.height;
+        
+        return {
+            mx: relativeX * scaleX,
+            my: relativeY * scaleY
+        };
+    }
+      // Helper function to handle move events (mouse or touch)
+    function handleMoveEvent(e) {
+        const {mx, my} = getEventCoordinates(e);
         const tx = Math.floor(mx / TILE_SIZE);
         const ty = Math.floor(my / TILE_SIZE);
         
@@ -1277,20 +2341,27 @@ function setupPlacementHandlers() {
             !(tx === endTile.x && ty === endTile.y) &&
             !towers.some(t => t.x === tx && t.y === ty)
         ) {
-            previewTile = {x: tx, y: ty};
+            if (isTouchPlacement) {
+                // For mobile touch placement, use mobile preview tile
+                mobilePreviewTile = {x: tx, y: ty};
+            } else {
+                // For desktop, use regular preview tile
+                previewTile = {x: tx, y: ty};
+            }
         } else {
-            previewTile = null;
+            if (isTouchPlacement) {
+                mobilePreviewTile = null;
+            } else {
+                previewTile = null;
+            }
+            clearPreviewSprites();
         }
-    });
-    
-    app.view.addEventListener('mouseleave', () => {
-        previewTile = null;
-    });
-    
-    app.view.addEventListener('click', e => {
-        const rect = app.view.getBoundingClientRect();
-        const mx = e.clientX - rect.left;
-        const my = e.clientY - rect.top;
+    }
+      // Helper function to handle click/tap events
+    function handleClickEvent(e) {
+        e.preventDefault(); // Prevent default touch behavior
+        
+        const {mx, my} = getEventCoordinates(e);
         const tx = Math.floor(mx / TILE_SIZE);
         const ty = Math.floor(my / TILE_SIZE);
         
@@ -1331,7 +2402,7 @@ function setupPlacementHandlers() {
         let tower = towers.find(t => t.x === tx && t.y === ty);
         if (tower) {
             selectedTower = tower;
-            showTowerStats(tower, e.clientX, e.clientY);
+            showTowerStats(tower, mx + app.view.getBoundingClientRect().left, my + app.view.getBoundingClientRect().top);
             selectedTowerType = -1; // Deselect tower type when selecting a placed tower
             renderTowerSelect();
             updateUI();
@@ -1350,57 +2421,136 @@ function setupPlacementHandlers() {
             }
         }
         
-        // Only place tower if a tower type is selected
+        // Only place tower if a tower type is selected AND this is not a touch event
+        // Touch events will handle placement differently
+        if (selectedTowerType >= 0 && e.type !== 'touchstart') {
+            placeTowerAtPosition(tx, ty);
+        }
+    }
+    
+    // Helper function to handle touch start events (mobile only)
+    function handleTouchStart(e) {
+        e.preventDefault();
+        
+        const {mx, my} = getEventCoordinates(e);
+        const tx = Math.floor(mx / TILE_SIZE);
+        const ty = Math.floor(my / TILE_SIZE);
+        
+        // If a tower type is selected, start mobile placement mode
         if (selectedTowerType >= 0) {
-            if (tx < 0 || tx >= GRID_SIZE || ty < 0 || ty >= GRID_SIZE) return;
-            if (towers.some(t => t.x === tx && t.y === ty)) return;
-            if (tx === startTile.x && ty === startTile.y) return;
-            if (tx === endTile.x && ty === endTile.y) return;
-            if (gold < TOWER_TYPES[selectedTowerType].cost) return;
-            
-            towers.push({
-                x: tx, y: ty, type: TOWER_TYPES[selectedTowerType], level: 1, cooldown: 0
-            });
-            gold -= TOWER_TYPES[selectedTowerType].cost;
-            updatePathGrid();
-            
-            // Recalculate path for all non-flying, alive enemies
-            enemies.forEach(e => {
-                if (!e.flying && e.alive) {
-                    e.path = aStar({x: Math.round((e.x-TILE_SIZE/2)/TILE_SIZE), y: Math.round((e.y-TILE_SIZE/2)/TILE_SIZE)}, endTile);
-                    e.pathIdx = 0;
-                }
-            });
-            
-            let path = aStar(startTile, endTile);
-            if (!path) {
-                let t = towers.pop();
-                gold += TOWER_TYPES[selectedTowerType].cost;
-                updatePathGrid();
-                let blocking = towers.filter(tw => {
-                    towers = towers.filter(tt => tt !== tw);
-                    updatePathGrid();
-                    let p = aStar(startTile, endTile);
-                    towers.push(tw);
-                    updatePathGrid();
-                    return !p;
-                });
-                if (blocking.length) {
-                    let destroyed = blocking[Math.floor(Math.random()*blocking.length)];
-                    towers = towers.filter(tw => tw !== destroyed);
-                    updatePathGrid();
-                    let g = new PIXI.Graphics();
-                    g.beginFill(0xde6e6e).drawRect(destroyed.x*TILE_SIZE, destroyed.y*TILE_SIZE, TILE_SIZE, TILE_SIZE).endFill();
-                    app.stage.addChild(g);
-                    setTimeout(()=>app.stage.removeChild(g), 500);
+            isTouchPlacement = true;
+            // Set initial mobile preview position
+            if (tx >= 0 && tx < GRID_SIZE && ty >= 0 && ty < GRID_SIZE &&
+                !(tx === startTile.x && ty === startTile.y) &&
+                !(tx === endTile.x && ty === endTile.y) &&
+                !towers.some(t => t.x === tx && t.y === ty)) {
+                mobilePreviewTile = {x: tx, y: ty};
+            }
+            return;
+        }
+        
+        // Otherwise, handle as regular click event
+        handleClickEvent(e);
+    }
+    
+    // Helper function to handle touch end events (mobile only)
+    function handleTouchEnd(e) {
+        e.preventDefault();
+        
+        if (isTouchPlacement && selectedTowerType >= 0 && mobilePreviewTile) {
+            // Place the tower at the preview position
+            placeTowerAtPosition(mobilePreviewTile.x, mobilePreviewTile.y);
+        }
+        
+        // Reset mobile placement state
+        isTouchPlacement = false;
+        mobilePreviewTile = null;
+        previewTile = null;
+        clearPreviewSprites();
+    }
+    
+    // Helper function to place tower at given position
+    function placeTowerAtPosition(tx, ty) {
+        if (tx < 0 || tx >= GRID_SIZE || ty < 0 || ty >= GRID_SIZE) return;
+        if (towers.some(t => t.x === tx && t.y === ty)) return;
+        if (tx === startTile.x && ty === startTile.y) return;
+        if (tx === endTile.x && ty === endTile.y) return;
+        if (gold < TOWER_TYPES[selectedTowerType].cost) return;
+        
+        // Create temporary tower to test path blocking
+        const tempTower = {
+            x: tx, y: ty, type: TOWER_TYPES[selectedTowerType], level: 1, cooldown: 0
+        };
+        
+        // Add the temporary tower
+        towers.push(tempTower);
+        updatePathGrid();
+        
+        // Test if path is still valid from start to end
+        let mainPath = aStar(startTile, endTile);
+        
+        // Test if any existing moving enemies would be stranded
+        let enemiesBlocked = false;
+        if (isGameRunning) {
+            for (let enemy of enemies) {
+                if (!enemy.flying && enemy.alive) {
+                    let enemyGridPos = {
+                        x: Math.round((enemy.x - TILE_SIZE/2) / TILE_SIZE), 
+                        y: Math.round((enemy.y - TILE_SIZE/2) / TILE_SIZE)
+                    };
+                    let enemyPath = aStar(enemyGridPos, endTile);
+                    if (!enemyPath) {
+                        enemiesBlocked = true;
+                        break;
+                    }
                 }
             }
-            
-            selectedTowerType = -1;
-            renderTowerSelect();
-            updateUI();
+        }
+        
+        // If path is blocked or enemies would be stranded, remove tower and return
+        if (!mainPath || enemiesBlocked) {
+            towers.pop(); // Remove the temporary tower
+            updatePathGrid();
+            showMessage("Cannot place tower - would block path!", "#ff6666");
+            return;
+        }
+        
+        // Tower placement is valid, finalize it
+        gold -= TOWER_TYPES[selectedTowerType].cost;
+        
+        // Recalculate path for all non-flying, alive enemies
+        enemies.forEach(e => {
+            if (!e.flying && e.alive) {
+                e.path = aStar({x: Math.round((e.x-TILE_SIZE/2)/TILE_SIZE), y: Math.round((e.y-TILE_SIZE/2)/TILE_SIZE)}, endTile);
+                e.pathIdx = 0;
+            }
+        });
+        
+        selectedTowerType = -1;
+        renderTowerSelect();
+        updateUI();
+    }
+      // Mouse events
+    app.view.addEventListener('mousemove', handleMoveEvent);
+    app.view.addEventListener('mouseleave', () => {
+        previewTile = null;
+        mobilePreviewTile = null;
+        clearPreviewSprites();
+    });
+    app.view.addEventListener('click', handleClickEvent);
+    
+    // Touch events - separate handlers for better mobile control
+    app.view.addEventListener('touchmove', (e) => {
+        if (isTouchPlacement) {
+            // During touch placement, update the preview position
+            handleMoveEvent(e);
+        } else {
+            // Regular touch move handling
+            handleMoveEvent(e);
         }
     });
+    app.view.addEventListener('touchstart', handleTouchStart);
+    app.view.addEventListener('touchend', handleTouchEnd);
 }
 
 // --- Bomb Functions ---
@@ -1994,17 +3144,25 @@ function gameLoop(delta) {
     });
     // Then filter out dead enemies
     enemies = enemies.filter(e => e.alive);
-    
-    // --- Win/Lose ---
+      // --- Win/Lose ---
     if (lives <= 0) {
         isGameRunning = false;
         endBtn.style.display = '';
         startBtn.style.display = 'none';
         nextWaveBtn.style.display = 'none';
+        
+        // Update mobile buttons
+        if (endBtnMobile) endBtnMobile.style.display = '';
+        if (startBtnMobile) startBtnMobile.style.display = 'none';
+        if (nextWaveBtnMobile) nextWaveBtnMobile.style.display = 'none';
+        
         showGameOver('Game Over!');
     } else if (!spawningWave && enemies.length === 0 && projectiles.length === 0 && isGameRunning) {
         isGameRunning = false;
         nextWaveBtn.style.display = '';
+        
+        // Update mobile buttons
+        if (nextWaveBtnMobile) nextWaveBtnMobile.style.display = '';
         
         // Award completion gold
         gold += CONFIG.gameSettings.waveCompleteGold;
@@ -2067,16 +3225,15 @@ function showTowerStats(tower, x, y) {
     // Create stats window
     let statsWindow = document.createElement('div');
     statsWindow.style.position = 'absolute';
-    statsWindow.style.left = (x + 20) + 'px';
-    statsWindow.style.top = (y - 20) + 'px';
     statsWindow.style.background = '#23273a';
     statsWindow.style.color = '#fff';
     statsWindow.style.padding = '15px 20px';
     statsWindow.style.borderRadius = '8px';
-    statsWindow.style.boxShadow = '0 2px 24px #0008';
+    statsWindow.style.boxShadow = '0 2px 24px #000a';
     statsWindow.style.zIndex = '1000';
     statsWindow.style.minWidth = '200px';
     statsWindow.style.pointerEvents = 'auto';
+    statsWindow.style.maxWidth = '280px';
     
     // Add close button (X) in the top right
     let closeBtn = document.createElement('div');
@@ -2176,6 +3333,14 @@ function showTowerStats(tower, x, y) {
     sellBtn.textContent = `Sell (${Math.floor(tower.type.cost*0.5*tower.level)})`;
     sellBtn.onclick = () => {
         gold += Math.floor(tower.type.cost*0.5*tower.level);
+        
+        // Clean up tower sprite before removing
+        if (tower._sprite) {
+            tower._sprite.visible = false;
+            app.stage.removeChild(tower._sprite);
+            tower._sprite = null;
+        }
+        
         towers = towers.filter(t => t !== tower);
         updatePathGrid();
         document.body.removeChild(statsWindow);
@@ -2184,16 +3349,57 @@ function showTowerStats(tower, x, y) {
         updateUI();
     };
     
-    // Assemble the window
-    statsWindow.appendChild(closeBtn);
+    // Assemble the window    statsWindow.appendChild(closeBtn);
     statsWindow.appendChild(title);
     statsWindow.appendChild(statsContainer);
     buttonsContainer.appendChild(upgradeBtn);
     buttonsContainer.appendChild(sellBtn);
     statsWindow.appendChild(buttonsContainer);
     
+    // Add to DOM first (positioned off-screen temporarily)
+    statsWindow.style.left = '-9999px';
+    statsWindow.style.top = '-9999px';
     document.body.appendChild(statsWindow);
     towerStatsWindow = statsWindow;
+    
+    // Now measure the window dimensions and position it properly
+    const windowRect = statsWindow.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Calculate preferred position (offset from click)
+    let preferredLeft = x + 20;
+    let preferredTop = y - 20;
+    
+    // Adjust horizontal position if it would go off-screen
+    if (preferredLeft + windowRect.width > viewportWidth) {
+        // Position to the left of the click point instead
+        preferredLeft = x - windowRect.width - 20;
+        
+        // If it still goes off-screen to the left, clamp it
+        if (preferredLeft < 10) {
+            preferredLeft = 10;
+        }
+    }
+    
+    // Adjust vertical position if it would go off-screen
+    if (preferredTop + windowRect.height > viewportHeight) {
+        // Position above the click point instead
+        preferredTop = y - windowRect.height - 20;
+        
+        // If it still goes off-screen at the top, clamp it
+        if (preferredTop < 10) {
+            preferredTop = 10;
+        }
+    }
+    
+    // Ensure minimum margins from edges
+    preferredLeft = Math.max(10, Math.min(preferredLeft, viewportWidth - windowRect.width - 10));
+    preferredTop = Math.max(10, Math.min(preferredTop, viewportHeight - windowRect.height - 10));
+    
+    // Apply the final position
+    statsWindow.style.left = preferredLeft + 'px';
+    statsWindow.style.top = preferredTop + 'px';
     
     // Close the window when clicking outside
     document.addEventListener('mousedown', function closeStatsWindow(e) {
@@ -2374,6 +3580,7 @@ function getWavePattern(waveNumber) {
 }
 
 function renderWaveInfo() {
+    // Update desktop wave info
     const waveInfoContent = document.getElementById('wave-info-content');
     waveInfoContent.innerHTML = '';
     
@@ -2407,67 +3614,376 @@ function renderWaveInfo() {
         
         waveInfoContent.appendChild(waveItem);
     }
+    
+    // Update mobile wave info
+    const waveInfoContentMobile = document.getElementById('wave-info-content-mobile');
+    if (waveInfoContentMobile) {        waveInfoContentMobile.innerHTML = '';
+        
+        // Show next 5 waves for mobile (same as desktop)
+        for (let i = 0; i < 5; i++) {
+            const waveNum = wave + i;
+            const pattern = getWavePattern(waveNum);
+            
+            const waveItem = document.createElement('div');
+            waveItem.className = 'wave-info-item';
+            if (i === 0) {
+                waveItem.classList.add('current');
+            }
+            
+            // Simplified layout for mobile with smaller text
+            waveItem.innerHTML = `
+                <span style="font-weight: bold; margin-right: 3px; font-size: 0.8em;">${waveNum}</span>
+                <span style="margin-right: 2px; font-size: 0.7em;">${pattern.icon}</span>
+                <span style="font-size: 0.7em; color: #${pattern.color.toString(16).padStart(6, '0')}">${pattern.name}</span>
+            `;
+            
+            waveInfoContentMobile.appendChild(waveItem);
+        }
+    }
+}
+
+// --- Tower Images ---
+const towerImageMap = {};
+
+function loadTowerImages() {
+    // Load tower images from individual tower definitions
+    if (CONFIG && CONFIG.towers) {
+        CONFIG.towers.forEach(tower => {
+            if (tower.image) {
+                const imagePath = `Game_Images/${tower.image}`;
+                const texture = PIXI.Texture.from(imagePath);
+                // High quality settings for smooth rendering
+                texture.baseTexture.scaleMode = PIXI.SCALE_MODES.LINEAR;
+                texture.baseTexture.mipmap = PIXI.MIPMAP_MODES.OFF;
+                texture.baseTexture.resolution = 1;
+                towerImageMap[tower.name] = texture;
+            }
+        });
+    }
+    
+    // Also load shop tower images
+    if (CONFIG && CONFIG.shopTowers) {
+        CONFIG.shopTowers.forEach(tower => {
+            if (tower.image) {
+                const imagePath = `Game_Images/${tower.image}`;
+                const texture = PIXI.Texture.from(imagePath);
+                // High quality settings for smooth rendering
+                texture.baseTexture.scaleMode = PIXI.SCALE_MODES.LINEAR;
+                texture.baseTexture.mipmap = PIXI.MIPMAP_MODES.OFF;
+                texture.baseTexture.resolution = 1;
+                towerImageMap[tower.name] = texture;
+            }
+        });
+    }
 }
 
 // --- Drawing ---
 const graphics = new PIXI.Graphics();
 app.stage.addChild(graphics);
 
-function draw() {
-    graphics.clear();
-    
-    // Draw grid
-    graphics.lineStyle(1, 0x2e3a4e, 0.5);
+// Build a single, cached grid overlay with beveled-style separators
+function createGridOverlay() {
+    // Remove previous overlay if any
+    if (gridOverlay) {
+        app.stage.removeChild(gridOverlay);
+        gridOverlay.destroy(true);
+        gridOverlay = null;
+    }
+    gridOverlay = new PIXI.Graphics();
+
+    // Slight vignette on the play area to match the sample style
+    const vignetteAlpha = 0.18;
+    gridOverlay.beginFill(0x000000, vignetteAlpha)
+        .drawRoundedRect(0, 0, MAP_WIDTH, MAP_HEIGHT, Math.min(24, TILE_SIZE * 0.35))
+        .endFill();
+
+    // Draw separators: darker grout lines + subtle highlights for bevel effect
+    const groutColor = 0x0e1118; // dark
+    const groutAlpha = 0.35;
+    const highlightColor = 0xffffff; // light
+    const highlightAlpha = 0.07;
+
+    // Thick dark lines on grid boundaries
+    gridOverlay.lineStyle({ width: Math.max(3, Math.round(TILE_SIZE * 0.06)), color: groutColor, alpha: groutAlpha, alignment: 0.5 });
     for (let x = 0; x <= GRID_SIZE; x++) {
-        graphics.moveTo(x*TILE_SIZE, 0);
-        graphics.lineTo(x*TILE_SIZE, MAP_HEIGHT);
+        const gx = x * TILE_SIZE;
+        gridOverlay.moveTo(gx, 0).lineTo(gx, MAP_HEIGHT);
     }
     for (let y = 0; y <= GRID_SIZE; y++) {
-        graphics.moveTo(0, y*TILE_SIZE);
-        graphics.lineTo(MAP_WIDTH, y*TILE_SIZE);
+        const gy = y * TILE_SIZE;
+        gridOverlay.moveTo(0, gy).lineTo(MAP_WIDTH, gy);
+    }
+
+    // Thin highlight lines slightly offset to simulate a bevel
+    gridOverlay.lineStyle({ width: 1, color: highlightColor, alpha: highlightAlpha, alignment: 0.5 });
+    for (let x = 0; x <= GRID_SIZE; x++) {
+        const gx = x * TILE_SIZE + 1; // 1px offset right
+        gridOverlay.moveTo(gx, 1).lineTo(gx, MAP_HEIGHT - 1);
+    }
+    for (let y = 0; y <= GRID_SIZE; y++) {
+        const gy = y * TILE_SIZE + 1; // 1px offset down
+        gridOverlay.moveTo(1, gy).lineTo(MAP_WIDTH - 1, gy);
+    }
+
+    // Optional rounded-rect inner stroke per tile for extra definition
+    const cornerR = Math.min(10, Math.round(TILE_SIZE * 0.15));
+    gridOverlay.lineStyle({ width: 1, color: 0x000000, alpha: 0.15, alignment: 0.5 });
+    for (let ty = 0; ty < GRID_SIZE; ty++) {
+        for (let tx = 0; tx < GRID_SIZE; tx++) {
+            const x = tx * TILE_SIZE + 2;
+            const y = ty * TILE_SIZE + 2;
+            const w = TILE_SIZE - 4;
+            const h = TILE_SIZE - 4;
+            gridOverlay.drawRoundedRect(x, y, w, h, cornerR);
+        }
+    }
+
+    // Cache as bitmap for performance
+    gridOverlay.cacheAsBitmap = true;
+
+    // Insert overlay above background but below dynamic graphics
+    if (backgroundSprite) {
+        app.stage.addChildAt(gridOverlay, Math.min(1, app.stage.children.length));
+        app.stage.setChildIndex(backgroundSprite, 0);
+    } else {
+        app.stage.addChildAt(gridOverlay, 0);
+    }
+    // Keep original layering: background (0), grid overlay (1), then graphics and later-added sprites
+}
+
+// Preview sprites for tower placement
+let previewSprite = null;
+let mobilePreviewSprite = null;
+
+// Create start/end portal pad markers with subtle glow and pulse
+function createStartEndMarkers() {
+    // Cleanup old markers
+    if (startMarker) { app.stage.removeChild(startMarker); startMarker.destroy(true); startMarker = null; }
+    if (endMarker) { app.stage.removeChild(endMarker); endMarker.destroy(true); endMarker = null; }
+
+    const makeMarker = (color) => {
+        const c = new PIXI.Container();
+
+        const pad = new PIXI.Graphics();
+        const r = TILE_SIZE * 0.42;
+        // Outer soft glow
+        pad.beginFill(color, 0.15).drawCircle(0, 0, r * 1.25).endFill();
+        // Main ring
+        pad.lineStyle(3, color, 0.9).drawCircle(0, 0, r);
+        // Inner fill
+        pad.beginFill(0x000000, 0.25).drawCircle(0, 0, r * 0.75).endFill();
+        // Highlight ring
+        pad.lineStyle(1, 0xffffff, 0.25).drawCircle(0, 0, r * 0.6);
+        c.addChild(pad);
+
+        c._pulseT = Math.random() * Math.PI * 2; // phase
+        return c;
+    };
+
+    // Teal for start, crimson for end
+    startMarker = makeMarker(0x4ec9b0);
+    endMarker = makeMarker(0xff4d4d);
+
+    // Position at tile centers
+    startMarker.x = startTile.x * TILE_SIZE + TILE_SIZE / 2;
+    startMarker.y = startTile.y * TILE_SIZE + TILE_SIZE / 2;
+    endMarker.x = endTile.x * TILE_SIZE + TILE_SIZE / 2;
+    endMarker.y = endTile.y * TILE_SIZE + TILE_SIZE / 2;
+
+    // Place above grid overlay; order not critical since start/end tiles can't host towers
+    app.stage.addChild(startMarker);
+    app.stage.addChild(endMarker);
+}
+
+function updatePreviewSprite() {
+    // Clean up existing preview sprite
+    if (previewSprite) {
+        app.stage.removeChild(previewSprite);
+        previewSprite = null;
     }
     
-    // Draw start/end
-    graphics.beginFill(0x6ede8a).drawRect(startTile.x*TILE_SIZE, startTile.y*TILE_SIZE, TILE_SIZE, TILE_SIZE).endFill();
-    graphics.beginFill(0xde6e6e).drawRect(endTile.x*TILE_SIZE, endTile.y*TILE_SIZE, TILE_SIZE, TILE_SIZE).endFill();
-    
-    // Draw preview tower
+    // Create new preview sprite if needed
     if (previewTile && selectedTowerType >= 0) {
-        graphics.beginFill(TOWER_TYPES[selectedTowerType].color, 0.35)
-            .drawCircle(previewTile.x*TILE_SIZE+TILE_SIZE/2, previewTile.y*TILE_SIZE+TILE_SIZE/2, TILE_SIZE/2.2)
-            .endFill();
+        const towerType = TOWER_TYPES[selectedTowerType];
+        const towerTexture = towerImageMap[towerType.name];
+        
+        if (towerTexture) {
+            previewSprite = new PIXI.Sprite(towerTexture);
+            previewSprite.anchor.set(0.5);
+            previewSprite.alpha = 0.6; // Semi-transparent for preview
+            
+            // Position and scale
+            previewSprite.x = previewTile.x * TILE_SIZE + TILE_SIZE / 2;
+            previewSprite.y = previewTile.y * TILE_SIZE + TILE_SIZE / 2;
+            
+            const targetSize = TILE_SIZE * 0.9;
+            const imageScale = Math.min(targetSize / towerTexture.width, targetSize / towerTexture.height);
+            previewSprite.scale.set(imageScale);
+            
+            app.stage.addChild(previewSprite);
+        }
+    }
+}
+
+function updateMobilePreviewSprite() {
+    // Clean up existing mobile preview sprite
+    if (mobilePreviewSprite) {
+        app.stage.removeChild(mobilePreviewSprite);
+        mobilePreviewSprite = null;
     }
     
-    // Draw towers with visual upgrades (constrained to tile size)
+    // Create new mobile preview sprite if needed
+    if (mobilePreviewTile && selectedTowerType >= 0) {
+        const towerType = TOWER_TYPES[selectedTowerType];
+        const towerTexture = towerImageMap[towerType.name];
+        
+        if (towerTexture) {
+            mobilePreviewSprite = new PIXI.Sprite(towerTexture);
+            mobilePreviewSprite.anchor.set(0.5);
+            mobilePreviewSprite.alpha = 0.7; // Slightly more opaque for mobile
+            
+            // Position and scale
+            mobilePreviewSprite.x = mobilePreviewTile.x * TILE_SIZE + TILE_SIZE / 2;
+            mobilePreviewSprite.y = mobilePreviewTile.y * TILE_SIZE + TILE_SIZE / 2;
+            
+            const targetSize = TILE_SIZE * 0.9;
+            const imageScale = Math.min(targetSize / towerTexture.width, targetSize / towerTexture.height);
+            mobilePreviewSprite.scale.set(imageScale);
+            
+            app.stage.addChild(mobilePreviewSprite);
+        }
+    }
+}
+
+function clearPreviewSprites() {
+    // Clean up preview sprites
+    if (previewSprite) {
+        app.stage.removeChild(previewSprite);
+        previewSprite = null;
+    }
+    if (mobilePreviewSprite) {
+        app.stage.removeChild(mobilePreviewSprite);
+        mobilePreviewSprite = null;
+    }
+}
+
+function draw() {
+    graphics.clear();
+
+    // Grid is drawn once in gridOverlay; keep runtime graphics for dynamic elements only
+    // Optional: faint tile halos under start/end
+    const haloAlpha = 0.18;
+    graphics.beginFill(0x00ffcc, haloAlpha)
+        .drawRoundedRect(startTile.x*TILE_SIZE+4, startTile.y*TILE_SIZE+4, TILE_SIZE-8, TILE_SIZE-8, 8)
+        .endFill();
+    graphics.beginFill(0xff3355, haloAlpha)
+        .drawRoundedRect(endTile.x*TILE_SIZE+4, endTile.y*TILE_SIZE+4, TILE_SIZE-8, TILE_SIZE-8, 8)
+        .endFill();
+
+    // Update marker pulse (gentle scale wobble)
+    const t = Date.now() * 0.004;
+    if (startMarker) {
+        const s = 1 + 0.03 * Math.sin(t + startMarker._pulseT);
+        startMarker.scale.set(s);
+    }
+    if (endMarker) {
+        const s = 1 + 0.03 * Math.sin(t + endMarker._pulseT);
+        endMarker.scale.set(s);
+    }
+      
+    // Update preview sprites (these handle their own rendering)
+    updatePreviewSprite();
+    updateMobilePreviewSprite();
+    
+    // Draw range indicator for mobile preview
+    if (mobilePreviewTile && selectedTowerType >= 0) {
+        graphics.lineStyle(2, TOWER_TYPES[selectedTowerType].color, 0.3);
+        graphics.drawCircle(mobilePreviewTile.x*TILE_SIZE+TILE_SIZE/2, mobilePreviewTile.y*TILE_SIZE+TILE_SIZE/2, TOWER_TYPES[selectedTowerType].range);
+    }
+    
+    // Draw towers with visual upgrades (rings only, no size changes)
     for (let t of towers) {
-        // Calculate size based on level (constrained to tile size)
-        const maxRadius = TILE_SIZE / 2.2; // Base radius
-        const levelBonus = Math.min(t.level - 1, 4) * 0.1; // Cap bonus at 40% (level 5)
-        const radius = maxRadius * (1 + levelBonus);
-        
-        // Draw base tower
-        graphics.beginFill(t.type.color)
-            .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius)
-            .endFill();
-        
-        // Add visual features based on level
-        if (t.level >= 2) {
-            // Inner circle for level 2+
-            graphics.beginFill(0xffffff, 0.3)
-                .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius * 0.6)
+        // Try to draw tower image if available
+        const towerTexture = towerImageMap[t.type.name];
+        if (towerTexture) {
+            // Create or reuse a sprite for the tower image
+            let towerSprite = t._sprite;
+            if (!towerSprite) {
+                towerSprite = new PIXI.Sprite(towerTexture);
+                towerSprite.anchor.set(0.5);
+                app.stage.addChild(towerSprite);
+                t._sprite = towerSprite;
+            }
+            
+            // Position the sprite accurately at tile center
+            towerSprite.x = t.x * TILE_SIZE + TILE_SIZE / 2;
+            towerSprite.y = t.y * TILE_SIZE + TILE_SIZE / 2;
+            
+            // Scale the sprite to fit nicely within the tile while maintaining aspect ratio
+            const targetSize = TILE_SIZE * 0.9; // Use 90% of tile size
+            const imageScale = Math.min(targetSize / towerTexture.width, targetSize / towerTexture.height);
+            towerSprite.scale.set(imageScale);
+            
+            towerSprite.visible = true;
+            
+            // Calculate radius for rings based on the scaled sprite size
+            const radius = Math.max(towerTexture.width, towerTexture.height) * imageScale / 2;
+            
+            // Add level-based visual enhancements around the image (rings only)
+            if (t.level >= 2) {
+                // Level 2+: Add glowing outline
+                graphics.lineStyle(2, 0xffffff, 0.4)
+                    .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius * 1.15);
+            }
+            
+            if (t.level >= 3) {
+                // Level 3+: Add white ring
+                graphics.lineStyle(2, 0xffffff, 0.7)
+                    .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius * 1.25);
+            }
+            
+            if (t.level >= 4) {
+                // Level 4+: Add golden ring
+                graphics.lineStyle(3, 0xffdd00, 0.8)
+                    .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius * 1.35);
+            }
+            
+            if (t.level >= 5) {
+                // Level 5+: Add pulsing golden ring
+                const pulseAlpha = 0.6 + Math.sin(Date.now() / 300) * 0.3;
+                graphics.lineStyle(4, 0xffdd00, pulseAlpha)
+                    .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius * 1.45);
+            }
+        } else {
+            // Fallback: Draw original circle if image not available (also constant size)
+            const radius = TILE_SIZE / 2.2;
+            graphics.beginFill(t.type.color)
+                .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius)
                 .endFill();
-        }
-        
-        if (t.level >= 3) {
-            // Ring for level 3+
-            graphics.lineStyle(2, 0xffffff, 0.7)
-                .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius * 0.8);
-        }
-        
-        if (t.level >= 4) {
-            // Extra detail for level 4+
-            graphics.lineStyle(2, 0xffdd00, 0.8)
-                .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius * 0.9);
+            
+            // Add visual features based on level (original code with constant radius)
+            if (t.level >= 2) {
+                graphics.beginFill(0xffffff, 0.3)
+                    .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius * 0.6)
+                    .endFill();
+            }
+            
+            if (t.level >= 3) {
+                graphics.lineStyle(2, 0xffffff, 0.7)
+                    .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius * 0.8);
+            }
+            
+            if (t.level >= 4) {
+                graphics.lineStyle(2, 0xffdd00, 0.8)
+                    .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius * 0.9);
+            }
+            
+            if (t.level >= 5) {
+                // Level 5+: Add pulsing effect for fallback towers too
+                const pulseAlpha = 0.6 + Math.sin(Date.now() / 300) * 0.3;
+                graphics.lineStyle(3, 0xffdd00, pulseAlpha)
+                    .drawCircle(t.x*TILE_SIZE+TILE_SIZE/2, t.y*TILE_SIZE+TILE_SIZE/2, radius * 1.1);
+            }
         }
         
         // Show range for selected tower
@@ -2792,6 +4308,15 @@ function showGameOver(msg) {
 
 // Updated restartGame function to accept a parameter
 function restartGame(clearStorage = true) {
+    // Clean up tower sprites before clearing towers array
+    towers.forEach(tower => {
+        if (tower._sprite) {
+            tower._sprite.visible = false;
+            app.stage.removeChild(tower._sprite);
+            tower._sprite = null;
+        }
+    });
+    
     towers = [];
     enemies = [];
     projectiles = [];
@@ -2837,8 +4362,7 @@ function restartGame(clearStorage = true) {
         // Reload purchased towers
         loadPurchasedTowers();
     }
-    
-    updatePathGrid();
+      updatePathGrid();
     updateUI();
     renderTowerSelect();
     renderWaveInfo(); // Only render wave info when actually restarting
@@ -2846,10 +4370,18 @@ function restartGame(clearStorage = true) {
     endBtn.style.display = 'none';
     nextWaveBtn.style.display = 'none';
     
+    // Update mobile button visibility
+    if (startBtnMobile) startBtnMobile.style.display = '';
+    if (endBtnMobile) endBtnMobile.style.display = 'none';
+    if (nextWaveBtnMobile) nextWaveBtnMobile.style.display = 'none';
+    
     // Reset the text pool when restarting
     damageTextPool.forEach(text => {
         text.visible = false;
     });
+
+    // Recreate start/end markers (positions unchanged)
+    createStartEndMarkers();
 }
 
 // Load the game

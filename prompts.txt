@@ -105,3 +105,5 @@ Lets randomize the waves more and make most of them mixed. Also lets make the en
 - make it so you loose 3 lives if you dont kill the boss
 - make it so 1/3rd the enemies spawn in the air wave and they go half the speed
 - when upgrading slow tower, increase slow %
+- hover over tower for stats
+- make the map more rectangular
