@@ -1123,6 +1123,10 @@ let ELEMENTS; // New variable for element definitions
 let SLOW_CONFIG; // Configuration for slow tower slow effect
 let WAVE_PATTERNS; // Wave pattern configuration
 let backgroundSprite = null; // Background image sprite
+let gridOverlay = null; // Pre-rendered grid overlay
+// Start/End visual markers
+let startMarker = null;
+let endMarker = null;
 
 // Add purchased towers tracking
 let purchasedTowers = [];
@@ -1396,6 +1400,12 @@ function initGame() {
     renderWaveInfo(); // Add wave info rendering
     updatePathGrid();
     
+    // Build static grid overlay once
+    createGridOverlay();
+
+    // Create start/end portal markers
+    createStartEndMarkers();
+
     // Set up all game event handlers and logic
     setupGameHandlers();
 }
@@ -3671,9 +3681,119 @@ function loadTowerImages() {
 const graphics = new PIXI.Graphics();
 app.stage.addChild(graphics);
 
+// Build a single, cached grid overlay with beveled-style separators
+function createGridOverlay() {
+    // Remove previous overlay if any
+    if (gridOverlay) {
+        app.stage.removeChild(gridOverlay);
+        gridOverlay.destroy(true);
+        gridOverlay = null;
+    }
+    gridOverlay = new PIXI.Graphics();
+
+    // Slight vignette on the play area to match the sample style
+    const vignetteAlpha = 0.18;
+    gridOverlay.beginFill(0x000000, vignetteAlpha)
+        .drawRoundedRect(0, 0, MAP_WIDTH, MAP_HEIGHT, Math.min(24, TILE_SIZE * 0.35))
+        .endFill();
+
+    // Draw separators: darker grout lines + subtle highlights for bevel effect
+    const groutColor = 0x0e1118; // dark
+    const groutAlpha = 0.35;
+    const highlightColor = 0xffffff; // light
+    const highlightAlpha = 0.07;
+
+    // Thick dark lines on grid boundaries
+    gridOverlay.lineStyle({ width: Math.max(3, Math.round(TILE_SIZE * 0.06)), color: groutColor, alpha: groutAlpha, alignment: 0.5 });
+    for (let x = 0; x <= GRID_SIZE; x++) {
+        const gx = x * TILE_SIZE;
+        gridOverlay.moveTo(gx, 0).lineTo(gx, MAP_HEIGHT);
+    }
+    for (let y = 0; y <= GRID_SIZE; y++) {
+        const gy = y * TILE_SIZE;
+        gridOverlay.moveTo(0, gy).lineTo(MAP_WIDTH, gy);
+    }
+
+    // Thin highlight lines slightly offset to simulate a bevel
+    gridOverlay.lineStyle({ width: 1, color: highlightColor, alpha: highlightAlpha, alignment: 0.5 });
+    for (let x = 0; x <= GRID_SIZE; x++) {
+        const gx = x * TILE_SIZE + 1; // 1px offset right
+        gridOverlay.moveTo(gx, 1).lineTo(gx, MAP_HEIGHT - 1);
+    }
+    for (let y = 0; y <= GRID_SIZE; y++) {
+        const gy = y * TILE_SIZE + 1; // 1px offset down
+        gridOverlay.moveTo(1, gy).lineTo(MAP_WIDTH - 1, gy);
+    }
+
+    // Optional rounded-rect inner stroke per tile for extra definition
+    const cornerR = Math.min(10, Math.round(TILE_SIZE * 0.15));
+    gridOverlay.lineStyle({ width: 1, color: 0x000000, alpha: 0.15, alignment: 0.5 });
+    for (let ty = 0; ty < GRID_SIZE; ty++) {
+        for (let tx = 0; tx < GRID_SIZE; tx++) {
+            const x = tx * TILE_SIZE + 2;
+            const y = ty * TILE_SIZE + 2;
+            const w = TILE_SIZE - 4;
+            const h = TILE_SIZE - 4;
+            gridOverlay.drawRoundedRect(x, y, w, h, cornerR);
+        }
+    }
+
+    // Cache as bitmap for performance
+    gridOverlay.cacheAsBitmap = true;
+
+    // Insert overlay above background but below dynamic graphics
+    if (backgroundSprite) {
+        app.stage.addChildAt(gridOverlay, Math.min(1, app.stage.children.length));
+        app.stage.setChildIndex(backgroundSprite, 0);
+    } else {
+        app.stage.addChildAt(gridOverlay, 0);
+    }
+    // Keep original layering: background (0), grid overlay (1), then graphics and later-added sprites
+}
+
 // Preview sprites for tower placement
 let previewSprite = null;
 let mobilePreviewSprite = null;
+
+// Create start/end portal pad markers with subtle glow and pulse
+function createStartEndMarkers() {
+    // Cleanup old markers
+    if (startMarker) { app.stage.removeChild(startMarker); startMarker.destroy(true); startMarker = null; }
+    if (endMarker) { app.stage.removeChild(endMarker); endMarker.destroy(true); endMarker = null; }
+
+    const makeMarker = (color) => {
+        const c = new PIXI.Container();
+
+        const pad = new PIXI.Graphics();
+        const r = TILE_SIZE * 0.42;
+        // Outer soft glow
+        pad.beginFill(color, 0.15).drawCircle(0, 0, r * 1.25).endFill();
+        // Main ring
+        pad.lineStyle(3, color, 0.9).drawCircle(0, 0, r);
+        // Inner fill
+        pad.beginFill(0x000000, 0.25).drawCircle(0, 0, r * 0.75).endFill();
+        // Highlight ring
+        pad.lineStyle(1, 0xffffff, 0.25).drawCircle(0, 0, r * 0.6);
+        c.addChild(pad);
+
+        c._pulseT = Math.random() * Math.PI * 2; // phase
+        return c;
+    };
+
+    // Teal for start, crimson for end
+    startMarker = makeMarker(0x4ec9b0);
+    endMarker = makeMarker(0xff4d4d);
+
+    // Position at tile centers
+    startMarker.x = startTile.x * TILE_SIZE + TILE_SIZE / 2;
+    startMarker.y = startTile.y * TILE_SIZE + TILE_SIZE / 2;
+    endMarker.x = endTile.x * TILE_SIZE + TILE_SIZE / 2;
+    endMarker.y = endTile.y * TILE_SIZE + TILE_SIZE / 2;
+
+    // Place above grid overlay; order not critical since start/end tiles can't host towers
+    app.stage.addChild(startMarker);
+    app.stage.addChild(endMarker);
+}
 
 function updatePreviewSprite() {
     // Clean up existing preview sprite
@@ -3749,21 +3869,27 @@ function clearPreviewSprites() {
 
 function draw() {
     graphics.clear();
-    
-    // Draw grid
-    graphics.lineStyle(1, 0x2e3a4e, 0.5);
-    for (let x = 0; x <= GRID_SIZE; x++) {
-        graphics.moveTo(x*TILE_SIZE, 0);
-        graphics.lineTo(x*TILE_SIZE, MAP_HEIGHT);
+
+    // Grid is drawn once in gridOverlay; keep runtime graphics for dynamic elements only
+    // Optional: faint tile halos under start/end
+    const haloAlpha = 0.18;
+    graphics.beginFill(0x00ffcc, haloAlpha)
+        .drawRoundedRect(startTile.x*TILE_SIZE+4, startTile.y*TILE_SIZE+4, TILE_SIZE-8, TILE_SIZE-8, 8)
+        .endFill();
+    graphics.beginFill(0xff3355, haloAlpha)
+        .drawRoundedRect(endTile.x*TILE_SIZE+4, endTile.y*TILE_SIZE+4, TILE_SIZE-8, TILE_SIZE-8, 8)
+        .endFill();
+
+    // Update marker pulse (gentle scale wobble)
+    const t = Date.now() * 0.004;
+    if (startMarker) {
+        const s = 1 + 0.03 * Math.sin(t + startMarker._pulseT);
+        startMarker.scale.set(s);
     }
-    for (let y = 0; y <= GRID_SIZE; y++) {
-        graphics.moveTo(0, y*TILE_SIZE);
-        graphics.lineTo(MAP_WIDTH, y*TILE_SIZE);
+    if (endMarker) {
+        const s = 1 + 0.03 * Math.sin(t + endMarker._pulseT);
+        endMarker.scale.set(s);
     }
-    
-    // Draw start/end
-    graphics.beginFill(0x6ede8a).drawRect(startTile.x*TILE_SIZE, startTile.y*TILE_SIZE, TILE_SIZE, TILE_SIZE).endFill();
-    graphics.beginFill(0xde6e6e).drawRect(endTile.x*TILE_SIZE, endTile.y*TILE_SIZE, TILE_SIZE, TILE_SIZE).endFill();
       
     // Update preview sprites (these handle their own rendering)
     updatePreviewSprite();
@@ -4253,6 +4379,9 @@ function restartGame(clearStorage = true) {
     damageTextPool.forEach(text => {
         text.visible = false;
     });
+
+    // Recreate start/end markers (positions unchanged)
+    createStartEndMarkers();
 }
 
 // Load the game
