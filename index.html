@@ -879,7 +879,36 @@
         .tower-btn.selected {
             border: 2px solid #ffd700;
             box-shadow: 0 0 10px rgba(255,215,0,0.5), inset 0 1px 3px rgba(255,255,255,0.3);
-        }        /* Create a button container for two-column layout */
+        }
+        /* Tower button content with icon */
+        .tower-btn-content {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 8px;
+            width: 100%;
+        }
+        .tower-icon {
+            width: 28px;
+            height: 28px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            border-radius: 4px;
+            flex: 0 0 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+            background-color: rgba(0,0,0,0.15);
+            box-shadow: inset 0 1px 2px rgba(255,255,255,0.2);
+        }
+        .tower-icon.small { width: 22px; height: 22px; flex-basis: 22px; }
+        .tower-text { display: flex; flex-direction: column; line-height: 1.1; }
+        .tower-text .tower-name { font-weight: bold; margin-bottom: 1px; }
+        .tower-text .tower-meta { font-size: 0.85em; opacity: 0.95; }
+        /* Create a button container for two-column layout */
         .button-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -1836,12 +1865,19 @@ function renderTowerSelect() {    // Update desktop tower selection
         const configTower = CONFIG.towers.find(ct => ct.name === t.name) || 
                            CONFIG.shopTowers.find(st => st.name === t.name);
         
-        // Condensed text layout with tighter spacing
-        btn.innerHTML = `<div style="text-align: center; line-height: 1.1;">
-            <div style="font-weight: bold; margin-bottom: 1px;">${t.name}</div>
-            <div style="font-size: 0.85em; margin-bottom: 1px;">[${t.key}]</div>
-            <div style="font-size: 0.9em;">Cost: ${t.cost}</div>
-        </div>`;btn.onclick = () => {
+                // Icon + text layout
+                const imagePath = (configTower && configTower.image) ? `Game_Images/${configTower.image}` : '';
+                const emoji = (ELEMENTS[t.element] && ELEMENTS[t.element].emoji) ? ELEMENTS[t.element].emoji : '';
+                const iconDiv = imagePath
+                        ? `<div class="tower-icon" style="background-image:url('${imagePath}')"></div>`
+                        : `<div class="tower-icon">${emoji}</div>`;
+                btn.innerHTML = `<div class="tower-btn-content">
+                        ${iconDiv}
+                        <div class="tower-text">
+                            <div class="tower-name">${t.name}</div>
+                            <div class="tower-meta">[${t.key}] • Cost: ${t.cost}</div>
+                        </div>
+                </div>`;btn.onclick = () => {
             selectedTowerType = i;
             // Close tower stats window if one is open
             if (towerStatsWindow) {
@@ -1886,10 +1922,20 @@ function renderTowerSelect() {    // Update desktop tower selection
             const towerColor = '#' + t.color.toString(16).padStart(6, '0');
             btn.style.background = towerColor;
             
-            // Condensed text layout for mobile
-            btn.innerHTML = `<div style="text-align: center; line-height: 1;">
-                <div style="font-weight: bold; font-size: 0.7em;">${t.name}</div>
-                <div style="font-size: 0.6em;">[${t.key}] ${t.cost}g</div>
+            // Icon + compact text layout for mobile
+            const configTower = CONFIG.towers.find(ct => ct.name === t.name) || 
+                               CONFIG.shopTowers.find(st => st.name === t.name);
+            const imagePath = (configTower && configTower.image) ? `Game_Images/${configTower.image}` : '';
+            const emoji = (ELEMENTS[t.element] && ELEMENTS[t.element].emoji) ? ELEMENTS[t.element].emoji : '';
+            const iconDiv = imagePath
+                ? `<div class="tower-icon small" style="background-image:url('${imagePath}')"></div>`
+                : `<div class="tower-icon small">${emoji}</div>`;
+            btn.innerHTML = `<div class="tower-btn-content">
+                ${iconDiv}
+                <div class="tower-text" style="line-height:1;">
+                    <div class="tower-name" style="font-size:0.7em;">${t.name}</div>
+                    <div class="tower-meta" style="font-size:0.6em;">[${t.key}] ${t.cost}g</div>
+                </div>
             </div>`;
             
             btn.onclick = () => {
