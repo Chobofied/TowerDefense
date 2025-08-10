@@ -8,8 +8,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#181c25">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.2.4/pixi.min.js"></script>    <style>
-        * { box-sizing: border-box; }
-        html, body {
+        * {
+            box-sizing: border-box;
+        }        html, body {
             margin: 0;
             padding: 0;
             width: 100%;
@@ -19,16 +20,16 @@
             font-family: 'Segoe UI', Arial, sans-serif;
             /* Handle iOS Safari viewport issues */
             -webkit-overflow-scrolling: touch;
-            /* allow normal flow (fixed body can cause cropping on mobile) */
+            position: fixed;
+            top: 0;
+            left: 0;
         }
+        
         /* Ensure full viewport coverage on iOS Safari */
         @supports (height: 100dvh) {
-            html, body { height: 100dvh; }
-        }
-        /* Prefer the small viewport height when available (accounts for browser bars) */
-        @supports (height: 100svh) {
-            html, body { height: 100svh; }
-            #game-wrapper { height: 100svh; }
+            html, body {
+                height: 100dvh; /* Dynamic viewport height for modern browsers */
+            }
         }
           /* Fallback for older browsers and additional Safari support */
         @media screen and (max-width: 768px) {
@@ -46,28 +47,10 @@
             height: -webkit-fill-available; /* Safari iOS specific */
         }
         
-
-        /* Compact landscape (small-height devices like iPhones) */
-        @media (max-height: 430px) and (orientation: landscape) {
-            /* Use vertical stacking to maximize canvas height */
-            #game-wrapper { flex-direction: column; padding: 0; gap: 0; }
-            /* Canvas gets most of the screen */
-            #game-canvas-container {
-                flex: 1;
-                max-width: 100%;
-                max-height: none;
-                aspect-ratio: auto;
-                padding-top: env(safe-area-inset-top);
-                padding-bottom: env(safe-area-inset-bottom);
-            }
-            /* UI becomes a slim bar below with scrolling when needed */
-            #game-ui {
-                width: 100%;
-                border-left: 0;
-                border-top: 2px solid #4e6fae;
-                max-height: 20vh;
-                min-height: 120px;
-                overflow-y: auto;
+        /* Support for newer viewport units */
+        @supports (height: 100dvh) {
+            #game-wrapper {
+                height: 100dvh;
             }
         }
 
@@ -79,8 +62,6 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            /* Important for flexbox children: allow shrinking to available space */
-            min-height: 0;
         }
 
         #game-canvas-container canvas {
@@ -152,48 +133,13 @@
                 max-height: min(40vh, 40dvh);
             }
         }
-
-        /* Override desktop on wide-but-short landscape (iPhone landscape) */
-        @media (min-width: 769px) and (max-height: 430px) and (orientation: landscape) {
-            #game-wrapper { flex-direction: column; padding: 6px; gap: 8px; }
-            #game-canvas-container { flex: 1; max-width: 100%; max-height: none; aspect-ratio: auto; min-height: 0; }
-            #game-ui {
-                flex: 0 0 auto;
-                width: 100%;
-                border-left: 0;
-                border-top: 2px solid #4e6fae;
-                max-height: 18vh;
-                max-height: 18svh;
-                min-height: 0; /* override large base min-height */
-                overflow-y: auto;
-                padding-bottom: max(6px, env(safe-area-inset-bottom));
-            }
-        }
-
-        /* JS-driven class to force compact landscape on devices like iPhone 14 Plus */
-        body.compact-landscape #game-wrapper { flex-direction: column !important; padding: 6px !important; gap: 8px !important; }
-        body.compact-landscape #game-canvas-container { flex: 1 1 auto !important; max-width: 100% !important; max-height: none !important; aspect-ratio: auto; }
-        body.compact-landscape #game-ui {
-            flex: 0 0 auto !important;
-            width: 100% !important;
-            border-left: 0 !important;
-            border-top: 2px solid #4e6fae !important;
-            max-height: min(14vh, 14svh, 14dvh) !important;
-            min-height: 40px;
-            overflow-y: auto;
-            padding-bottom: max(6px, env(safe-area-inset-bottom));
-        }
-        /* In compact landscape, hide non-essential panels to free space */
-        body.compact-landscape #wave-info-panel { display: none !important; }
-    /* Mobile 'Next Waves' collapses in compact landscape */
-    body.compact-landscape .mobile-control-section[data-section="next-waves"] { display: none !important; }
         
         /* Landscape orientation specific fixes for mobile */
-    @media (max-width: 768px) and (orientation: landscape) {
+        @media (max-width: 768px) and (orientation: landscape) {
             #game-ui {
                 /* Reduce UI height significantly in landscape mode */
-        max-height: min(18vh, 18dvh);
-        min-height: 56px;
+                max-height: min(25vh, 25dvh);
+                min-height: 180px;
                 padding: 6px;
                 padding-bottom: max(6px, env(safe-area-inset-bottom));
                 gap: 8px;
@@ -512,8 +458,11 @@
                 grid-template-columns: 1fr 1fr;
                 gap: 4px;
                 width: 100%;
-            }
-            /* Next Waves section - fills empty space to right of bombs and end game */
+            }            
+            .towers-mobile-content .tower-btn:hover,
+            .towers-mobile-content .tower-btn.selected {
+                /* Color handled by individual button styling */
+            }/* Next Waves section - fills empty space to right of bombs and end game */
             .mobile-control-section[data-section="next-waves"] {
                 grid-column: 2;
                 grid-row: 3 / 5; /* Span rows 3-4 (next to bombs and end game) */
@@ -1170,10 +1119,9 @@ function handleSafariViewport() {
             setTimeout(setVH, 100);
             setTimeout(setVH, 300);
             setTimeout(setVH, 500);
-            setTimeout(applyCompactLandscapeClass, 150);
         });
         
-    // Prevent iOS Safari from bouncing when scrolling
+        // Prevent iOS Safari from bouncing when scrolling
         document.body.addEventListener('touchmove', (e) => {
             if (e.touches.length > 1) {
                 e.preventDefault();
@@ -1189,10 +1137,10 @@ function handleSafariViewport() {
             lastScrollTop = window.scrollY;
         };
         
-    window.addEventListener('scroll', hideAddressBar, { passive: true });
+        window.addEventListener('scroll', hideAddressBar, { passive: true });
         
         // Initial hide attempt
-    setTimeout(() => window.scrollTo(0, 1), 100);
+        setTimeout(() => window.scrollTo(0, 1), 100);
     }
 }
 
@@ -1436,16 +1384,9 @@ function resizeCanvas() {
         newHeight = newWidth / gameAspectRatio;
     }
     
-    // In very small landscape viewports (e.g., iPhone landscape), don't enforce a large minimum
-    const compactLandscape = window.matchMedia('(max-height: 430px) and (orientation: landscape)').matches;
-    if (!compactLandscape) {
-        newWidth = Math.max(newWidth, 300);
-        newHeight = Math.max(newHeight, 300);
-    }
-    
-    // Never exceed the container bounds
-    newWidth = Math.min(newWidth, containerWidth);
-    newHeight = Math.min(newHeight, containerHeight);
+    // Ensure minimum size to keep the game playable
+    newWidth = Math.max(newWidth, 300);
+    newHeight = Math.max(newHeight, 300);
     
     // Update canvas display size
     app.view.style.width = newWidth + 'px';
@@ -1455,21 +1396,6 @@ function resizeCanvas() {
     // Only the display scaling changes
 }
 
-// Toggle a compact layout for wide-but-short devices (e.g., iPhone landscape)
-function applyCompactLandscapeClass() {
-    const w = window.innerWidth || document.documentElement.clientWidth;
-    const h = window.innerHeight || document.documentElement.clientHeight;
-    const isLandscape = w > h;
-    const compact = isLandscape && h <= 430; // threshold tuned for iPhone landscape
-    const before = document.body.classList.contains('compact-landscape');
-    document.body.classList.toggle('compact-landscape', !!compact);
-    const after = document.body.classList.contains('compact-landscape');
-    if (before !== after && typeof resizeCanvas === 'function') {
-        // wait a frame for layout to settle then resize
-        requestAnimationFrame(() => setTimeout(resizeCanvas, 0));
-    }
-}
-
 function initGame() {
     // Set canvas dimensions from configuration
     app.renderer.resize(MAP_WIDTH, MAP_HEIGHT);
@@ -1477,7 +1403,6 @@ function initGame() {
     
     // Initial canvas resize
     resizeCanvas();
-    applyCompactLandscapeClass();
 
     // Set background image (behind grid) if configured
     if (CONFIG && CONFIG.gameSettings && CONFIG.gameSettings.backgroundImage) {
@@ -2295,7 +2220,6 @@ function setupGameHandlers() {
         if (typeof resizeCanvas === 'function') {
             setTimeout(resizeCanvas, 100);
         }
-    applyCompactLandscapeClass();
     });
     
     // Start the game loop
@@ -3316,7 +3240,7 @@ function gameLoop(delta) {
 // --- Calculate damage with randomness, crits and elemental effects ---
 function calculateDamage(tower, enemy) {
     const baseDamage = tower.type.damage * tower.level;
-    const variation = tower.damageVariation;
+    const variation = tower.type.damageVariation;
     
     // Random damage variation
     const randomFactor = 1 + (Math.random() * variation * 2 - variation);
