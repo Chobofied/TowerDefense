@@ -361,17 +361,33 @@
                 padding: 6px 10px !important;
                 margin: 0 !important;
                 min-height: 36px;
-                background: #4e6fae !important;
+                background: #4e6fae !important; /* default blue */
                 border: none !important;
-                border-radius: 4px !important;
+                border-radius: 6px !important; /* match desktop radius */
                 color: white !important;
                 font-weight: 600;
                 transition: background 0.2s;
                 text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+                width: 100%;
+                box-sizing: border-box;
             }
             
             .mobile-control-section button:hover {
                 background: #6e8fde !important;
+            }
+
+            /* Match desktop colors for special actions */
+            .mobile-control-section[data-section="boost"] button {
+                background: #6ede8a !important;
+            }
+            .mobile-control-section[data-section="boost"] button:hover {
+                background: #8eeda6 !important;
+            }
+            .mobile-control-section[data-section="shop"] button {
+                background: #9e6ede !important;
+            }
+            .mobile-control-section[data-section="shop"] button:hover {
+                background: #b68ef2 !important;
             }
             
             .mobile-control-section button:disabled {
@@ -488,9 +504,11 @@
             /* Mobile tower select container */
             .towers-mobile-content #tower-select-mobile {
                 display: grid;
-                grid-template-columns: 1fr 1fr;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
                 gap: 4px;
                 width: 100%;
+                justify-items: stretch;
+                align-items: stretch;
             }
             /* Next Waves section - fills empty space to right of bombs and end game */
             .mobile-control-section[data-section="next-waves"] {

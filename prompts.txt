@@ -107,3 +107,10 @@ Lets randomize the waves more and make most of them mixed. Also lets make the en
 - when upgrading slow tower, increase slow %
 - hover over tower for stats
 - make the map more rectangular
+
+8/9/25
+- Lets maybe remove zoom in and out/
+- Lets fix the notifcation spam 
+- add enemies that look interesting
+- More balancing
+-Nmae it something interesting for Theo
