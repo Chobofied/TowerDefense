@@ -24,9 +24,12 @@
             top: 0;
             left: 0;
         }
-        /* Ensure full viewport coverage on modern browsers */
+        
+        /* Ensure full viewport coverage on iOS Safari */
         @supports (height: 100dvh) {
-            html, body { height: 100dvh; }
+            html, body {
+                height: 100dvh; /* Dynamic viewport height for modern browsers */
+            }
         }
           /* Fallback for older browsers and additional Safari support */
         @media screen and (max-width: 768px) {
@@ -48,6 +51,23 @@
         @supports (height: 100dvh) {
             #game-wrapper {
                 height: 100dvh;
+            }
+        }
+
+        /* Compact landscape (small-height devices like iPhones) */
+        @media (max-height: 430px) and (orientation: landscape) {
+            /* Use vertical stacking to maximize canvas height */
+            #game-wrapper { flex-direction: column; padding: 0; gap: 0; }
+            /* Canvas gets most of the screen */
+            #game-canvas-container { flex: 1; max-width: 100%; max-height: none; aspect-ratio: 1; }
+            /* UI becomes a slim bar below with scrolling when needed */
+            #game-ui {
+                width: 100%;
+                border-left: 0;
+                border-top: 2px solid #4e6fae;
+                max-height: 22vh;
+                min-height: 120px;
+                overflow-y: auto;
             }
         }
 
@@ -455,8 +475,11 @@
                 grid-template-columns: 1fr 1fr;
                 gap: 4px;
                 width: 100%;
-            }
-            /* Next Waves section - fills empty space to right of bombs and end game */
+            }            
+            .towers-mobile-content .tower-btn:hover,
+            .towers-mobile-content .tower-btn.selected {
+                /* Color handled by individual button styling */
+            }/* Next Waves section - fills empty space to right of bombs and end game */
             .mobile-control-section[data-section="next-waves"] {
                 grid-column: 2;
                 grid-row: 3 / 5; /* Span rows 3-4 (next to bombs and end game) */
@@ -498,24 +521,6 @@
                 flex-direction: column;
                 gap: 8px;
                 width: 100%;
-            }
-        }
-
-        /* iPhone landscape: short viewport height should use mobile layout to fit full grid */
-        @media (max-height: 500px) and (orientation: landscape) {
-            /* Force mobile layout even if width >= 769px */
-            .desktop-layout { display: none !important; }
-            .mobile-layout { display: flex !important; }
-            #game-wrapper { flex-direction: column; padding: 0; gap: 8px; }
-            #game-canvas-container { flex: 1 1 auto; max-width: 100%; max-height: none; }
-            #game-ui {
-                flex: 0 0 auto;
-                width: 100%;
-                max-height: min(32vh, 32dvh);
-                max-height: calc(var(--vh, 1vh) * 32);
-                min-height: 140px;
-                border-left: none;
-                border-top: 2px solid #4e6fae;
             }
         }
 
@@ -1396,9 +1401,16 @@ function resizeCanvas() {
         newHeight = newWidth / gameAspectRatio;
     }
     
-    // Ensure minimum size to keep the game playable
-    newWidth = Math.max(newWidth, 300);
-    newHeight = Math.max(newHeight, 300);
+    // In very small landscape viewports (e.g., iPhone landscape), don't enforce a large minimum
+    const compactLandscape = window.matchMedia('(max-height: 430px) and (orientation: landscape)').matches;
+    if (!compactLandscape) {
+        newWidth = Math.max(newWidth, 300);
+        newHeight = Math.max(newHeight, 300);
+    }
+    
+    // Never exceed the container bounds
+    newWidth = Math.min(newWidth, containerWidth);
+    newHeight = Math.min(newHeight, containerHeight);
     
     // Update canvas display size
     app.view.style.width = newWidth + 'px';
