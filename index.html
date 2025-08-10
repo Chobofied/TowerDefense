@@ -708,6 +708,19 @@
             height: 40px;
             border-radius: 50%;
             margin-right: 15px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-color: rgba(0,0,0,0.15);
+            box-shadow: inset 0 1px 2px rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+            /* Ensure a perfect circle and prevent flexbox stretching */
+            flex: 0 0 40px;
+            aspect-ratio: 1 / 1;
         }
         
         /* Bomb UI styles */        #bomb-ui {
@@ -1586,15 +1599,20 @@ function renderShop() {
         const towerItem = document.createElement('div');
         towerItem.className = 'shop-tower-item';
         
-        // Tower preview circle with color
+        // Tower preview using actual image when available, fallback to color/emoji
         const towerPreview = document.createElement('div');
         towerPreview.className = 'tower-preview';
-        towerPreview.style.background = '#' + tower.color.toString(16).padStart(6, '0');
         
-        // Add element emoji if available
-        const elementInfo = ELEMENTS[tower.element] || {};
-        if (elementInfo.emoji) {
-            towerPreview.textContent = elementInfo.emoji;
+        // Find the config entry to read image filename
+        const configTowerEntry = (CONFIG.shopTowers || []).find(ct => ct.name === tower.name);
+        const imageFile = configTowerEntry && configTowerEntry.image ? `Game_Images/${configTowerEntry.image}` : null;
+        if (imageFile) {
+            towerPreview.style.backgroundImage = `url('${imageFile}')`;
+        } else {
+            // Color background and optional emoji fallback
+            towerPreview.style.backgroundColor = '#' + tower.color.toString(16).padStart(6, '0');
+            const elInfo = ELEMENTS[tower.element] || {};
+            if (elInfo.emoji) towerPreview.textContent = elInfo.emoji;
         }
         
         const infoDiv = document.createElement('div');
@@ -1640,7 +1658,7 @@ function renderShop() {
         }
         
         // Get config tower for description and tips
-        const configTower = CONFIG.shopTowers.find(ct => ct.name === tower.name);
+    const configTower = CONFIG.shopTowers.find(ct => ct.name === tower.name);
         
         statsDiv.innerHTML = `
             <div style="font-style: italic; color: #aaa; margin-bottom: 5px;">${configTower && configTower.description ? configTower.description : ''}</div>
