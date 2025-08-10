@@ -2,7 +2,7 @@
   "gameSettings": {
     "gridSize": 14,
     "tileSize": 48,
-    "startingGold": 502,
+    "startingGold": 503,
     "startingLives": 20,
     "waveCompleteGold": 50,
     "itemDropChance": 0.15,
