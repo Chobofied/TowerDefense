@@ -72,34 +72,7 @@
             display: block;
         }
 
-        /* On-canvas zoom controls */
-        #zoom-controls {
-            position: absolute;
-            right: 8px;
-            bottom: 8px;
-            display: flex;
-            gap: 6px;
-            background: rgba(0,0,0,0.35);
-            padding: 6px;
-            border-radius: 8px;
-            backdrop-filter: blur(2px);
-            z-index: 5;
-        }
-        #zoom-controls button {
-            background: #4e6fae;
-            color: #fff;
-            border: none;
-            border-radius: 6px;
-            width: 32px;
-            height: 32px;
-            font-weight: 700;
-            cursor: pointer;
-        }
-        #zoom-controls button:active { transform: scale(0.98); }
-        @media (max-width: 768px) {
-            #zoom-controls { right: 6px; bottom: 6px; gap: 4px; padding: 4px; }
-            #zoom-controls button { width: 28px; height: 28px; }
-        }
+    /* On-canvas zoom controls removed */
 
         #game-ui {
             flex: 0 0 auto;
@@ -1031,11 +1004,6 @@
         <div id="game-canvas-container">
             <!-- PixiJS Canvas will be inserted here -->
             <div id="message-container"></div>
-            <div id="zoom-controls" aria-label="Zoom controls">
-                <button id="zoom-out" title="Zoom out">−</button>
-                <button id="zoom-reset" title="Reset zoom">⟳</button>
-                <button id="zoom-in" title="Zoom in">+</button>
-            </div>
         </div>        <div id="game-ui">
             <!-- Desktop Layout (unchanged) -->
             <div class="desktop-layout" id="ui-right-panel">                <div class="ui-panel" id="live-stats">
@@ -3377,8 +3345,8 @@ function gameLoop(delta) {
                     applySlowEffect(p.target, p.originTower);
                 }
                 
-                // Check for splash damage (Missile(Splash) tower)
-                if (p.towerType === "Missile(Splash)" && p.originTower.type.splashRadius > 0) {
+                // Check for splash damage (Splash tower)
+                if (p.towerType === "Splash" && p.originTower.type.splashRadius > 0) {
                     // Create splash effect animation
                     splashEffects.push({
                         x: p.target.x,
@@ -3591,8 +3559,8 @@ function showTowerStats(tower, x, y) {
         stats.push(`Special: Only targets flying enemies`);
     }
     
-    // Add splash damage info for Missile(Splash) Tower
-    if (tower.type.name === "Missile(Splash)") {
+    // Add splash damage info for Splash Tower
+    if (tower.type.name === "Splash") {
         stats.push(`Splash: ${(tower.type.splashDamageRatio * 100).toFixed(0)}% damage in ${tower.type.splashRadius}px radius`);
     }
     

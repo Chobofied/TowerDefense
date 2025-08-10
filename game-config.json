@@ -43,7 +43,7 @@
       "tips": "Great for chokepoints, can't target flying enemies"
     },
     {
-      "name": "Missile(Splash)",
+      "name": "Splash",
       "key": "E",
       "color": "0x6ede8a",
       "cost": 100,

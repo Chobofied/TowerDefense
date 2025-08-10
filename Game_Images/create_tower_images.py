@@ -224,7 +224,7 @@ def main():
     towers = [
         ('cannon.png', 'Cannon', (78, 111, 174)),          # 0x4e6fae
         ('melee.png', 'Melee', (222, 110, 110)),           # 0xde6e6e  
-        ('missile.png', 'Missile(Splash)', (110, 222, 138)), # 0x6ede8a
+        ('missile.png', 'Splash', (110, 222, 138)), # 0x6ede8a
         ('anti_air.png', 'Anti-Air', (158, 110, 222)),     # 0x9e6ede
         ('slow.png', 'Slow', (110, 206, 222)),             # 0x6ecede (frost/ice)
         ('sniper.png', 'Sniper', (142, 68, 173)),          # 0x8e44ad
