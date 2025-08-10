@@ -62,13 +62,46 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            /* Allow shrinking within flex layout to avoid cropping */
+            min-height: 0;
         }
 
         #game-canvas-container canvas {
             max-width: 100%;
             max-height: 100%;
             display: block;
-        }        #game-ui {
+        }
+
+        /* On-canvas zoom controls */
+        #zoom-controls {
+            position: absolute;
+            right: 8px;
+            bottom: 8px;
+            display: flex;
+            gap: 6px;
+            background: rgba(0,0,0,0.35);
+            padding: 6px;
+            border-radius: 8px;
+            backdrop-filter: blur(2px);
+            z-index: 5;
+        }
+        #zoom-controls button {
+            background: #4e6fae;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            width: 32px;
+            height: 32px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        #zoom-controls button:active { transform: scale(0.98); }
+        @media (max-width: 768px) {
+            #zoom-controls { right: 6px; bottom: 6px; gap: 4px; padding: 4px; }
+            #zoom-controls button { width: 28px; height: 28px; }
+        }
+
+        #game-ui {
             flex: 0 0 auto;
             width: 100%;
             max-height: 40vh;
@@ -458,11 +491,8 @@
                 grid-template-columns: 1fr 1fr;
                 gap: 4px;
                 width: 100%;
-            }            
-            .towers-mobile-content .tower-btn:hover,
-            .towers-mobile-content .tower-btn.selected {
-                /* Color handled by individual button styling */
-            }/* Next Waves section - fills empty space to right of bombs and end game */
+            }
+            /* Next Waves section - fills empty space to right of bombs and end game */
             .mobile-control-section[data-section="next-waves"] {
                 grid-column: 2;
                 grid-row: 3 / 5; /* Span rows 3-4 (next to bombs and end game) */
@@ -983,6 +1013,11 @@
         <div id="game-canvas-container">
             <!-- PixiJS Canvas will be inserted here -->
             <div id="message-container"></div>
+            <div id="zoom-controls" aria-label="Zoom controls">
+                <button id="zoom-out" title="Zoom out">−</button>
+                <button id="zoom-reset" title="Reset zoom">⟳</button>
+                <button id="zoom-in" title="Zoom in">+</button>
+            </div>
         </div>        <div id="game-ui">
             <!-- Desktop Layout (unchanged) -->
             <div class="desktop-layout" id="ui-right-panel">                <div class="ui-panel" id="live-stats">
@@ -1356,6 +1391,58 @@ const app = new PIXI.Application({
 });
 document.getElementById('game-canvas-container').appendChild(app.view);
 
+// --- View Transform (Zoom & Pan) ---
+let viewScale = 1;           // zoom factor
+let viewOffsetX = 0;         // pan X in world coords
+let viewOffsetY = 0;         // pan Y in world coords
+const MIN_ZOOM = 0.7;
+const MAX_ZOOM = 2.5;
+
+function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
+
+function clampViewToWorld() {
+    const logicalWidth = MAP_WIDTH;
+    const logicalHeight = MAP_HEIGHT;
+    // Size of the visible area in world units at current zoom
+    const viewWorldW = logicalWidth / viewScale;
+    const viewWorldH = logicalHeight / viewScale;
+    // Clamp offsets so the view stays within [0, logical - view]
+    viewOffsetX = clamp(viewOffsetX, 0, Math.max(0, logicalWidth - viewWorldW));
+    viewOffsetY = clamp(viewOffsetY, 0, Math.max(0, logicalHeight - viewWorldH));
+}
+
+function applyStageTransform() {
+    clampViewToWorld();
+    // Use a container to apply transform if needed; here we transform stage directly
+    app.stage.position.set(-viewOffsetX * viewScale, -viewOffsetY * viewScale);
+    app.stage.scale.set(viewScale, viewScale);
+}
+
+function screenToWorld(sx, sy) {
+    // Map from screen pixels (within the canvas element, CSS size) to world (logical) coords
+    const rect = app.view.getBoundingClientRect();
+    const logicalWidth = MAP_WIDTH;
+    const logicalHeight = MAP_HEIGHT;
+    const scaleX = logicalWidth / rect.width;
+    const scaleY = logicalHeight / rect.height;
+    const lx = sx * scaleX;
+    const ly = sy * scaleY;
+    // Inverse view transform
+    return {
+        x: lx / viewScale + viewOffsetX,
+        y: ly / viewScale + viewOffsetY
+    };
+}
+
+function worldToScreen(wx, wy) {
+    const rect = app.view.getBoundingClientRect();
+    const logicalWidth = MAP_WIDTH;
+    const logicalHeight = MAP_HEIGHT;
+    const sx = ((wx - viewOffsetX) * viewScale) * (rect.width / logicalWidth);
+    const sy = ((wy - viewOffsetY) * viewScale) * (rect.height / logicalHeight);
+    return { x: sx, y: sy };
+}
+
 // Canvas resize function for orientation changes
 function resizeCanvas() {
     if (!app || !app.renderer) return;
@@ -1396,6 +1483,141 @@ function resizeCanvas() {
     // Only the display scaling changes
 }
 
+// --- Zoom/Pan Inputs ---
+function setupZoomPanControls() {
+    const container = document.getElementById('game-canvas-container');
+    const zoomInBtn = document.getElementById('zoom-in');
+    const zoomOutBtn = document.getElementById('zoom-out');
+    const zoomResetBtn = document.getElementById('zoom-reset');
+
+    function setZoom(newZoom, centerWorldX, centerWorldY) {
+        const oldZoom = viewScale;
+        const clamped = clamp(newZoom, MIN_ZOOM, MAX_ZOOM);
+        if (clamped === viewScale) return;
+        // Keep the zoom focus stable around the given world point
+        // world point stays under the same screen position
+        if (centerWorldX !== undefined && centerWorldY !== undefined) {
+            // Compute screen pos before change
+            const before = worldToScreen(centerWorldX, centerWorldY);
+            viewScale = clamped;
+            // Adjust offset so that after scaling the same world point maps to same screen point
+            const rect = app.view.getBoundingClientRect();
+            const logicalWidth = MAP_WIDTH;
+            const logicalHeight = MAP_HEIGHT;
+            const targetScreenX = before.x;
+            const targetScreenY = before.y;
+            // Solve for new offset: screen = ((world - offset) * scale) * (rect.width / logicalWidth)
+            const factorX = logicalWidth / rect.width;
+            const factorY = logicalHeight / rect.height;
+            const worldScreenX = targetScreenX * factorX;
+            const worldScreenY = targetScreenY * factorY;
+            viewOffsetX = centerWorldX - worldScreenX / viewScale;
+            viewOffsetY = centerWorldY - worldScreenY / viewScale;
+        } else {
+            viewScale = clamped;
+        }
+    applyStageTransform();
+    }
+
+    function zoomDelta(amount, clientX, clientY) {
+        const rect = app.view.getBoundingClientRect();
+        const sx = (clientX ?? (rect.left + rect.width/2)) - rect.left;
+        const sy = (clientY ?? (rect.top + rect.height/2)) - rect.top;
+        const world = screenToWorld(sx, sy);
+        setZoom(viewScale * amount, world.x, world.y);
+    }
+
+    // Mouse wheel zoom
+    container.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        zoomDelta(delta, e.clientX, e.clientY);
+    }, { passive: false });
+
+    // Buttons
+    if (zoomInBtn) zoomInBtn.addEventListener('click', () => zoomDelta(1.15));
+    if (zoomOutBtn) zoomOutBtn.addEventListener('click', () => zoomDelta(0.85));
+    if (zoomResetBtn) zoomResetBtn.addEventListener('click', () => {
+        viewScale = 1; viewOffsetX = 0; viewOffsetY = 0; applyStageTransform();
+    });
+
+    // Pan with drag
+    let isPanning = false;
+    let panStart = { x: 0, y: 0 };
+    let startOffset = { x: 0, y: 0 };
+
+    function onPointerDown(e) {
+        // Only start panning when not placing tower and not touching a UI element
+        if (selectedTowerType >= 0 || placingBomb) return;
+        isPanning = true;
+        const rect = app.view.getBoundingClientRect();
+        panStart.x = (e.clientX ?? e.touches?.[0]?.clientX ?? 0) - rect.left;
+        panStart.y = (e.clientY ?? e.touches?.[0]?.clientY ?? 0) - rect.top;
+        startOffset.x = viewOffsetX;
+        startOffset.y = viewOffsetY;
+    }
+
+    function onPointerMove(e) {
+        if (!isPanning) return;
+        const rect = app.view.getBoundingClientRect();
+        const sx = (e.clientX ?? e.touches?.[0]?.clientX ?? 0) - rect.left;
+        const sy = (e.clientY ?? e.touches?.[0]?.clientY ?? 0) - rect.top;
+        const dx = sx - panStart.x;
+        const dy = sy - panStart.y;
+        // Convert screen delta to world delta
+        const logicalWidth = MAP_WIDTH;
+        const logicalHeight = MAP_HEIGHT;
+        const worldDx = (dx * (logicalWidth / rect.width)) / viewScale;
+        const worldDy = (dy * (logicalHeight / rect.height)) / viewScale;
+        viewOffsetX = startOffset.x - worldDx;
+        viewOffsetY = startOffset.y - worldDy;
+        applyStageTransform();
+    }
+
+    function onPointerUp() { isPanning = false; }
+
+    // Mouse events
+    container.addEventListener('mousedown', onPointerDown);
+    window.addEventListener('mousemove', onPointerMove);
+    window.addEventListener('mouseup', onPointerUp);
+
+    // Touch: pan and pinch
+    let pinchStartDist = null;
+    let pinchStartScale = 1;
+    let pinchCenterWorld = null;
+
+    container.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+            e.preventDefault();
+            const [t1, t2] = e.touches;
+            pinchStartDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+            pinchStartScale = viewScale;
+            const rect = app.view.getBoundingClientRect();
+            const cx = ((t1.clientX + t2.clientX) / 2) - rect.left;
+            const cy = ((t1.clientY + t2.clientY) / 2) - rect.top;
+            pinchCenterWorld = screenToWorld(cx, cy);
+        } else if (e.touches.length === 1) {
+            onPointerDown(e);
+        }
+    }, { passive: false });
+
+    container.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2 && pinchStartDist) {
+            e.preventDefault();
+            const [t1, t2] = e.touches;
+            const newDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+            const ratio = newDist / pinchStartDist;
+            setZoom(pinchStartScale * ratio, pinchCenterWorld.x, pinchCenterWorld.y);
+        } else if (e.touches.length === 1) {
+            onPointerMove(e);
+        }
+    }, { passive: false });
+
+    container.addEventListener('touchend', () => {
+        pinchStartDist = null; pinchCenterWorld = null; isPanning = false;
+    });
+}
+
 function initGame() {
     // Set canvas dimensions from configuration
     app.renderer.resize(MAP_WIDTH, MAP_HEIGHT);
@@ -1403,6 +1625,7 @@ function initGame() {
     
     // Initial canvas resize
     resizeCanvas();
+    applyStageTransform();
 
     // Set background image (behind grid) if configured
     if (CONFIG && CONFIG.gameSettings && CONFIG.gameSettings.backgroundImage) {
@@ -1450,6 +1673,7 @@ function initGame() {
 
     // Set up all game event handlers and logic
     setupGameHandlers();
+    setupZoomPanControls();
 }
 
 // Create a pool of reusable text objects for damage numbers
@@ -2375,21 +2599,13 @@ function setupPlacementHandlers() {    // Helper function to get coordinates fro
             clientY = e.clientY;
         }
         
-        // Get the relative position within the canvas
-        const relativeX = clientX - rect.left;
-        const relativeY = clientY - rect.top;
-        
-        // Scale the coordinates to match the logical canvas size
-        // With autoDensity: true, we need to use logical dimensions, not physical
-        const logicalWidth = MAP_WIDTH;
-        const logicalHeight = MAP_HEIGHT;
-        const scaleX = logicalWidth / rect.width;
-        const scaleY = logicalHeight / rect.height;
-        
-        return {
-            mx: relativeX * scaleX,
-            my: relativeY * scaleY
-        };
+    // Get the relative position within the canvas element
+    const relativeX = clientX - rect.left;
+    const relativeY = clientY - rect.top;
+
+    // Convert to world coords through current view transform
+    const world = screenToWorld(relativeX, relativeY);
+    return { mx: world.x, my: world.y };
     }
       // Helper function to handle move events (mouse or touch)
     function handleMoveEvent(e) {
