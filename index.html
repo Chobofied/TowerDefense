@@ -614,10 +614,11 @@
             transform: translateX(-50%);
             z-index: 100;
             pointer-events: none;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
+            /* Children will be absolutely positioned at the same spot */
+            width: 100%;
+            height: 0; /* prevent layout shifts */
+            overflow: visible;
+            max-width: 100%;
         }
         .game-message {
             padding: 10px 20px;
@@ -625,7 +626,22 @@
             color: white;
             border-radius: 8px;
             font-size: 1.2em;
-            transition: opacity 0.5s;
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translate(-50%, 0);
+            transform-origin: top center;
+            will-change: transform, opacity;
+            animation: toastPop 2200ms ease-out forwards;
+            max-width: 92vw;
+            text-align: center;
+        }
+
+        @keyframes toastPop {
+            0%   { opacity: 0;   transform: translate(-50%, 0) scale(1.35); }
+            15%  { opacity: 1;   transform: translate(-50%, 0) scale(1.00); }
+            75%  { opacity: 1;   transform: translate(-50%, 0) scale(0.85); }
+            100% { opacity: 0;   transform: translate(-50%, 0) scale(0.80); }
         }
         
         /* Shop Styles */        #shop-btn {
@@ -1432,41 +1448,18 @@ function worldToScreen(wx, wy) {
 // Canvas resize function for orientation changes
 function resizeCanvas() {
     if (!app || !app.renderer) return;
-    
-    // Get current container dimensions
+
     const container = document.getElementById('game-canvas-container');
-    const containerRect = container.getBoundingClientRect();
-    
-    // Use the container dimensions to maintain aspect ratio
-    const containerWidth = containerRect.width;
-    const containerHeight = containerRect.height;
-    
-    // Calculate the best fit while maintaining aspect ratio
-    const gameAspectRatio = MAP_WIDTH / MAP_HEIGHT;
-    const containerAspectRatio = containerWidth / containerHeight;
-    
-    let newWidth, newHeight;
-    
-    if (containerAspectRatio > gameAspectRatio) {
-        // Container is wider than needed, fit to height
-        newHeight = containerHeight;
-        newWidth = newHeight * gameAspectRatio;
-    } else {
-        // Container is taller than needed, fit to width
-        newWidth = containerWidth;
-        newHeight = newWidth / gameAspectRatio;
-    }
-    
-    // Ensure minimum size to keep the game playable
-    newWidth = Math.max(newWidth, 300);
-    newHeight = Math.max(newHeight, 300);
-    
-    // Update canvas display size
-    app.view.style.width = newWidth + 'px';
-    app.view.style.height = newHeight + 'px';
-    
-    // Keep the internal renderer size the same for consistent game logic
-    // Only the display scaling changes
+    if (!container) return;
+
+    // Fit the canvas as a centered square within the container
+    const cw = Math.max(0, container.clientWidth);
+    const ch = Math.max(0, container.clientHeight);
+    const size = Math.max(1, Math.min(cw, ch));
+
+    // Only scale the displayed size; internal renderer stays at MAP_WIDTH x MAP_HEIGHT
+    app.view.style.width = size + 'px';
+    app.view.style.height = size + 'px';
 }
 
 // --- Zoom/Pan Inputs ---
@@ -2010,23 +2003,32 @@ function updateUI() {
     // renderWaveInfo();
 }
 
-function showMessage(text, color = "#ffffff") {
-    const message = document.createElement('div');
-    message.className = 'game-message';
-    message.textContent = text;
-    message.style.color = color;
-    
-    messageContainer.appendChild(message);
-    
-    // Remove after 3 seconds
-    setTimeout(() => {
-        message.style.opacity = '0';
-        setTimeout(() => {
-            if (messageContainer.contains(message)) {
-                messageContainer.removeChild(message);
-            }
-        }, 500);
-    }, 3000);
+// Keep references to timers so we can cancel when a new message arrives
+let __messageFadeTimer = null;
+let __messageRemoveTimer = null;
+
+function showMessage(text, color = "#ffffff", duration = 2000) {
+    // New behavior: allow multiple overlapping toasts; no clearing timers
+    const container = messageContainer;
+    if (!container) return;
+
+    const msg = document.createElement('div');
+    msg.className = 'game-message';
+    msg.textContent = String(text ?? '');
+    msg.style.color = color;
+
+    const total = Math.max(800, duration);
+    msg.style.animationDuration = `${total + 200}ms`;
+    // Micro-stagger concurrent toasts so pulses are readable
+    const siblings = container.children.length;
+    const delayMs = Math.min(120, siblings * 40);
+    if (delayMs > 0) msg.style.animationDelay = `${delayMs}ms`;
+
+    msg.addEventListener('animationend', () => {
+        if (msg.parentNode === container) container.removeChild(msg);
+    });
+
+    container.appendChild(msg);
 }
 
 function showStats(enemy) {
