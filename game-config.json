@@ -2,12 +2,11 @@
   "gameSettings": {
     "gridSize": 14,
     "tileSize": 48,
-    "startingGold": 507,
+    "startingGold": 500,
     "startingLives": 20,
     "waveCompleteGold": 50,
     "itemDropChance": 0.15,
-  "version": "0.1.2",
-  "backgroundImage": "Game_Images\\Background.png"
+    "version": "0.1.2"
   },
   "towers": [
     {
@@ -43,7 +42,7 @@
       "tips": "Great for chokepoints, can't target flying enemies"
     },
     {
-      "name": "Splash",
+      "name": "Missile(Splash)",
       "key": "E",
       "color": "0x6ede8a",
       "cost": 100,
@@ -180,6 +179,7 @@
       "color": "0xff4400",
       "element": "fire",
       "emoji": "🔥",
+      "image": "Fire_Enemey.png",
       "waveScaling": {
         "hp": 0.19,
         "speed": 0.025
@@ -201,6 +201,7 @@
       "color": "0x0099ff",
       "element": "water",
       "emoji": "🌊",
+      "image": "Water_Enemey.png",
       "waveScaling": {
         "hp": 0.20,
         "speed": 0.025
@@ -222,6 +223,7 @@
       "color": "0x996633",
       "element": "earth",
       "emoji": "🌲",
+      "image": "Earth_Enemy.png",
       "waveScaling": {
         "hp": 0.20,
         "speed": 0.025
@@ -242,6 +244,7 @@
       "reward": 12,
       "color": "0xcccccc",
       "element": "physical",
+      "image": "Normal_Enemy.png",
       "waveScaling": {
         "hp": 0.20,
         "speed": 0.03
@@ -259,6 +262,7 @@
       "color": "0xaaddff",
       "flying": true,
       "element": "physical",
+      "image": "Flying_Enemy.png",
       "waveScaling": {
         "hp": 0.13,
         "speed": 0.03
@@ -276,6 +280,7 @@
     "reward": 100,
     "color": "0xf2e96d",
     "element": "physical",
+    "image": "Boss_Enemy.png",
     "waveScaling": {
       "hp": 0.34,
       "speed": 0.03

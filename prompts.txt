@@ -114,3 +114,9 @@ Lets randomize the waves more and make most of them mixed. Also lets make the en
 - add enemies that look interesting
 - More balancing
 -Nmae it something interesting for Theo
+
+8/10/25
+-Lets add multiple 'levels' For example we could have differnet waves we need to complete before we get to the next level difficulty
+    - Lets make aanother config file that has the different level difficulty parameters. We can have unique backgrounds, grid space, enemies ect. per level
+-For now we cna save progress through cookies, but eventually we can have more perisisant data
+- With cookies, we can try and keep track of an accumaltive score that is added over time
