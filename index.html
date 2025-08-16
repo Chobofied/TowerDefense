@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>PixiJS Tower Defense</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#181c25">
@@ -70,6 +70,12 @@
             max-width: 100%;
             max-height: 100%;
             display: block;
+        }
+
+        /* Prevent double-tap to zoom on mobile for interactive areas */
+        html, body, #game-wrapper, #game-ui, button, .mobile-control-section button, #game-canvas-container, #game-canvas-container canvas {
+            touch-action: manipulation;
+            -ms-touch-action: manipulation; /* IE/Edge legacy */
         }
 
     /* On-canvas zoom controls removed */
@@ -1183,6 +1189,37 @@ function handleSafariViewport() {
 
 // Call the Safari fix immediately
 handleSafariViewport();
+
+// --- Prevent mobile double-tap zoom and system gestures in game area ---
+(() => {
+    const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    if (!isTouch) return;
+
+    const container = document.getElementById('game-canvas-container');
+    let lastTouchEnd = 0;
+
+    // Prevent double-tap zoom globally and inside container
+    const onTouchEnd = (e) => {
+        const now = Date.now();
+        if (now - lastTouchEnd <= 350) {
+            e.preventDefault();
+        }
+        lastTouchEnd = now;
+    };
+
+    // Block double-tap zoom on the whole document to be safe
+    document.addEventListener('touchend', onTouchEnd, { passive: false });
+
+    // Prevent iOS gesture zoom
+    window.addEventListener('gesturestart', (e) => e.preventDefault());
+    window.addEventListener('gesturechange', (e) => e.preventDefault());
+    window.addEventListener('gestureend', (e) => e.preventDefault());
+
+    // Also ensure interactive buttons don't trigger double-tap zoom
+    const blockOn = (el) => el && el.addEventListener('touchend', onTouchEnd, { passive: false });
+    blockOn(container);
+    document.querySelectorAll('button').forEach(btn => blockOn(btn));
+})();
 
 // --- Load Game Configuration ---
 let CONFIG; // Will hold the loaded configuration
