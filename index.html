@@ -240,17 +240,18 @@
                 display: flex;
                 flex-direction: row;
                 width: 100%;
-                gap: 10px;
+                gap: 8px; /* reduce gap to avoid overflow */
                 height: 100%;
+                overflow-x: hidden; /* prevent horizontal overflow */
             }
             
             /* Left side - Towers section */
             .towers-mobile-section {
-                flex: 1;
+                flex: 1 1 0;
+                min-width: 0; /* allow proper shrinking in flex */
                 display: flex;
                 flex-direction: column;
                 gap: 6px;
-                max-width: 45%;
             }
             
             .towers-mobile-title {
@@ -290,15 +291,27 @@
             .towers-mobile-content::-webkit-scrollbar-thumb:hover {
                 background: rgba(110, 143, 222, 0.9);            }            /* Right side - Controls grid */
             .controls-mobile-grid {
-                flex: 1;
+                flex: 1 1 0;
+                min-width: 0; /* allow proper shrinking in flex */
                 display: grid;
                 grid-template-columns: 1fr 1fr;
                 grid-template-rows: auto auto auto auto;
                 gap: 6px;
-                max-width: 55%;
                 align-content: start;
                 height: 100%;
             }
+            /* Compact 2-column layout for wave controls so Save/Load fit */
+            .mobile-control-section[data-section="wave-control"] {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                grid-auto-rows: minmax(36px, auto);
+                gap: 6px;
+            }
+            .mobile-control-section[data-section="wave-control"] .mobile-control-title { grid-column: 1 / -1; }
+            #start-btn-mobile { grid-column: 1 / -1; }
+            /* Next wave spans full width and is green */
+            #next-wave-btn-mobile { grid-column: 1 / -1; background: #6ede8a !important; }
+            #next-wave-btn-mobile:hover { background: #8eeda6 !important; }
               /* Mobile control sections */
             .mobile-control-section {
                 display: flex;
@@ -355,12 +368,12 @@
                 background: #6e8fde !important;
             }
 
-            /* Match desktop colors for special actions */
+            /* Boost button is pink on mobile */
             .mobile-control-section[data-section="boost"] button {
-                background: #6ede8a !important;
+                background: #e671d9 !important;
             }
             .mobile-control-section[data-section="boost"] button:hover {
-                background: #8eeda6 !important;
+                background: #f08ae3 !important;
             }
             .mobile-control-section[data-section="shop"] button {
                 background: #9e6ede !important;
@@ -589,12 +602,15 @@
         }
         #end-btn:hover {
             background: #ff4444;
-        }        #stats-panel {
+        }        /* Make Next Wave green */
+        #next-wave-btn { background: #6ede8a; }
+        #next-wave-btn:hover { background: #8eeda6; }
+        #stats-panel {
             position: absolute;
             right: 0; top: 0;
             min-width: 220px;
         }        #boost-btn {
-            background: #6ede8a;
+            background: #e671d9; /* pink */
             color: white;
             border: none;
             border-radius: 6px;
@@ -612,7 +628,7 @@
             cursor: not-allowed;
         }
         #boost-btn:hover:not(:disabled) {
-            background: #8eeda6;
+            background: #f08ae3;
         }        #message-container {
             position: absolute;
             top: 20px;
@@ -713,6 +729,13 @@
             max-height: 80vh;
             overflow-y: auto;
             display: none;
+        }
+        /* Mobile-friendly Load modal and save list */
+        @media (max-width: 768px) {
+            #load-modal { width: 92vw; max-width: 92vw; padding: 14px; border-radius: 10px; }
+            .save-item { flex-wrap: wrap; gap: 10px; }
+            .save-actions { width: 100%; justify-content: flex-end; }
+            .save-load-btn, .save-delete-btn { padding: 8px 12px; }
         }
         #shop-modal-title {
             color: white;
