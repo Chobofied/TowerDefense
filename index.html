@@ -1298,21 +1298,30 @@ function deleteCookieLarge(key) {
     _deleteCookieRaw(key);
 }
 
-// --- Multi-save management ---
+// --- Multi-save management (use localStorage to avoid cookie header bloat) ---
 const SAVE_INDEX_KEY = 'td_saves_index_v1';
+const SAVE_MIGRATION_FLAG = 'td_saves_migrated_v1';
+const MAX_SAVES = 10; // keep modest to avoid storage issues
 
 function loadSaveIndex() {
     try {
-        const raw = _getCookieRaw(SAVE_INDEX_KEY);
+        const raw = localStorage.getItem(SAVE_INDEX_KEY);
         if (!raw) return [];
-        return JSON.parse(decodeURIComponent(raw));
+        return JSON.parse(raw);
     } catch { return []; }
 }
 
-function persistSaveIndex(index, days = 365) {
+function persistSaveIndex(index) {
     try {
-        _setCookieRaw(SAVE_INDEX_KEY, encodeURIComponent(JSON.stringify(index)), days);
-    } catch {}
+        localStorage.setItem(SAVE_INDEX_KEY, JSON.stringify(index));
+    } catch (e) {
+        // If index alone cannot be saved, clear oldest entries
+        let idx = Array.isArray(index) ? index.slice(0, MAX_SAVES) : [];
+        while (idx.length) {
+            try { localStorage.setItem(SAVE_INDEX_KEY, JSON.stringify(idx)); break; }
+            catch { const removed = idx.pop(); if (removed?.id) localStorage.removeItem(`td_save_${removed.id}`); }
+        }
+    }
 }
 
 function makeSaveId() {
@@ -1330,29 +1339,94 @@ function persistNewSave(snapshot) {
         gold: snapshot?.base?.gold ?? null,
         v: snapshot?.v || VERSION
     };
-    // Save payload in chunked cookies under td_save_<id>
-    saveCookieLarge(`td_save_${id}`, snapshot, 365);
-    // Update index (most recent first)
-    const idx = loadSaveIndex();
+    // Save payload in localStorage under td_save_<id>
+    try {
+        localStorage.setItem(`td_save_${id}`, JSON.stringify(snapshot));
+    } catch (e) {
+        // Free up space by pruning oldest saves, then retry
+        let idx = loadSaveIndex();
+        while (idx.length) {
+            const removed = idx.pop();
+            try { localStorage.removeItem(`td_save_${removed.id}`); }
+            catch {}
+            try {
+                localStorage.setItem(`td_save_${id}`, JSON.stringify(snapshot));
+                break;
+            } catch {
+                continue;
+            }
+        }
+    }
+    // Update index (most recent first), enforce MAX_SAVES
+    let idx = loadSaveIndex();
     idx.unshift(meta);
-    // Limit number of saves to avoid cookie bloat (e.g., keep last 20)
-    const MAX_SAVES = 20;
     while (idx.length > MAX_SAVES) {
         const removed = idx.pop();
-        if (removed?.id) deleteCookieLarge(`td_save_${removed.id}`);
+        try { localStorage.removeItem(`td_save_${removed.id}`); } catch {}
     }
     persistSaveIndex(idx);
     return meta.id;
 }
 
 function loadSaveById(id) {
-    return loadCookieLarge(`td_save_${id}`);
+    try {
+        const raw = localStorage.getItem(`td_save_${id}`);
+        return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
 }
 
 function deleteSaveById(id) {
-    deleteCookieLarge(`td_save_${id}`);
+    try { localStorage.removeItem(`td_save_${id}`); } catch {}
     const idx = loadSaveIndex().filter(s => s.id !== id);
     persistSaveIndex(idx);
+}
+
+// Migrate any old cookie-based saves to localStorage (one-time)
+function migrateSavesToLocalStorageOnce() {
+    try {
+        if (localStorage.getItem(SAVE_MIGRATION_FLAG) === '1') return;
+        const cookieIdxRaw = _getCookieRaw(SAVE_INDEX_KEY);
+        if (!cookieIdxRaw) { localStorage.setItem(SAVE_MIGRATION_FLAG, '1'); return; }
+        let cookieIdx = [];
+        try { cookieIdx = JSON.parse(decodeURIComponent(cookieIdxRaw)); } catch { cookieIdx = []; }
+        if (!Array.isArray(cookieIdx)) cookieIdx = [];
+        // Enforce MAX_SAVES on migration
+        if (cookieIdx.length > MAX_SAVES) cookieIdx = cookieIdx.slice(0, MAX_SAVES);
+        const newIdx = [];
+        for (const entry of cookieIdx) {
+            const id = entry?.id;
+            if (!id) continue;
+            const snap = loadCookieLarge(`td_save_${id}`);
+            if (snap) {
+                try { localStorage.setItem(`td_save_${id}`, JSON.stringify(snap)); } catch {}
+            }
+            // delete old cookie payload either way to shrink headers
+            deleteCookieLarge(`td_save_${id}`);
+            newIdx.push({ id, ts: entry.ts, wave: entry.wave, lives: entry.lives, gold: entry.gold, v: entry.v });
+        }
+        persistSaveIndex(newIdx);
+        // delete cookie index and set migration flag
+        _deleteCookieRaw(SAVE_INDEX_KEY);
+        localStorage.setItem(SAVE_MIGRATION_FLAG, '1');
+    } catch {}
+}
+
+// Offer to continue the most recent save on startup
+function maybeOfferContinue() {
+    const idx = loadSaveIndex();
+    if (!idx || !idx.length) return;
+    const last = idx[0];
+    const dateStr = new Date(last.ts || Date.now()).toLocaleString();
+    const ok = confirm(`Continue from last save?\nWave ${last.wave ?? '?'} • Lives ${last.lives ?? '?'} • Gold ${last.gold ?? '?'}\nSaved ${dateStr}`);
+    if (ok) {
+        const snap = loadSaveById(last.id);
+        if (snap) {
+            if (isGameRunning && !confirm('Loading will overwrite current run. Continue?')) return;
+            applyGameSnapshot(snap);
+        } else {
+            showMessage('Last save not found.', '#ff6666');
+        }
+    }
 }
 // --- Safari iOS Viewport Fix ---
 function handleSafariViewport() {
@@ -1579,6 +1653,9 @@ async function loadConfig() {
         
         // Initialize the game
         initGame();
+    // Migrate any old cookie saves to localStorage and offer continue
+    migrateSavesToLocalStorageOnce();
+    maybeOfferContinue();
         
     } catch (error) {
         console.error("Error loading configuration:", error);
