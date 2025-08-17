@@ -667,6 +667,22 @@
         #shop-btn:hover {
             background: #b68ef2;
         }
+        /* Save/Load buttons styling (desktop) */
+        #save-btn, #load-btn {
+            background: #4e6fae;
+            border: none;
+            border-radius: 6px;
+            color: #fff;
+            font-size: 0.8em;
+            padding: 6px 12px;
+            margin: 2px 0;
+            cursor: pointer;
+            transition: background 0.2s;
+            pointer-events: auto;
+            width: 100%;
+            text-align: center;
+        }
+        #save-btn:hover, #load-btn:hover { background: #6e8fde; }
         #shop-modal {
             position: fixed;
             top: 50%;
@@ -682,6 +698,22 @@
             overflow-y: auto;
             display: none;
         }
+        /* Load modal styled similarly to shop modal */
+        #load-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #23273a;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            z-index: 1000;
+            width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            display: none;
+        }
         #shop-modal-title {
             color: white;
             font-size: 1.5em;
@@ -689,7 +721,24 @@
             padding-bottom: 10px;
             border-bottom: 1px solid #3b405a;
         }
+        #load-modal-title {
+            color: white;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #3b405a;
+        }
         .shop-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 24px;
+            color: white;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+        .load-close { /* mirror shop-close */
             position: absolute;
             top: 15px;
             right: 20px;
@@ -709,6 +758,24 @@
             align-items: center;
             color: white;
         }
+        /* Save list items */
+        .save-item {
+            background: #2e3450;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            padding: 10px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+            gap: 12px;
+        }
+        .save-info { flex: 1; font-size: 0.95em; }
+        .save-actions { display: flex; gap: 8px; align-items: center; }
+        .save-load-btn { background: #4e6fae; border: none; border-radius: 6px; color: #fff; padding: 6px 12px; cursor: pointer; }
+        .save-delete-btn { background: #de6e6e; border: none; border-radius: 6px; color: #fff; padding: 6px 10px; cursor: pointer; }
+        .save-load-btn:hover { background: #6e8fde; }
+        .save-delete-btn:hover { background: #ff4444; }
         .shop-tower-info {
             flex-grow: 1;
         }
@@ -1139,6 +1206,12 @@
         <button class="shop-close">×</button>
         <div id="shop-content"></div>
     </div>
+    <!-- Load Modal -->
+    <div id="load-modal">
+        <h2 id="load-modal-title">Load Game</h2>
+        <button class="load-close">×</button>
+        <div id="load-list"></div>
+    </div>
       <!-- Tower Tooltip -->
     <div id="tower-tooltip"></div>
     
@@ -1223,6 +1296,63 @@ function deleteCookieLarge(key) {
         _deleteCookieRaw(`${key}.parts`);
     }
     _deleteCookieRaw(key);
+}
+
+// --- Multi-save management ---
+const SAVE_INDEX_KEY = 'td_saves_index_v1';
+
+function loadSaveIndex() {
+    try {
+        const raw = _getCookieRaw(SAVE_INDEX_KEY);
+        if (!raw) return [];
+        return JSON.parse(decodeURIComponent(raw));
+    } catch { return []; }
+}
+
+function persistSaveIndex(index, days = 365) {
+    try {
+        _setCookieRaw(SAVE_INDEX_KEY, encodeURIComponent(JSON.stringify(index)), days);
+    } catch {}
+}
+
+function makeSaveId() {
+    return 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+function persistNewSave(snapshot) {
+    // Generate metadata
+    const id = makeSaveId();
+    const meta = {
+        id,
+        ts: snapshot?.ts || Date.now(),
+        wave: snapshot?.base?.wave ?? null,
+        lives: snapshot?.base?.lives ?? null,
+        gold: snapshot?.base?.gold ?? null,
+        v: snapshot?.v || VERSION
+    };
+    // Save payload in chunked cookies under td_save_<id>
+    saveCookieLarge(`td_save_${id}`, snapshot, 365);
+    // Update index (most recent first)
+    const idx = loadSaveIndex();
+    idx.unshift(meta);
+    // Limit number of saves to avoid cookie bloat (e.g., keep last 20)
+    const MAX_SAVES = 20;
+    while (idx.length > MAX_SAVES) {
+        const removed = idx.pop();
+        if (removed?.id) deleteCookieLarge(`td_save_${removed.id}`);
+    }
+    persistSaveIndex(idx);
+    return meta.id;
+}
+
+function loadSaveById(id) {
+    return loadCookieLarge(`td_save_${id}`);
+}
+
+function deleteSaveById(id) {
+    deleteCookieLarge(`td_save_${id}`);
+    const idx = loadSaveIndex().filter(s => s.id !== id);
+    persistSaveIndex(idx);
 }
 // --- Safari iOS Viewport Fix ---
 function handleSafariViewport() {
@@ -1483,14 +1613,7 @@ let damageTextPool = []; // Pool of reusable text objects for damage numbers
 let enemySpawnQueue = []; // Queue for enemies to spawn
 let spawningWave = false;
 
-// --- Save/Load State ---
-const SAVE_KEY = 'td_save_v1';
-let __saveTimer = null;
-
-function scheduleSave(delayMs = 500) {
-    if (__saveTimer) clearTimeout(__saveTimer);
-    __saveTimer = setTimeout(() => { try { saveGame(); } catch(e) { console.warn('Autosave failed', e); } }, delayMs);
-}
+// --- Save/Load State (multiple saves) ---
 
 function getTowerTypeByName(name) {
     return TOWER_TYPES.find(t => t.name === name) || SHOP_TOWERS.find(t => t.name === name);
@@ -1661,15 +1784,58 @@ function applyGameSnapshot(snap) {
 
 function saveGame() {
     const snapshot = buildGameSnapshot();
-    saveCookieLarge(SAVE_KEY, snapshot, 180);
-    showMessage('Game saved.', '#6ede8a');
+    const id = persistNewSave(snapshot);
+    showMessage('Saved game.', '#6ede8a');
 }
 
-function loadGame() {
-    const snap = loadCookieLarge(SAVE_KEY);
-    if (!snap) { showMessage('No save found.', '#ff6666'); return; }
-    if (isGameRunning && !confirm('Loading will overwrite current run. Continue?')) return;
-    applyGameSnapshot(snap);
+function openLoadModal() {
+    const modal = document.getElementById('load-modal');
+    const list = document.getElementById('load-list');
+    const idx = loadSaveIndex();
+    list.innerHTML = '';
+    if (!idx.length) {
+        const empty = document.createElement('div');
+        empty.style.color = 'white';
+        empty.textContent = 'No saves yet.';
+        list.appendChild(empty);
+    } else {
+        idx.forEach(entry => {
+            const row = document.createElement('div');
+            row.className = 'save-item';
+            const info = document.createElement('div');
+            info.className = 'save-info';
+            const date = new Date(entry.ts || Date.now());
+            info.innerHTML = `<div><strong>Wave ${entry.wave ?? '?'} • Lives ${entry.lives ?? '?'} • Gold ${entry.gold ?? '?'}</strong></div>
+                              <div style="font-size:0.85em;color:#ccc;">Saved ${date.toLocaleString()} • v${entry.v || '?'}</div>`;
+            const actions = document.createElement('div');
+            actions.className = 'save-actions';
+            const loadBtn = document.createElement('button');
+            loadBtn.className = 'save-load-btn';
+            loadBtn.textContent = 'Load';
+            loadBtn.onclick = () => {
+                const snap = loadSaveById(entry.id);
+                if (!snap) { showMessage('Save not found.', '#ff6666'); return; }
+                if (isGameRunning && !confirm('Loading will overwrite current run. Continue?')) return;
+                applyGameSnapshot(snap);
+                modal.style.display = 'none';
+            };
+            const delBtn = document.createElement('button');
+            delBtn.className = 'save-delete-btn';
+            delBtn.textContent = '×';
+            delBtn.title = 'Delete save';
+            delBtn.onclick = () => {
+                if (!confirm('Delete this save?')) return;
+                deleteSaveById(entry.id);
+                openLoadModal();
+            };
+            actions.appendChild(loadBtn);
+            actions.appendChild(delBtn);
+            row.appendChild(info);
+            row.appendChild(actions);
+            list.appendChild(row);
+        });
+    }
+    modal.style.display = 'block';
 }
 
 // --- Function to apply slow effect from Slow Tower ---
@@ -2045,7 +2211,6 @@ function purchaseTower(towerName) {
         renderShop(); // Update shop to show purchased status
         
     showMessage(`Purchased ${tower.name} Tower!`, "#6ede8a");
-    scheduleSave(500);
         return true;
     } else {
         showMessage(`Not enough gold to buy ${tower.name} Tower!`, "#ff6666");
@@ -2060,8 +2225,7 @@ function buyBomb() {
         updateUI();
         renderShop(); // Update shop UI
         
-        showMessage(`Purchased a ${BOMB_CONFIG.name}!`, "#ff5500");
-    scheduleSave(500);
+    showMessage(`Purchased a ${BOMB_CONFIG.name}!`, "#ff5500");
         return true;
     } else {
         showMessage(`Not enough gold to buy a bomb!`, "#ff6666");
@@ -2223,6 +2387,8 @@ const boostBtn = document.getElementById('boost-btn');
 const shopBtn = document.getElementById('shop-btn');
 const shopModal = document.getElementById('shop-modal');
 const shopCloseBtn = document.querySelector('.shop-close');
+const loadModal = document.getElementById('load-modal');
+const loadCloseBtn = document.querySelector('.load-close');
 const messageContainer = document.getElementById('message-container');
 
 // Mobile UI elements
@@ -2584,11 +2750,15 @@ function setupGameHandlers() {
     shopCloseBtn.addEventListener('click', () => {
         shopModal.style.display = 'none';
     });
+    if (loadCloseBtn) loadCloseBtn.addEventListener('click', () => { loadModal.style.display = 'none'; });
     
     // Close shop when clicking outside
     window.addEventListener('click', (e) => {
         if (e.target === shopModal) {
             shopModal.style.display = 'none';
+        }
+        if (e.target === loadModal) {
+            loadModal.style.display = 'none';
         }
     });
     
@@ -2714,14 +2884,14 @@ function setupGameHandlers() {
     }
     // Save/Load buttons
     if (saveBtn) saveBtn.onclick = () => saveGame();
-    if (loadBtn) loadBtn.onclick = () => loadGame();
+    if (loadBtn) loadBtn.onclick = () => openLoadModal();
     if (saveBtnMobile) {
         saveBtnMobile.addEventListener('click', () => saveGame());
         saveBtnMobile.addEventListener('touchstart', (e) => { e.preventDefault(); saveGame(); });
     }
     if (loadBtnMobile) {
-        loadBtnMobile.addEventListener('click', () => loadGame());
-        loadBtnMobile.addEventListener('touchstart', (e) => { e.preventDefault(); loadGame(); });
+        loadBtnMobile.addEventListener('click', () => openLoadModal());
+        loadBtnMobile.addEventListener('touchstart', (e) => { e.preventDefault(); openLoadModal(); });
     }
     
     // Mobile bomb button
@@ -2768,10 +2938,7 @@ function setupGameHandlers() {
     // Start the game loop
     app.ticker.add(gameLoop);
 
-    // Autosave when leaving
-    window.addEventListener('beforeunload', () => {
-        try { saveGame(); } catch {}
-    });
+    // Removed autosave per request
 }
 
 function activateBoost() {
@@ -2824,7 +2991,7 @@ function nextWave() {
     updateUI();
     renderWaveInfo(); // Only update wave info when wave actually changes
     spawnWave();
-    scheduleSave(800);
+    // autosave removed
 }
 
 // --- Pathfinding ---
@@ -3134,7 +3301,7 @@ function setupPlacementHandlers() {    // Helper function to get coordinates fro
         selectedTowerType = -1;
         renderTowerSelect();
         updateUI();
-    scheduleSave(600);
+    // autosave removed
     }
       // Mouse events
     app.view.addEventListener('mousemove', handleMoveEvent);
