@@ -1054,6 +1054,8 @@
                 <div class="button-container">
                     <button id="boost-btn">Boost [B]</button>
                     <button id="shop-btn">Shop [P]</button>
+                    <button id="save-btn">Save</button>
+                    <button id="load-btn">Load</button>
                     <button id="start-btn">Start Wave</button>
                     <button id="next-wave-btn" style="display:none;">Next Wave</button>
                 </div>
@@ -1087,6 +1089,8 @@
                         <div class="mobile-control-title">Wave</div>
                         <button id="start-btn-mobile">Start Wave</button>
                         <button id="next-wave-btn-mobile" style="display:none;">Next Wave</button>
+                        <button id="save-btn-mobile">Save</button>
+                        <button id="load-btn-mobile">Load</button>
                     </div>
                     
                     <!-- Row 2, Column 1 - Boost -->
@@ -1139,6 +1143,87 @@
     <div id="tower-tooltip"></div>
     
     <script>
+// --- Cookie Helpers (with chunking for large values) ---
+function _setCookieRaw(name, value, days) {
+    const d = new Date();
+    d.setTime(d.getTime() + (days*24*60*60*1000));
+    const expires = `;expires=${d.toUTCString()}`;
+    document.cookie = `${name}=${value}${expires};path=/;SameSite=Lax`;
+}
+
+function _getCookieRaw(name) {
+    const cname = name + "=";
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+        let c = ca[i].trim();
+        if (c.indexOf(cname) === 0) {
+            return c.substring(cname.length, c.length);
+        }
+    }
+    return null;
+}
+
+function _deleteCookieRaw(name) {
+    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
+}
+
+function saveCookieLarge(key, obj, days = 180) {
+    const partsStr = _getCookieRaw(`${key}.parts`);
+    const oldParts = partsStr ? parseInt(partsStr, 10) : 0;
+    if (!isNaN(oldParts) && oldParts > 0) {
+        for (let i = 0; i < oldParts; i++) _deleteCookieRaw(`${key}.p${i}`);
+    }
+    _deleteCookieRaw(`${key}`);
+    _deleteCookieRaw(`${key}.parts`);
+
+    const json = JSON.stringify(obj);
+    const enc = encodeURIComponent(json);
+    const CHUNK = 3800; // budget below 4KB
+    if (enc.length <= CHUNK) {
+        _setCookieRaw(key, enc, days);
+        _setCookieRaw(`${key}.parts`, '0', days);
+        return true;
+    }
+    const parts = Math.ceil(enc.length / CHUNK);
+    _setCookieRaw(`${key}.parts`, String(parts), days);
+    for (let i = 0; i < parts; i++) {
+        const slice = enc.slice(i * CHUNK, (i + 1) * CHUNK);
+        _setCookieRaw(`${key}.p${i}`, slice, days);
+    }
+    return true;
+}
+
+function loadCookieLarge(key) {
+    const partsStr = _getCookieRaw(`${key}.parts`);
+    if (partsStr === null) {
+        const base = _getCookieRaw(key);
+        if (!base) return null;
+        try { return JSON.parse(decodeURIComponent(base)); } catch { return null; }
+    }
+    const parts = parseInt(partsStr, 10) || 0;
+    if (parts === 0) {
+        const base = _getCookieRaw(key);
+        if (!base) return null;
+        try { return JSON.parse(decodeURIComponent(base)); } catch { return null; }
+    }
+    let data = '';
+    for (let i = 0; i < parts; i++) {
+        const chunk = _getCookieRaw(`${key}.p${i}`);
+        if (chunk == null) return null;
+        data += chunk;
+    }
+    try { return JSON.parse(decodeURIComponent(data)); } catch { return null; }
+}
+
+function deleteCookieLarge(key) {
+    const partsStr = _getCookieRaw(`${key}.parts`);
+    const parts = parseInt(partsStr, 10) || 0;
+    if (parts > 0) {
+        for (let i = 0; i < parts; i++) _deleteCookieRaw(`${key}.p${i}`);
+        _deleteCookieRaw(`${key}.parts`);
+    }
+    _deleteCookieRaw(key);
+}
 // --- Safari iOS Viewport Fix ---
 function handleSafariViewport() {
     // Fix for Safari on iOS viewport issues
@@ -1397,6 +1482,195 @@ let boostCooldown = 0;
 let damageTextPool = []; // Pool of reusable text objects for damage numbers
 let enemySpawnQueue = []; // Queue for enemies to spawn
 let spawningWave = false;
+
+// --- Save/Load State ---
+const SAVE_KEY = 'td_save_v1';
+let __saveTimer = null;
+
+function scheduleSave(delayMs = 500) {
+    if (__saveTimer) clearTimeout(__saveTimer);
+    __saveTimer = setTimeout(() => { try { saveGame(); } catch(e) { console.warn('Autosave failed', e); } }, delayMs);
+}
+
+function getTowerTypeByName(name) {
+    return TOWER_TYPES.find(t => t.name === name) || SHOP_TOWERS.find(t => t.name === name);
+}
+
+function buildGameSnapshot() {
+    const snapshot = {
+        v: VERSION,
+        ts: Date.now(),
+        camera: { viewScale, viewOffsetX, viewOffsetY },
+        base: { gold, lives, wave, isGameRunning, bombCount, boostActive, boostCooldown },
+        purchasedTowers: [...purchasedTowers],
+        towers: towers.map(t => ({ x: t.x, y: t.y, level: t.level, cooldown: Math.max(0, t.cooldown||0), type: t.type?.name })),
+        enemies: enemies.filter(e => e.alive).map(e => ({
+            type: e.type.name,
+            x: e.x, y: e.y,
+            hp: e.hp, maxHp: e.maxHp,
+            speed: e.speed, flying: !!e.flying,
+            slowed: e.slowed ? { amount: e.slowed.amount, duration: e.slowed.duration, originalSpeed: e.slowed.originalSpeed } : null
+        })),
+        spawning: { spawningWave, enemySpawnQueue: enemySpawnQueue.map(q => ({ type: q.type.name, hp: q.type.hp, speed: q.type.speed, xOffset: q.xOffset||0, tLeft: Math.max(0, q.spawnTime - Date.now()) })) },
+        items: items.map(it => ({ x: it.x, y: it.y, type: it.type.name, lifetime: it.lifetime, pulseDirection: it.pulseDirection, pulseValue: it.pulseValue })),
+        effects: activeEffects.map(e => ({ type: e.type, multiplier: e.multiplier, duration: e.duration })),
+        wavesCache: Object.entries(cachedWavePatterns||{}).map(([w, p]) => ({ w: Number(w), name: p?.name }))
+    };
+    return snapshot;
+}
+
+function applyGameSnapshot(snap) {
+    if (!snap) return false;
+    if (snap.v && VERSION && snap.v !== VERSION) {
+        console.warn(`Save version ${snap.v} differs from game ${VERSION}. Attempting to load.`);
+    }
+
+    // Reset runtime state
+    // Clean up existing sprites/text to avoid orphans
+    try {
+        towers.forEach(t => { if (t && t._sprite) { t._sprite.visible = false; app.stage.removeChild(t._sprite); t._sprite = null; } });
+        enemies.forEach(e => {
+            if (e && e._sprite) { e._sprite.visible = false; app.stage.removeChild(e._sprite); e._sprite = null; }
+            if (e && e.emojiText) { app.stage.removeChild(e.emojiText); e.emojiText = null; }
+        });
+        damageTextPool.forEach(txt => { if (txt) { txt.visible = false; } });
+    } catch {}
+    towers = [];
+    enemies = [];
+    projectiles = [];
+    damageNumbers = [];
+    items = [];
+    activeEffects = [];
+    explosions = [];
+    splashEffects = [];
+    enemySpawnQueue = [];
+    spawningWave = false;
+    selectedTower = null;
+    selectedTowerType = -1;
+    placingBomb = false;
+    cachedWavePatterns = {};
+
+    // Base
+    gold = snap.base?.gold ?? gold;
+    lives = snap.base?.lives ?? lives;
+    wave = snap.base?.wave ?? wave;
+    isGameRunning = !!snap.base?.isGameRunning;
+    bombCount = snap.base?.bombCount ?? 0;
+    boostActive = !!snap.base?.boostActive;
+    boostCooldown = snap.base?.boostCooldown ?? 0;
+
+    // Camera
+    if (snap.camera) {
+        viewScale = snap.camera.viewScale ?? viewScale;
+        viewOffsetX = snap.camera.viewOffsetX ?? viewOffsetX;
+        viewOffsetY = snap.camera.viewOffsetY ?? viewOffsetY;
+        applyStageTransform();
+    }
+
+    // Purchases
+    purchasedTowers = Array.isArray(snap.purchasedTowers) ? [...snap.purchasedTowers] : [];
+    purchasedTowers.forEach(name => {
+        const shop = SHOP_TOWERS.find(t => t.name === name);
+        if (shop && !TOWER_TYPES.some(t => t.name === name)) {
+            TOWER_TYPES.push({ ...shop });
+        }
+    });
+
+    // Towers
+    (snap.towers||[]).forEach(t => {
+        const tt = getTowerTypeByName(t.type);
+        if (!tt) return;
+        towers.push({ x: t.x, y: t.y, type: tt, level: t.level||1, cooldown: t.cooldown||0 });
+    });
+    updatePathGrid();
+
+    // Enemies
+    (snap.enemies||[]).forEach(e => {
+        let typeDef = ENEMY_TYPES.find(et => et.name === e.type);
+        if (!typeDef && e.type === (BOSS_TYPE?.name)) typeDef = BOSS_TYPE;
+        if (!typeDef) return;
+        const enemy = {
+            type: { ...typeDef, hp: e.maxHp, speed: e.speed },
+            x: e.x, y: e.y,
+            hp: e.hp, maxHp: e.maxHp,
+            speed: e.speed,
+            path: null, pathIdx: 0,
+            flying: !!e.flying,
+            alive: true,
+            slowed: e.slowed ? { ...e.slowed } : null
+        };
+        if (!enemy.flying) {
+            const gx = Math.round((enemy.x - TILE_SIZE/2) / TILE_SIZE);
+            const gy = Math.round((enemy.y - TILE_SIZE/2) / TILE_SIZE);
+            enemy.path = aStar({ x: clamp(gx,0,GRID_SIZE-1), y: clamp(gy,0,GRID_SIZE-1) }, endTile);
+            enemy.pathIdx = 0;
+        }
+        enemies.push(enemy);
+    });
+
+    // Spawn queue
+    if (snap.spawning) {
+        spawningWave = !!snap.spawning.spawningWave;
+        (snap.spawning.enemySpawnQueue||[]).forEach(q => {
+            let typeDef = ENEMY_TYPES.find(et => et.name === q.type);
+            if (!typeDef && q.type === (BOSS_TYPE?.name)) typeDef = BOSS_TYPE;
+            if (!typeDef) return;
+            const typeWithScale = { ...typeDef, hp: q.hp ?? typeDef.baseHp, speed: q.speed ?? typeDef.baseSpeed };
+            enemySpawnQueue.push({ type: typeWithScale, spawnTime: Date.now() + Math.max(0, q.tLeft||0), xOffset: q.xOffset||0 });
+        });
+    }
+
+    // Items
+    (snap.items||[]).forEach(it => {
+        const itDef = ITEM_TYPES.find(k => k.name === it.type);
+        if (!itDef) return;
+        items.push({ x: it.x, y: it.y, type: itDef, pulseDirection: it.pulseDirection||1, pulseValue: it.pulseValue||0, lifetime: it.lifetime||300 });
+    });
+
+    // Effects
+    activeEffects = (snap.effects||[]).map(e => ({ type: e.type, multiplier: e.multiplier, duration: e.duration }));
+
+    // Wave cache
+    cachedWavePatterns = {};
+    (snap.wavesCache||[]).forEach(entry => {
+        const pat = (WAVE_PATTERNS?.patterns||[]).find(p => p.name === entry.name);
+        if (pat) cachedWavePatterns[entry.w] = pat;
+    });
+
+    // UI state
+    if (isGameRunning) {
+        startBtn.style.display = 'none';
+        endBtn.style.display = '';
+        if (startBtnMobile) startBtnMobile.style.display = 'none';
+        if (endBtnMobile) endBtnMobile.style.display = '';
+    } else {
+        endBtn.style.display = 'none';
+        startBtn.style.display = '';
+        if (endBtnMobile) endBtnMobile.style.display = 'none';
+        if (startBtnMobile) startBtnMobile.style.display = '';
+    }
+    nextWaveBtn.style.display = 'none';
+    if (nextWaveBtnMobile) nextWaveBtnMobile.style.display = 'none';
+
+    renderTowerSelect();
+    renderWaveInfo();
+    updateUI();
+    showMessage('Game loaded.', '#88dd88');
+    return true;
+}
+
+function saveGame() {
+    const snapshot = buildGameSnapshot();
+    saveCookieLarge(SAVE_KEY, snapshot, 180);
+    showMessage('Game saved.', '#6ede8a');
+}
+
+function loadGame() {
+    const snap = loadCookieLarge(SAVE_KEY);
+    if (!snap) { showMessage('No save found.', '#ff6666'); return; }
+    if (isGameRunning && !confirm('Loading will overwrite current run. Continue?')) return;
+    applyGameSnapshot(snap);
+}
 
 // --- Function to apply slow effect from Slow Tower ---
 function applySlowEffect(enemy, tower) {
@@ -1770,7 +2044,8 @@ function purchaseTower(towerName) {
         renderTowerSelect();
         renderShop(); // Update shop to show purchased status
         
-        showMessage(`Purchased ${tower.name} Tower!`, "#6ede8a");
+    showMessage(`Purchased ${tower.name} Tower!`, "#6ede8a");
+    scheduleSave(500);
         return true;
     } else {
         showMessage(`Not enough gold to buy ${tower.name} Tower!`, "#ff6666");
@@ -1786,6 +2061,7 @@ function buyBomb() {
         renderShop(); // Update shop UI
         
         showMessage(`Purchased a ${BOMB_CONFIG.name}!`, "#ff5500");
+    scheduleSave(500);
         return true;
     } else {
         showMessage(`Not enough gold to buy a bomb!`, "#ff6666");
@@ -1957,6 +2233,10 @@ const endBtnMobile = document.getElementById('end-btn-mobile');
 const nextWaveBtnMobile = document.getElementById('next-wave-btn-mobile');
 const boostBtnMobile = document.getElementById('boost-btn-mobile');
 const shopBtnMobile = document.getElementById('shop-btn-mobile');
+const saveBtn = document.getElementById('save-btn');
+const loadBtn = document.getElementById('load-btn');
+const saveBtnMobile = document.getElementById('save-btn-mobile');
+const loadBtnMobile = document.getElementById('load-btn-mobile');
 
 function updateUI() {
     // Update desktop UI
@@ -2432,6 +2712,17 @@ function setupGameHandlers() {
             renderShop();
         });
     }
+    // Save/Load buttons
+    if (saveBtn) saveBtn.onclick = () => saveGame();
+    if (loadBtn) loadBtn.onclick = () => loadGame();
+    if (saveBtnMobile) {
+        saveBtnMobile.addEventListener('click', () => saveGame());
+        saveBtnMobile.addEventListener('touchstart', (e) => { e.preventDefault(); saveGame(); });
+    }
+    if (loadBtnMobile) {
+        loadBtnMobile.addEventListener('click', () => loadGame());
+        loadBtnMobile.addEventListener('touchstart', (e) => { e.preventDefault(); loadGame(); });
+    }
     
     // Mobile bomb button
     const bombBtnMobile = document.getElementById('place-bomb-btn-mobile');
@@ -2476,6 +2767,11 @@ function setupGameHandlers() {
     
     // Start the game loop
     app.ticker.add(gameLoop);
+
+    // Autosave when leaving
+    window.addEventListener('beforeunload', () => {
+        try { saveGame(); } catch {}
+    });
 }
 
 function activateBoost() {
@@ -2528,6 +2824,7 @@ function nextWave() {
     updateUI();
     renderWaveInfo(); // Only update wave info when wave actually changes
     spawnWave();
+    scheduleSave(800);
 }
 
 // --- Pathfinding ---
@@ -2837,6 +3134,7 @@ function setupPlacementHandlers() {    // Helper function to get coordinates fro
         selectedTowerType = -1;
         renderTowerSelect();
         updateUI();
+    scheduleSave(600);
     }
       // Mouse events
     app.view.addEventListener('mousemove', handleMoveEvent);
