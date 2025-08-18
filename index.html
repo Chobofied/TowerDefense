@@ -141,7 +141,7 @@
                 padding: 8px;
                 padding-bottom: max(8px, env(safe-area-inset-bottom));
                 /* Adjust max height to account for Safari UI */
-                max-height: min(40vh, 40dvh);
+                max-height: min(48vh, 48dvh);
             }
         }
         
@@ -298,6 +298,8 @@
                 gap: 6px;
                 align-content: start;
                 height: 100%;
+                min-height: 0; /* important for child scrolling */
+                overflow-y: auto; /* allow vertical scroll if needed */
             }
             /* Compact 2-column layout for wave controls so Save/Load fit */
             .mobile-control-section[data-section="wave-control"] {
@@ -390,11 +392,11 @@
             #start-btn-mobile:hover { background: #8eeda6 !important; }
               /* Compact mobile stats */
             .mobile-control-section #live-stats-mobile {
-                font-size: 0.72em; /* smaller so all stats fit */
-                padding: 4px 6px;
+                font-size: 0.66em; /* smaller so all stats fit */
+                padding: 3px 5px;
                 margin: 0;
                 text-align: center;
-                line-height: 1.4;
+                line-height: 1.2;
                 background: rgba(30,34,44,0.95);
                 border-radius: 4px;
                 border: 1px solid rgba(78, 111, 174, 0.2);
@@ -436,7 +438,7 @@
                 display: flex;
                 flex-direction: column;
                 min-height: 80px;
-                max-height: 160px; /* ensure at least ~5 items fit */
+                max-height: 135px; /* slightly smaller to free space */
             }
             
             .mobile-control-section #wave-info-content-mobile {
@@ -511,7 +513,7 @@
                 grid-row: 3 / 5; /* Span rows 3-4 (next to bombs and end game) */
                 background: rgba(30,34,44,0.95);
                 border: 1px solid rgba(78, 111, 174, 0.4);
-                min-height: 120px;
+                min-height: 100px;
                 display: flex;
                 flex-direction: column;
             }
@@ -557,6 +559,9 @@
             gap: 8px;
             width: 100%;
             pointer-events: auto;
+            position: relative; /* give stacking context */
+            z-index: 1;
+            overflow-y: auto; /* allow scroll if constrained */
         }        #live-stats {
             background: rgba(30,34,44,0.95);
             border-radius: 8px;
