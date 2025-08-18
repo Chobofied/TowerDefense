@@ -386,10 +386,13 @@
                 background: #666 !important;
                 cursor: not-allowed;
             }
+            /* Make Start button green on mobile too */
+            #start-btn-mobile { background: #6ede8a !important; }
+            #start-btn-mobile:hover { background: #8eeda6 !important; }
               /* Compact mobile stats */
             .mobile-control-section #live-stats-mobile {
-                font-size: 0.8em;
-                padding: 6px 8px;
+                font-size: 0.72em; /* smaller so all stats fit */
+                padding: 4px 6px;
                 margin: 0;
                 text-align: center;
                 line-height: 1.4;
@@ -434,26 +437,27 @@
                 display: flex;
                 flex-direction: column;
                 min-height: 80px;
+                max-height: 160px; /* ensure at least ~5 items fit */
             }
             
             .mobile-control-section #wave-info-content-mobile {
                 flex: 1;
                 max-height: none;
                 overflow-y: auto;
-                font-size: 0.75em;
-                line-height: 1.3;
+                font-size: 0.7em; /* smaller to fit 5 items */
+                line-height: 1.2;
                 display: flex;
                 flex-direction: column;
-                gap: 3px;
-                padding: 4px;
+                gap: 2px;
+                padding: 3px;
             }
             
             .mobile-control-section #wave-info-content-mobile .wave-info-item {
                 display: flex;
                 align-items: center;
-                padding: 2px 4px;
+                padding: 1px 3px;
                 border-radius: 3px;
-                font-size: 0.9em;
+                font-size: 0.85em;
                 color: #ffffff;
                 text-shadow: 0 1px 2px rgba(0,0,0,0.7);
                 font-weight: 500;
@@ -602,9 +606,11 @@
         }
         #end-btn:hover {
             background: #ff4444;
-        }        /* Make Next Wave green */
-        #next-wave-btn { background: #6ede8a; }
-        #next-wave-btn:hover { background: #8eeda6; }
+    }        /* Make Start and Next Wave green */
+    #start-btn { background: #6ede8a; }
+    #start-btn:hover { background: #8eeda6; }
+    #next-wave-btn { background: #6ede8a; }
+    #next-wave-btn:hover { background: #8eeda6; }
         #stats-panel {
             position: absolute;
             right: 0; top: 0;
@@ -713,6 +719,7 @@
             max-height: 80vh;
             overflow-y: auto;
             display: none;
+            pointer-events: auto;
         }
         /* Load modal styled similarly to shop modal */
         #load-modal {
@@ -729,7 +736,33 @@
             max-height: 80vh;
             overflow-y: auto;
             display: none;
+            pointer-events: auto;
         }
+        /* Startup modal (New Game vs Continue) */
+        #startup-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #23273a;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            padding: 20px;
+            z-index: 1100;
+            width: 480px;
+            max-width: 92vw;
+            max-height: 80vh;
+            overflow-y: auto;
+            display: none;
+            pointer-events: auto;
+        }
+        #startup-modal h2 { color: #fff; margin: 0 0 10px 0; }
+        #startup-modal p { color: #ccc; margin: 6px 0 14px 0; }
+        #startup-actions { display: flex; gap: 10px; justify-content: flex-end; }
+        .primary-btn { background:#6ede8a; color:#fff; border:none; border-radius:8px; padding:8px 14px; cursor:pointer; font-weight:700; }
+        .primary-btn:hover { background:#8eeda6; }
+        .secondary-btn { background:#4e6fae; color:#fff; border:none; border-radius:8px; padding:8px 14px; cursor:pointer; font-weight:700; }
+        .secondary-btn:hover { background:#6e8fde; }
         /* Mobile-friendly Load modal and save list */
         @media (max-width: 768px) {
             #load-modal { width: 92vw; max-width: 92vw; padding: 14px; border-radius: 10px; }
@@ -753,23 +786,25 @@
         }
         .shop-close {
             position: absolute;
-            top: 15px;
-            right: 20px;
-            font-size: 24px;
+            top: 8px;
+            right: 8px;
+            font-size: 28px;
             color: white;
             cursor: pointer;
             background: none;
             border: none;
+            width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
         }
         .load-close { /* mirror shop-close */
             position: absolute;
-            top: 15px;
-            right: 20px;
-            font-size: 24px;
+            top: 8px;
+            right: 8px;
+            font-size: 28px;
             color: white;
             cursor: pointer;
             background: none;
             border: none;
+            width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
         }
         .shop-tower-item {
             background: #2e3450;
@@ -1146,7 +1181,7 @@
                     <button id="shop-btn">Shop [P]</button>
                     <button id="save-btn">Save</button>
                     <button id="load-btn">Load</button>
-                    <button id="start-btn">Start Wave</button>
+                    <button id="start-btn">Start Next Wave</button>
                     <button id="next-wave-btn" style="display:none;">Start Next Wave</button>
                 </div>
                 
@@ -1177,7 +1212,7 @@
                     <!-- Row 1, Column 2 - Wave Control -->
                     <div class="mobile-control-section" data-section="wave-control">
                         <div class="mobile-control-title">Wave</div>
-                        <button id="start-btn-mobile">Start Wave</button>
+                        <button id="start-btn-mobile">Start Next Wave</button>
                         <button id="next-wave-btn-mobile" style="display:none;">Start Next Wave</button>
                         <button id="save-btn-mobile">Save</button>
                         <button id="load-btn-mobile">Load</button>
@@ -1234,6 +1269,16 @@
         <h2 id="load-modal-title">Load Game</h2>
         <button class="load-close">×</button>
         <div id="load-list"></div>
+    </div>
+    <!-- Startup Modal -->
+    <div id="startup-modal">
+        <h2>Welcome back!</h2>
+        <p id="startup-subtitle">Continue from your last save or start a new game?</p>
+        <div id="startup-last"></div>
+        <div id="startup-actions">
+            <button id="startup-new" class="secondary-btn">New Game</button>
+            <button id="startup-continue" class="primary-btn">Continue</button>
+        </div>
     </div>
       <!-- Tower Tooltip -->
     <div id="tower-tooltip"></div>
@@ -1434,22 +1479,47 @@ function migrateSavesToLocalStorageOnce() {
     } catch {}
 }
 
-// Offer to continue the most recent save on startup
-function maybeOfferContinue() {
+// Startup modal: Offer to continue the most recent save in a polished UI
+function showStartupModalIfNeeded() {
+    const modal = document.getElementById('startup-modal');
+    const subtitle = document.getElementById('startup-subtitle');
+    const lastDiv = document.getElementById('startup-last');
+    const btnNew = document.getElementById('startup-new');
+    const btnCont = document.getElementById('startup-continue');
+    if (!modal || !subtitle || !lastDiv || !btnNew || !btnCont) return;
+
     const idx = loadSaveIndex();
+    // Only show startup modal when we have a save to continue
     if (!idx || !idx.length) return;
     const last = idx[0];
-    const dateStr = new Date(last.ts || Date.now()).toLocaleString();
-    const ok = confirm(`Continue from last save?\nWave ${last.wave ?? '?'} • Lives ${last.lives ?? '?'} • Gold ${last.gold ?? '?'}\nSaved ${dateStr}`);
-    if (ok) {
+    const date = new Date(last.ts || Date.now());
+    lastDiv.innerHTML = `<div style="color:#fff;margin-bottom:8px;"><strong>Last Save</strong></div>
+                         <div style="color:#ddd;">Wave ${last.wave ?? '?'} • Lives ${last.lives ?? '?'} • Gold ${last.gold ?? '?'}</div>
+                         <div style="color:#aaa;font-size:0.9em;">Saved ${date.toLocaleString()} • v${last.v || '?'}</div>`;
+
+    // Ensure only one set of handlers
+    btnNew.onclick = () => {
+        modal.style.display = 'none';
+    try { app.view.style.pointerEvents = ''; } catch {}
+        // Start a fresh run without deleting saves
+        restartGame(true);
+    };
+    btnNew.addEventListener('touchstart', (e) => { e.preventDefault(); btnNew.click(); });
+    btnCont.onclick = () => {
         const snap = loadSaveById(last.id);
-        if (snap) {
-            if (isGameRunning && !confirm('Loading will overwrite current run. Continue?')) return;
-            applyGameSnapshot(snap);
-        } else {
-            showMessage('Last save not found.', '#ff6666');
+        if (!snap) { showMessage('Last save not found.', '#ff6666'); modal.style.display = 'none'; return; }
+        if (isGameRunning) {
+            // Extremely unlikely at startup, but keep safety
+            if (!confirm('Loading will overwrite current run. Continue?')) return;
         }
-    }
+        applyGameSnapshot(snap);
+        modal.style.display = 'none';
+    try { app.view.style.pointerEvents = ''; } catch {}
+    };
+    btnCont.addEventListener('touchstart', (e) => { e.preventDefault(); btnCont.click(); });
+
+    modal.style.display = 'block';
+    try { app.view.style.pointerEvents = 'none'; } catch {}
 }
 // --- Safari iOS Viewport Fix ---
 function handleSafariViewport() {
@@ -1676,9 +1746,9 @@ async function loadConfig() {
         
         // Initialize the game
         initGame();
-    // Migrate any old cookie saves to localStorage and offer continue
+    // Migrate any old cookie saves to localStorage and show startup modal
     migrateSavesToLocalStorageOnce();
-    maybeOfferContinue();
+    showStartupModalIfNeeded();
         
     } catch (error) {
         console.error("Error loading configuration:", error);
@@ -1919,6 +1989,7 @@ function openLoadModal() {
                 applyGameSnapshot(snap);
                 modal.style.display = 'none';
             };
+            loadBtn.addEventListener('touchstart', (e) => { e.preventDefault(); loadBtn.click(); });
             const delBtn = document.createElement('button');
             delBtn.className = 'save-delete-btn';
             delBtn.textContent = '×';
@@ -1928,6 +1999,7 @@ function openLoadModal() {
                 deleteSaveById(entry.id);
                 openLoadModal();
             };
+            delBtn.addEventListener('touchstart', (e) => { e.preventDefault(); delBtn.click(); });
             actions.appendChild(loadBtn);
             actions.appendChild(delBtn);
             row.appendChild(info);
@@ -1936,6 +2008,7 @@ function openLoadModal() {
         });
     }
     modal.style.display = 'block';
+    try { app.view.style.pointerEvents = 'none'; } catch {}
 }
 
 // --- Function to apply slow effect from Slow Tower ---
@@ -2843,22 +2916,30 @@ function setupGameHandlers() {
     
     // --- Shop Button Handlers ---
     shopBtn.addEventListener('click', () => {
-        shopModal.style.display = 'block';
+    shopModal.style.display = 'block';
+    try { app.view.style.pointerEvents = 'none'; } catch {}
         renderShop();
     });
     
     shopCloseBtn.addEventListener('click', () => {
         shopModal.style.display = 'none';
+        try { app.view.style.pointerEvents = ''; } catch {}
     });
-    if (loadCloseBtn) loadCloseBtn.addEventListener('click', () => { loadModal.style.display = 'none'; });
+    shopCloseBtn.addEventListener('touchstart', (e) => { e.preventDefault(); shopModal.style.display = 'none'; try { app.view.style.pointerEvents = ''; } catch {} });
+    if (loadCloseBtn) {
+    loadCloseBtn.addEventListener('click', () => { loadModal.style.display = 'none'; try { app.view.style.pointerEvents = ''; } catch {} });
+    loadCloseBtn.addEventListener('touchstart', (e) => { e.preventDefault(); loadModal.style.display = 'none'; try { app.view.style.pointerEvents = ''; } catch {} });
+    }
     
     // Close shop when clicking outside
     window.addEventListener('click', (e) => {
         if (e.target === shopModal) {
             shopModal.style.display = 'none';
+            try { app.view.style.pointerEvents = ''; } catch {}
         }
         if (e.target === loadModal) {
             loadModal.style.display = 'none';
+            try { app.view.style.pointerEvents = ''; } catch {}
         }
     });
     
@@ -2892,8 +2973,10 @@ function setupGameHandlers() {
         if (e.key.toLowerCase() === 'p') {
             if (shopModal.style.display === 'block') {
                 shopModal.style.display = 'none';
+                try { app.view.style.pointerEvents = ''; } catch {}
             } else {
                 shopModal.style.display = 'block';
+                try { app.view.style.pointerEvents = 'none'; } catch {}
                 renderShop();
             }
             return;
@@ -2974,11 +3057,13 @@ function setupGameHandlers() {
     if (shopBtnMobile) {
         shopBtnMobile.addEventListener('click', () => {
             shopModal.style.display = 'block';
+            try { app.view.style.pointerEvents = 'none'; } catch {}
             renderShop();
         });
         shopBtnMobile.addEventListener('touchstart', (e) => {
             e.preventDefault();
             shopModal.style.display = 'block';
+            try { app.view.style.pointerEvents = 'none'; } catch {}
             renderShop();
         });
     }
@@ -3505,7 +3590,7 @@ function spawnWave() {
         count = 1; // Only one boss
     } else if (wavePattern.name === "Air Wave") {
         // Air Wave: Half the enemies at 1/3rd speed
-        count = Math.max(1, Math.floor(count / 2)); // Half the enemies, minimum 1
+        count = Math.max(1, Math.floor(count /4)); // Quarter the enemies, minimum 1
         
         // Regular wave - filter enemy types based on pattern
         const patternEnemyNames = wavePattern.enemies;
@@ -5300,10 +5385,10 @@ function restartGame(clearStorage = true) {
         splashDamageRatio: tower.splashDamageRatio || 0
     }));
     
-    // Reset purchased towers array and clear storage if needed
+    // Reset purchased towers array and clear only game-owned purchase key if needed
     if (clearStorage) {
         purchasedTowers = [];
-        localStorage.clear(); // Clear ALL localStorage to be sure
+        try { localStorage.removeItem('purchasedTowers'); } catch {}
     } else {
         // Reload purchased towers
         loadPurchasedTowers();
