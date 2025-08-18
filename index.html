@@ -58,6 +58,7 @@
             flex: 1;
             width: 100%;
             position: relative;
+            z-index: 0; /* keep canvas below UI */
             background: #333;
             display: flex;
             justify-content: center;
@@ -117,17 +118,15 @@
                 border-left: 2px solid #4e6fae;
             }
         }        /* Mobile Layout - reorganize UI */
-        @media (max-width: 768px) {            /* Additional iOS Safari specific fixes */
+        @media (max-width: 768px) {
+            /* Additional iOS Safari specific fixes */
             #game-wrapper {
                 height: 100vh;
                 height: -webkit-fill-available;
                 height: calc(var(--vh, 1vh) * 100); /* Use JS calculated height */
             }
-            
             @supports (height: 100dvh) {
-                #game-wrapper {
-                    height: 100dvh;
-                }
+                #game-wrapper { height: 100dvh; }
             }
             
             #game-canvas-container {
@@ -615,6 +614,7 @@
             position: absolute;
             right: 0; top: 0;
             min-width: 220px;
+            pointer-events: none;
         }        #boost-btn {
             background: #e671d9; /* pink */
             color: white;
@@ -2913,6 +2913,7 @@ function hideTowerTooltip() {
 function setupGameHandlers() {
     // --- Boost Button Handler ---
     boostBtn.addEventListener('click', activateBoost);
+    boostBtn.addEventListener('touchstart', (e) => { e.preventDefault(); activateBoost(); });
     
     // --- Shop Button Handlers ---
     shopBtn.addEventListener('click', () => {
@@ -2920,6 +2921,7 @@ function setupGameHandlers() {
     try { app.view.style.pointerEvents = 'none'; } catch {}
         renderShop();
     });
+    shopBtn.addEventListener('touchstart', (e) => { e.preventDefault(); shopModal.style.display = 'block'; try { app.view.style.pointerEvents = 'none'; } catch {}; renderShop(); });
     
     shopCloseBtn.addEventListener('click', () => {
         shopModal.style.display = 'none';
@@ -3007,13 +3009,21 @@ function setupGameHandlers() {
     });
       // --- Button Handlers ---
     startBtn.onclick = startWave;
+    startBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startWave(); });
     endBtn.onclick = () => {
         // Show warning before ending the game
         if (confirm("Warning: This will end your current game and you will lose all progress in this run. Are you sure you want to continue?")) {
             endGame();
         }
     };
+    endBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (confirm("Warning: This will end your current game and you will lose all progress in this run. Are you sure you want to continue?")) {
+            endGame();
+        }
+    });
     nextWaveBtn.onclick = nextWave;
+    nextWaveBtn.addEventListener('touchstart', (e) => { e.preventDefault(); nextWave(); });
     
     // --- Mobile Button Handlers ---
     if (startBtnMobile) {
@@ -3068,8 +3078,14 @@ function setupGameHandlers() {
         });
     }
     // Save/Load buttons
-    if (saveBtn) saveBtn.onclick = () => saveGame();
-    if (loadBtn) loadBtn.onclick = () => openLoadModal();
+    if (saveBtn) {
+        saveBtn.onclick = () => saveGame();
+        saveBtn.addEventListener('touchstart', (e) => { e.preventDefault(); saveGame(); });
+    }
+    if (loadBtn) {
+        loadBtn.onclick = () => openLoadModal();
+        loadBtn.addEventListener('touchstart', (e) => { e.preventDefault(); openLoadModal(); });
+    }
     if (saveBtnMobile) {
         saveBtnMobile.addEventListener('click', () => saveGame());
         saveBtnMobile.addEventListener('touchstart', (e) => { e.preventDefault(); saveGame(); });
