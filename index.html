@@ -310,7 +310,7 @@
             .mobile-control-section[data-section="wave-control"] .mobile-control-title { grid-column: 1 / -1; }
             #start-btn-mobile { grid-column: 1 / -1; }
             /* Next wave spans full width and is green */
-            #next-wave-btn-mobile { grid-column: 1 / -1; background: #6ede8a !important; }
+            #next-wave-btn-mobile { grid-column: 1 / -1; background: #6ede8a !important; font-size: 0.7em !important; }
             #next-wave-btn-mobile:hover { background: #8eeda6 !important; }
               /* Mobile control sections */
             .mobile-control-section {
@@ -347,12 +347,12 @@
                 margin-bottom: 2px;
                 padding: 1px 3px;
             }
-              /* Compact mobile buttons */
-            .mobile-control-section button {
-                font-size: 0.8em !important;
-                padding: 6px 10px !important;
-                margin: 0 !important;
-                min-height: 36px;
+                            /* Compact mobile buttons */
+                        .mobile-control-section button {
+                                font-size: 0.75em !important; /* smaller for space */
+                                padding: 4px 8px !important;
+                                margin: 0 !important;
+                                min-height: 30px;
                 background: #4e6fae !important; /* default blue */
                 border: none !important;
                 border-radius: 6px !important; /* match desktop radius */
@@ -1147,7 +1147,7 @@
                     <button id="save-btn">Save</button>
                     <button id="load-btn">Load</button>
                     <button id="start-btn">Start Wave</button>
-                    <button id="next-wave-btn" style="display:none;">Next Wave</button>
+                    <button id="next-wave-btn" style="display:none;">Start Next Wave</button>
                 </div>
                 
                 <button id="end-btn" style="display:none;">End Game</button>
@@ -1178,7 +1178,7 @@
                     <div class="mobile-control-section" data-section="wave-control">
                         <div class="mobile-control-title">Wave</div>
                         <button id="start-btn-mobile">Start Wave</button>
-                        <button id="next-wave-btn-mobile" style="display:none;">Next Wave</button>
+                        <button id="next-wave-btn-mobile" style="display:none;">Start Next Wave</button>
                         <button id="save-btn-mobile">Save</button>
                         <button id="load-btn-mobile">Load</button>
                     </div>
@@ -1211,7 +1211,7 @@
                     
                     <!-- Row 5, Column 1-2 - Next Waves (expanded at bottom) -->
                     <div class="mobile-control-section" data-section="next-waves">
-                        <div class="mobile-control-title">NEXT WAVES</div>
+                        <div class="mobile-control-title">Upcoming Waves</div>
                         <div id="wave-info-panel-mobile">
                             <div id="wave-info-content-mobile"></div>
                         </div>
