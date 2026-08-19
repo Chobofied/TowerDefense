@@ -71,6 +71,7 @@ class TowerDefenseGame {
 
         // Placement preview
         this.previewTile = null;
+        this.pointerWorldPos = null;
 
         // References for save manager
         this.CONFIG = null;
@@ -483,7 +484,10 @@ class TowerDefenseGame {
             }
         });
 
-        canvas.addEventListener('mouseleave', () => { this.previewTile = null; });
+        canvas.addEventListener('mouseleave', () => {
+            this.previewTile = null;
+            this.pointerWorldPos = null;
+        });
         canvas.addEventListener('click', e => {
             if (didDragBox) {
                 didDragBox = false;
@@ -655,6 +659,7 @@ class TowerDefenseGame {
 
     handlePointerMove(e) {
         const pos = this.getPointerWorldPos(e);
+        this.pointerWorldPos = pos;
         const tx = Math.floor(pos.x / CONFIG.gameSettings.tileSize);
         const ty = Math.floor(pos.y / CONFIG.gameSettings.tileSize);
 
@@ -1304,7 +1309,7 @@ class TowerDefenseGame {
             this.graphics.beginFill(0x38bdf8, 0.15).drawRoundedRect(minX, minY, w, h, 4).endFill();
         }
 
-        // 7. Placement Preview
+        // 7. Tower Placement Preview
         if (this.previewTile && this.selectedTowerTypeIdx >= 0) {
             const towerType = CONFIG.towers[this.selectedTowerTypeIdx];
             const px = this.previewTile.x * CONFIG.gameSettings.tileSize;
@@ -1314,6 +1319,34 @@ class TowerDefenseGame {
 
             this.graphics.lineStyle(2, towerType.color || 0x38bdf8, 0.45).drawCircle(cx, cy, towerType.range);
             this.graphics.beginFill(towerType.color || 0x38bdf8, 0.15).drawRoundedRect(px + 2, py + 2, 44, 44, 6).endFill();
+        }
+
+        // 8. Bomb Placement Blast Radius Preview & Target Lock-On
+        if (this.placingBomb && this.pointerWorldPos) {
+            const radius = BOMB_CONFIG.radius || 120;
+            const pulse = 1 + Math.sin(pulseTime * 0.008) * 0.04;
+            const bombColor = BOMB_CONFIG.color || 0xff3300;
+
+            // Outer pulsing blast radius zone
+            this.graphics.lineStyle(2.5, bombColor, 0.85).drawCircle(this.pointerWorldPos.x, this.pointerWorldPos.y, radius * pulse);
+            this.graphics.beginFill(bombColor, 0.18).drawCircle(this.pointerWorldPos.x, this.pointerWorldPos.y, radius * pulse).endFill();
+
+            // Inner danger core
+            this.graphics.lineStyle(1.5, 0xffdd00, 0.75).drawCircle(this.pointerWorldPos.x, this.pointerWorldPos.y, radius * 0.45);
+            this.graphics.beginFill(0xffdd00, 0.08).drawCircle(this.pointerWorldPos.x, this.pointerWorldPos.y, radius * 0.45).endFill();
+
+            // Tactical targeting crosshair reticle
+            this.graphics.lineStyle(2, bombColor, 0.9);
+            this.graphics.moveTo(this.pointerWorldPos.x - 16, this.pointerWorldPos.y).lineTo(this.pointerWorldPos.x + 16, this.pointerWorldPos.y);
+            this.graphics.moveTo(this.pointerWorldPos.x, this.pointerWorldPos.y - 16).lineTo(this.pointerWorldPos.x, this.pointerWorldPos.y + 16);
+
+            // Highlight all in-range enemies with red lock-on target rings
+            for (const e of this.enemies.enemies) {
+                if (!e.alive) continue;
+                if (Math.hypot(e.x - this.pointerWorldPos.x, e.y - this.pointerWorldPos.y) <= radius) {
+                    this.graphics.lineStyle(2, 0xff2244, 0.9).drawCircle(e.x, e.y, (e.isBoss ? 28 : 16));
+                }
+            }
         }
     }
 
