@@ -1204,6 +1204,40 @@
         </div>
     </div>
 
+    <!-- Game Over / End Game Modal -->
+    <div id="game-over-modal" class="game-modal-overlay">
+        <div class="game-modal-card" style="text-align: center; max-width: 440px;">
+            <div class="modal-header" style="justify-content: center; border-bottom: none; margin-bottom: 6px;">
+                <h2 id="game-over-title" class="modal-title" style="font-size: 1.6em; color: #f87171;">💀 Game Over</h2>
+            </div>
+            <p id="game-over-message" style="color: var(--text-secondary); margin: 0 0 16px 0; font-size: 0.95em; line-height: 1.5;">
+                The kingdom has fallen! You reached Wave <strong id="game-over-wave" style="color: #38bdf8;">1</strong>.
+            </p>
+            <div id="game-over-stats" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px; background: rgba(15, 23, 42, 0.6); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+                <div class="stat-pill">
+                    <span class="stat-label">Wave</span>
+                    <span id="game-over-stat-wave" class="stat-val" style="color: #38bdf8;">1</span>
+                </div>
+                <div class="stat-pill">
+                    <span class="stat-label">Gold</span>
+                    <span id="game-over-stat-gold" class="stat-val" style="color: #fbbf24;">0</span>
+                </div>
+                <div class="stat-pill">
+                    <span class="stat-label">Towers</span>
+                    <span id="game-over-stat-towers" class="stat-val" style="color: #10b981;">0</span>
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button id="game-over-restart-btn" class="primary-btn" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                    🔄 Restart Run
+                </button>
+                <button id="game-over-load-btn" class="secondary-btn" style="flex: 1; padding: 12px; background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.35); color: #38bdf8;">
+                    📂 Load Save
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Desktop Hover Tooltip -->
     <div id="tower-tooltip"></div>
 
@@ -1689,6 +1723,10 @@
         let activeEffects = [];
         let explosions = []; // Track active explosions
         let splashEffects = []; // Track splash animations
+        let deathParticles = []; // Track active enemy death dissipation particles
+        let deathShockwaves = []; // Track active enemy death shockwave rings
+        let dustParticles = []; // Track active footstep dust particles
+        let muzzleFlashes = []; // Track active tower muzzle flash animations
         let gold;
         let wave;
         let lives;
@@ -1706,6 +1744,51 @@
         let damageTextPool = []; // Pool of reusable text objects for damage numbers
         let enemySpawnQueue = []; // Queue for enemies to spawn
         let spawningWave = false;
+
+        // --- Animation & Angle Helper Functions ---
+        function lerpAngle(a, b, t) {
+            let diff = (b - a) % (Math.PI * 2);
+            if (diff < -Math.PI) diff += Math.PI * 2;
+            if (diff > Math.PI) diff -= Math.PI * 2;
+            return a + diff * t;
+        }
+
+        function triggerEnemyDeathEffect(enemy) {
+            if (!enemy) return;
+            const isBoss = enemy.type.name === "Boss";
+            const particleCount = isBoss ? 26 : 14;
+            const elementColor = enemy.type.color || 0xcccccc;
+
+            // Spawn elemental / physical death burst particles
+            for (let i = 0; i < particleCount; i++) {
+                const angle = (Math.PI * 2 / particleCount) * i + (Math.random() - 0.5) * 0.6;
+                const speed = (Math.random() * 2.8 + 1.2) * (isBoss ? 1.5 : 1.0);
+                deathParticles.push({
+                    x: enemy.x,
+                    y: enemy.y - (enemy.bobY || 0),
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - (Math.random() * 1.8 + 0.6), // Upward pop
+                    radius: (Math.random() * 3 + 2.2) * (isBoss ? 1.5 : 1.0),
+                    alpha: 0.95,
+                    duration: isBoss ? 32 : 20,
+                    maxDuration: isBoss ? 32 : 20,
+                    color: elementColor,
+                    gravity: 0.14
+                });
+            }
+
+            // Spawn expanding death shockwave ring
+            deathShockwaves.push({
+                x: enemy.x,
+                y: enemy.y,
+                radius: 4,
+                maxRadius: isBoss ? TILE_SIZE * 1.4 : TILE_SIZE * 0.8,
+                alpha: 0.85,
+                duration: isBoss ? 24 : 16,
+                maxDuration: isBoss ? 24 : 16,
+                color: elementColor
+            });
+        }
 
         // --- Save/Load State (multiple saves) ---
 
@@ -1760,12 +1843,17 @@
             activeEffects = [];
             explosions = [];
             splashEffects = [];
+            deathParticles = [];
+            deathShockwaves = [];
+            dustParticles = [];
+            muzzleFlashes = [];
             enemySpawnQueue = [];
             spawningWave = false;
             selectedTower = null;
             selectedTowerType = -1;
             placingBomb = false;
             cachedWavePatterns = {};
+            hideGameOver();
 
             // Base
             gold = snap.base?.gold ?? gold;
@@ -1797,7 +1885,10 @@
             (snap.towers || []).forEach(t => {
                 const tt = getTowerTypeByName(t.type);
                 if (!tt) return;
-                towers.push({ x: t.x, y: t.y, type: tt, level: t.level || 1, cooldown: t.cooldown || 0 });
+                towers.push({
+                    x: t.x, y: t.y, type: tt, level: t.level || 1, cooldown: t.cooldown || 0,
+                    angle: 0, targetAngle: 0, recoil: 0, target: null, idleScanPhase: Math.random() * Math.PI * 2
+                });
             });
             updatePathGrid();
 
@@ -1814,7 +1905,15 @@
                     path: null, pathIdx: 0,
                     flying: !!e.flying,
                     alive: true,
-                    slowed: e.slowed ? { ...e.slowed } : null
+                    slowed: e.slowed ? { ...e.slowed } : null,
+                    walkPhase: Math.random() * Math.PI * 2,
+                    hoverPhase: Math.random() * Math.PI * 2,
+                    facing: 1,
+                    tilt: 0,
+                    bobY: 0,
+                    scaleXMod: 1,
+                    scaleYMod: 1,
+                    hitFlash: 0
                 };
                 if (!enemy.flying) {
                     const gx = Math.round((enemy.x - TILE_SIZE / 2) / TILE_SIZE);
@@ -2490,6 +2589,9 @@
         const loadCloseBtn = document.querySelector('.load-close');
         const towerInfoModal = document.getElementById('tower-info-modal');
         const towerInfoCloseBtn = document.getElementById('tower-info-close-btn');
+        const gameOverModal = document.getElementById('game-over-modal');
+        const gameOverRestartBtn = document.getElementById('game-over-restart-btn');
+        const gameOverLoadBtn = document.getElementById('game-over-load-btn');
         const messageContainer = document.getElementById('message-container');
 
         // Mobile Tabs Switching
@@ -2890,6 +2992,27 @@
                 towerInfoCloseBtn.addEventListener('touchstart', closeTowerInfo);
             }
 
+            // Game Over Modal Action Buttons
+            if (gameOverRestartBtn) {
+                const onRestart = (e) => {
+                    if (e) e.preventDefault();
+                    hideGameOver();
+                    restartGame(true);
+                };
+                gameOverRestartBtn.addEventListener('click', onRestart);
+                gameOverRestartBtn.addEventListener('touchstart', onRestart);
+            }
+
+            if (gameOverLoadBtn) {
+                const onLoad = (e) => {
+                    if (e) e.preventDefault();
+                    hideGameOver();
+                    openLoadModal();
+                };
+                gameOverLoadBtn.addEventListener('click', onLoad);
+                gameOverLoadBtn.addEventListener('touchstart', onLoad);
+            }
+
             // Close modals when clicking outside the card
             window.addEventListener('click', (e) => {
                 if (e.target === shopModal) {
@@ -2903,6 +3026,9 @@
                 if (e.target === towerInfoModal) {
                     towerInfoModal.style.display = 'none';
                     try { app.view.style.pointerEvents = ''; } catch { }
+                }
+                if (e.target === gameOverModal) {
+                    hideGameOver();
                 }
             });
 
@@ -3045,7 +3171,7 @@
             if (nextWaveBtn) nextWaveBtn.style.display = 'none';
             if (startBtn) startBtn.style.display = 'block';
 
-            showGameOver('Game Ended');
+            showGameOver('🏳️ Game Ended', `You concluded your session at Wave ${wave}.`);
         }
 
         function nextWave() {
@@ -3317,7 +3443,8 @@
 
                 // Create temporary tower to test path blocking
                 const tempTower = {
-                    x: tx, y: ty, type: TOWER_TYPES[selectedTowerType], level: 1, cooldown: 0
+                    x: tx, y: ty, type: TOWER_TYPES[selectedTowerType], level: 1, cooldown: 0,
+                    angle: 0, targetAngle: 0, recoil: 0, target: null, idleScanPhase: Math.random() * Math.PI * 2
                 };
 
                 // Add the temporary tower
@@ -3421,6 +3548,7 @@
                     totalDamage += damage;
 
                     enemy.hp -= damage;
+                    enemy.hitFlash = 8;
                     createDamageNumber(enemy.x, enemy.y - 20, damage);
                     enemiesHit++;
 
@@ -3428,6 +3556,7 @@
                         enemy.alive = false;
                         gold += enemy.type.reward;
                         tryDropItem(enemy.x, enemy.y);
+                        triggerEnemyDeathEffect(enemy);
                     }
                 }
             });
@@ -3559,7 +3688,15 @@
                         path: enemyData.type.flying ? null : aStar(startTile, endTile),
                         pathIdx: 0,
                         flying: !!enemyData.type.flying,
-                        alive: true
+                        alive: true,
+                        walkPhase: Math.random() * Math.PI * 2,
+                        hoverPhase: Math.random() * Math.PI * 2,
+                        facing: 1,
+                        tilt: 0,
+                        bobY: 0,
+                        scaleXMod: 1,
+                        scaleYMod: 1,
+                        hitFlash: 0
                     });
                 }
 
@@ -3648,6 +3785,48 @@
                 }
             }
 
+            // Update muzzle flashes
+            for (let i = muzzleFlashes.length - 1; i >= 0; i--) {
+                const mf = muzzleFlashes[i];
+                mf.duration -= delta;
+                if (mf.duration <= 0) {
+                    muzzleFlashes.splice(i, 1);
+                }
+            }
+
+            // Update footstep dust particles
+            for (let i = dustParticles.length - 1; i >= 0; i--) {
+                const dp = dustParticles[i];
+                dp.duration -= delta;
+                dp.x += (dp.vx || 0) * delta;
+                dp.y += (dp.vy || 0) * delta;
+                if (dp.duration <= 0) {
+                    dustParticles.splice(i, 1);
+                }
+            }
+
+            // Update death burst particles
+            for (let i = deathParticles.length - 1; i >= 0; i--) {
+                const p = deathParticles[i];
+                p.duration -= delta;
+                p.x += (p.vx || 0) * delta;
+                p.y += (p.vy || 0) * delta;
+                p.vy += (p.gravity || 0.14) * delta;
+                if (p.duration <= 0) {
+                    deathParticles.splice(i, 1);
+                }
+            }
+
+            // Update death shockwaves
+            for (let i = deathShockwaves.length - 1; i >= 0; i--) {
+                const sw = deathShockwaves[i];
+                sw.duration -= delta;
+                sw.radius += (sw.maxRadius - sw.radius) * 0.22 * delta;
+                if (sw.duration <= 0) {
+                    deathShockwaves.splice(i, 1);
+                }
+            }
+
             // --- Update damage numbers (regardless of game state) ---
             for (let i = damageNumbers.length - 1; i >= 0; i--) {
                 let d = damageNumbers[i];
@@ -3676,7 +3855,7 @@
                 return;
             }
 
-            // --- Move Enemies ---
+            // --- Move Enemies with Dynamic Walking & Aerodynamic Physics ---
             for (let enemy of enemies) {
                 if (!enemy.alive) continue;
 
@@ -3691,16 +3870,23 @@
                     }
                 }
 
-                if (enemy.flying) {
-                    // Flying: straight line
+                // Decay hit flash effect
+                if (enemy.hitFlash > 0) {
+                    enemy.hitFlash = Math.max(0, enemy.hitFlash - delta);
+                }
+
+                const isBoss = enemy.type.name === "Boss";
+                const isFlying = !!enemy.flying;
+
+                if (isFlying) {
+                    // Flying: straight line with aerodynamic floating & banking
                     let dx = (endTile.x * TILE_SIZE + TILE_SIZE / 2) - enemy.x;
                     let dy = (endTile.y * TILE_SIZE + TILE_SIZE / 2) - enemy.y;
                     let dist = Math.sqrt(dx * dx + dy * dy);
 
                     if (dist < 6) {
                         enemy.alive = false;
-                        // Boss enemies cause 3 life loss, others cause 1
-                        const livesLost = enemy.type.name === "Boss" ? 3 : 1;
+                        const livesLost = isBoss ? 3 : 1;
                         lives -= livesLost;
                         if (livesLost === 3) {
                             showMessage("Boss Escaped! 3 Lives Lost!", "#ff6666");
@@ -3711,13 +3897,30 @@
                     }
 
                     let spd = enemy.speed * delta * 2.2;
-                    enemy.x += dx / dist * spd;
-                    enemy.y += dy / dist * spd;
+                    enemy.x += (dx / dist) * spd;
+                    enemy.y += (dy / dist) * spd;
+
+                    // Facing
+                    if (Math.abs(dx) > 0.3) {
+                        enemy.facing = dx > 0 ? 1 : -1;
+                    }
+
+                    // Aerodynamic hover sine-wave
+                    enemy.hoverPhase = (enemy.hoverPhase || 0) + delta * 0.08;
+                    enemy.bobY = Math.sin(enemy.hoverPhase) * 4.5;
+
+                    // Banking tilt towards flight trajectory
+                    const targetTilt = (dx / dist) * 0.16;
+                    enemy.tilt = lerpAngle(enemy.tilt || 0, targetTilt, 0.12);
+
+                    // Wing-beat scale pulsing
+                    const wingbeat = Math.sin(enemy.hoverPhase * 2.4);
+                    enemy.scaleXMod = 1 + wingbeat * 0.05;
+                    enemy.scaleYMod = 1 - wingbeat * 0.04;
                 } else {
                     if (!enemy.path || enemy.pathIdx >= enemy.path.length) {
                         enemy.alive = false;
-                        // Boss enemies cause 3 life loss, others cause 1
-                        const livesLost = enemy.type.name === "Boss" ? 3 : 1;
+                        const livesLost = isBoss ? 3 : 1;
                         lives -= livesLost;
                         if (livesLost === 3) {
                             showMessage("Boss Escaped! 3 Lives Lost!", "#ff6666");
@@ -3735,18 +3938,63 @@
                     let dist = Math.sqrt(dx * dx + dy * dy);
                     let spd = enemy.speed * delta * 2.2;
 
+                    let moveDist = 0;
                     if (dist < spd) {
+                        moveDist = dist;
                         enemy.x = tx;
                         enemy.y = ty;
                         enemy.pathIdx++;
                     } else {
-                        enemy.x += dx / dist * spd;
-                        enemy.y += dy / dist * spd;
+                        moveDist = spd;
+                        enemy.x += (dx / dist) * spd;
+                        enemy.y += (dy / dist) * spd;
+                    }
+
+                    // Dynamic Horizontal Facing
+                    if (Math.abs(dx) > 0.4) {
+                        enemy.facing = dx > 0 ? 1 : -1;
+                    }
+
+                    // Walk Cycle & Step Cadence
+                    const walkCadenceMult = isBoss ? 2.8 : 4.0;
+                    const prevWalkPhase = enemy.walkPhase || 0;
+                    enemy.walkPhase = prevWalkPhase + (moveDist / TILE_SIZE) * Math.PI * walkCadenceMult;
+
+                    // Vertical Step Bobbing (torso lifts on stride, lands on step)
+                    const bobHeight = isBoss ? 5.5 : 3.6;
+                    enemy.bobY = Math.abs(Math.sin(enemy.walkPhase)) * bobHeight;
+
+                    // Natural Step Wobble / Weight-shift Tilt
+                    const maxTilt = isBoss ? 0.07 : 0.13;
+                    enemy.tilt = Math.sin(enemy.walkPhase) * maxTilt * (enemy.facing || 1);
+
+                    // Dynamic Squash & Stretch on Step Impact
+                    const stepImpact = 1 - Math.abs(Math.sin(enemy.walkPhase));
+                    const squashAmount = isBoss ? 0.13 : 0.08;
+                    enemy.scaleYMod = 1 - (stepImpact * squashAmount) + ((1 - stepImpact) * squashAmount * 0.4);
+                    enemy.scaleXMod = 1 + (stepImpact * squashAmount * 0.8) - ((1 - stepImpact) * squashAmount * 0.3);
+
+                    // Footstep Dust Puff on Footstrike
+                    const currSin = Math.sin(enemy.walkPhase);
+                    const prevSin = Math.sin(prevWalkPhase);
+                    if ((prevSin < 0 && currSin >= 0) || (prevSin > 0 && currSin <= 0)) {
+                        const footX = enemy.x + (enemy.facing > 0 ? -5 : 5);
+                        const footY = enemy.y + (isBoss ? TILE_SIZE * 0.42 : TILE_SIZE * 0.34);
+                        dustParticles.push({
+                            x: footX,
+                            y: footY,
+                            vx: (Math.random() - 0.5) * 0.7 - (dx / (dist || 1)) * 0.3,
+                            vy: -0.35 - Math.random() * 0.35,
+                            radius: isBoss ? 3.6 + Math.random() * 2 : 2.2 + Math.random() * 1.4,
+                            duration: isBoss ? 20 : 14,
+                            maxDuration: isBoss ? 20 : 14,
+                            color: 0xa0aec0
+                        });
                     }
                 }
             }
 
-            // --- Towers Attack ---
+            // --- Towers Target Tracking & Attacks ---
             for (let tower of towers) {
                 // Apply boost if active
                 let fireRateMultiplier = 1;
@@ -3762,33 +4010,72 @@
 
                 tower.cooldown -= (delta / 60) * fireRateMultiplier;
 
+                const towerCenterX = tower.x * TILE_SIZE + TILE_SIZE / 2;
+                const towerCenterY = tower.y * TILE_SIZE + TILE_SIZE / 2;
+
+                // Find valid targets in range for dynamic aiming
+                let targets = [];
+                if (tower.type.name === "Anti-Air") {
+                    targets = enemies.filter(e =>
+                        e.alive &&
+                        e.flying &&
+                        Math.hypot(e.x - towerCenterX, e.y - towerCenterY) < tower.type.range
+                    );
+                } else if (tower.type.name === "Melee") {
+                    targets = enemies.filter(e =>
+                        e.alive &&
+                        !e.flying &&
+                        Math.hypot(e.x - towerCenterX, e.y - towerCenterY) < tower.type.range
+                    );
+                } else {
+                    targets = enemies.filter(e =>
+                        e.alive &&
+                        Math.hypot(e.x - towerCenterX, e.y - towerCenterY) < tower.type.range
+                    );
+                }
+
+                // Dynamic Turret Aiming / Target Tracking
+                if (targets.length > 0) {
+                    const primeTarget = targets[0];
+                    tower.target = primeTarget;
+                    // Compute turret orientation angle (+PI/2 so barrel top points at target)
+                    const desiredAngle = Math.atan2(primeTarget.y - towerCenterY, primeTarget.x - towerCenterX) + Math.PI / 2;
+                    tower.targetAngle = desiredAngle;
+                } else {
+                    tower.target = null;
+                    // Idle smooth scanning oscillation
+                    tower.idleScanPhase = (tower.idleScanPhase || 0) + delta * 0.025;
+                    tower.targetAngle = Math.sin(tower.idleScanPhase) * 0.22;
+                }
+
+                // Smoothly rotate tower towards target angle
+                tower.angle = lerpAngle(tower.angle || 0, tower.targetAngle || 0, 0.2);
+
+                // Recoil kickback decay
+                if (tower.recoil > 0) {
+                    tower.recoil = Math.max(0, tower.recoil - delta * 0.12);
+                }
+
                 if (tower.cooldown <= 0) {
                     if (tower.type.name === "Melee") {
-                        // Melee towers can't target flying enemies and hit all enemies at once
-                        let targets = enemies.filter(e =>
-                            e.alive &&
-                            !e.flying &&
-                            Math.hypot(e.x - (tower.x * TILE_SIZE + TILE_SIZE / 2), e.y - (tower.y * TILE_SIZE + TILE_SIZE / 2)) < tower.type.range
-                        );
-
                         if (targets.length) {
-                            // Create a sword swing animation
+                            tower.recoil = 1.0;
+
+                            // Create sword swing animation
                             swordSwings.push({
-                                x: tower.x * TILE_SIZE + TILE_SIZE / 2,
-                                y: tower.y * TILE_SIZE + TILE_SIZE / 2,
+                                x: towerCenterX,
+                                y: towerCenterY,
                                 radius: tower.type.range,
                                 duration: 15, // Animation lasts 15 frames
-                                angle: Math.random() * Math.PI * 2, // Random starting angle
+                                angle: (tower.angle || 0) - Math.PI / 2,
                                 color: tower.type.color,
                                 element: tower.type.element
                             });
 
                             // Hit all targets in range
                             for (let target of targets) {
-                                // Calculate damage with randomness, critical hits, and elemental effects
                                 const { damage, isCritical, elementalEffect, elementalMultiplier } = calculateDamage(tower, target);
 
-                                // Apply damage boost if active
                                 let finalDamage = damage;
                                 const damageEffect = activeEffects.find(e => e.type === "damage");
                                 if (damageEffect) {
@@ -3796,34 +4083,41 @@
                                 }
 
                                 target.hp -= finalDamage;
+                                target.hitFlash = 6;
+                                target.hitJitterX = (Math.random() - 0.5) * 5;
+                                target.hitJitterY = (Math.random() - 0.5) * 5;
 
-                                // Create damage number with elemental effect info
                                 createDamageNumber(target.x, target.y - 20, finalDamage, isCritical, elementalEffect, elementalMultiplier);
 
                                 if (target.hp <= 0) {
                                     target.alive = false;
                                     gold += target.type.reward;
                                     tryDropItem(target.x, target.y);
+                                    triggerEnemyDeathEffect(target);
                                 }
                             }
 
                             tower.cooldown = tower.type.fireRate;
                         }
                     } else if (tower.type.name === "Anti-Air") {
-                        // Anti-Air towers only target flying enemies
-                        let targets = enemies.filter(e =>
-                            e.alive &&
-                            e.flying &&
-                            Math.hypot(e.x - (tower.x * TILE_SIZE + TILE_SIZE / 2), e.y - (tower.y * TILE_SIZE + TILE_SIZE / 2)) < tower.type.range
-                        );
-
                         if (targets.length) {
                             let target = targets[0];
+                            tower.recoil = 1.0;
 
-                            // Calculate damage with randomness, critical hits, and elemental effects
+                            // Spawn muzzle flash at barrel tip
+                            const barrelDist = TILE_SIZE * 0.42;
+                            muzzleFlashes.push({
+                                x: towerCenterX + Math.sin(tower.angle) * barrelDist,
+                                y: towerCenterY - Math.cos(tower.angle) * barrelDist,
+                                angle: tower.angle,
+                                radius: 12 + tower.level * 2,
+                                duration: 6,
+                                maxDuration: 6,
+                                color: tower.type.color || 0x9e6ede
+                            });
+
                             const { damage, isCritical, elementalEffect, elementalMultiplier } = calculateDamage(tower, target);
 
-                            // Apply damage boost if active
                             let finalDamage = damage;
                             const damageEffect = activeEffects.find(e => e.type === "damage");
                             if (damageEffect) {
@@ -3831,8 +4125,8 @@
                             }
 
                             projectiles.push({
-                                x: tower.x * TILE_SIZE + TILE_SIZE / 2,
-                                y: tower.y * TILE_SIZE + TILE_SIZE / 2,
+                                x: towerCenterX + Math.sin(tower.angle) * (barrelDist * 0.6),
+                                y: towerCenterY - Math.cos(tower.angle) * (barrelDist * 0.6),
                                 tx: target.x,
                                 ty: target.y,
                                 target,
@@ -3851,18 +4145,24 @@
                         }
                     } else {
                         // Regular tower behavior
-                        let targets = enemies.filter(e =>
-                            e.alive &&
-                            Math.hypot(e.x - (tower.x * TILE_SIZE + TILE_SIZE / 2), e.y - (tower.y * TILE_SIZE + TILE_SIZE / 2)) < tower.type.range
-                        );
-
                         if (targets.length) {
                             let target = targets[0];
+                            tower.recoil = 1.0;
 
-                            // Calculate damage with randomness, critical hits, and elemental effects
+                            // Spawn muzzle flash at barrel tip
+                            const barrelDist = TILE_SIZE * 0.42;
+                            muzzleFlashes.push({
+                                x: towerCenterX + Math.sin(tower.angle) * barrelDist,
+                                y: towerCenterY - Math.cos(tower.angle) * barrelDist,
+                                angle: tower.angle,
+                                radius: 11 + tower.level * 2,
+                                duration: 6,
+                                maxDuration: 6,
+                                color: tower.type.color || 0xffd700
+                            });
+
                             const { damage, isCritical, elementalEffect, elementalMultiplier } = calculateDamage(tower, target);
 
-                            // Apply damage boost if active
                             let finalDamage = damage;
                             const damageEffect = activeEffects.find(e => e.type === "damage");
                             if (damageEffect) {
@@ -3870,8 +4170,8 @@
                             }
 
                             projectiles.push({
-                                x: tower.x * TILE_SIZE + TILE_SIZE / 2,
-                                y: tower.y * TILE_SIZE + TILE_SIZE / 2,
+                                x: towerCenterX + Math.sin(tower.angle) * (barrelDist * 0.6),
+                                y: towerCenterY - Math.cos(tower.angle) * (barrelDist * 0.6),
                                 tx: target.x,
                                 ty: target.y,
                                 target,
@@ -3881,8 +4181,8 @@
                                 elementalEffect,
                                 elementalMultiplier,
                                 element: tower.type.element,
-                                towerType: tower.type.name, // Add tower type to projectile
-                                originTower: tower, // Reference to tower for effect application
+                                towerType: tower.type.name,
+                                originTower: tower,
                                 speed: 7 + tower.level * 2
                             });
 
@@ -3909,6 +4209,9 @@
 
                     if (p.target && p.target.alive) {
                         p.target.hp -= p.damage;
+                        p.target.hitFlash = 6;
+                        p.target.hitJitterX = (Math.random() - 0.5) * 5;
+                        p.target.hitJitterY = (Math.random() - 0.5) * 5;
 
                         // Create damage number with elemental effect info
                         createDamageNumber(p.target.x, p.target.y - 20, p.damage, p.isCritical, p.elementalEffect, p.elementalMultiplier);
@@ -3937,6 +4240,9 @@
                                 if (distance <= p.originTower.type.splashRadius) {
                                     const splashDamage = p.damage * p.originTower.type.splashDamageRatio;
                                     enemy.hp -= splashDamage;
+                                    enemy.hitFlash = 5;
+                                    enemy.hitJitterX = (Math.random() - 0.5) * 4;
+                                    enemy.hitJitterY = (Math.random() - 0.5) * 4;
 
                                     // Create splash damage number
                                     createSplashDamageNumber(enemy.x, enemy.y - 20, splashDamage);
@@ -3945,6 +4251,7 @@
                                         enemy.alive = false;
                                         gold += enemy.type.reward;
                                         tryDropItem(enemy.x, enemy.y);
+                                        triggerEnemyDeathEffect(enemy);
                                     }
                                 }
                             });
@@ -3954,6 +4261,7 @@
                             p.target.alive = false;
                             gold += p.target.type.reward;
                             tryDropItem(p.target.x, p.target.y);
+                            triggerEnemyDeathEffect(p.target);
                         }
                     }
 
@@ -3993,11 +4301,11 @@
             // --- Win/Lose ---
             if (lives <= 0) {
                 isGameRunning = false;
-                if (endBtn) endBtn.style.display = 'block';
-                if (startBtn) startBtn.style.display = 'none';
+                if (endBtn) endBtn.style.display = 'none';
+                if (startBtn) startBtn.style.display = 'block';
                 if (nextWaveBtn) nextWaveBtn.style.display = 'none';
 
-                showGameOver('Game Over!');
+                showGameOver('💀 Game Over', `The enemies breached your defenses! You defended up to Wave ${wave}.`);
             } else if (!spawningWave && enemies.length === 0 && projectiles.length === 0 && isGameRunning) {
                 isGameRunning = false;
                 if (nextWaveBtn) nextWaveBtn.style.display = 'block';
@@ -4726,7 +5034,8 @@
                 .endFill();
 
             // Update marker pulse (gentle scale wobble)
-            const t = Date.now() * 0.004;
+            const nowTime = Date.now();
+            const t = nowTime * 0.004;
             if (startMarker) {
                 const s = 1 + 0.03 * Math.sin(t + startMarker._pulseT);
                 startMarker.scale.set(s);
@@ -4746,12 +5055,46 @@
                 graphics.drawCircle(mobilePreviewTile.x * TILE_SIZE + TILE_SIZE / 2, mobilePreviewTile.y * TILE_SIZE + TILE_SIZE / 2, TOWER_TYPES[selectedTowerType].range);
             }
 
-            // Draw towers with visual upgrades (rings only, no size changes)
+            // --- 1. Enemy Ground Drop Shadows ---
+            for (let e of enemies) {
+                if (!e.alive) continue;
+                const isBoss = e.type.name === "Boss";
+                const isFlying = !!e.flying;
+                const baseShadowW = isBoss ? TILE_SIZE * 0.75 : (isFlying ? TILE_SIZE * 0.46 : TILE_SIZE * 0.52);
+                const baseShadowH = baseShadowW * 0.42;
+                const shadowY = e.y + (isBoss ? TILE_SIZE * 0.42 : (isFlying ? TILE_SIZE * 0.38 : TILE_SIZE * 0.32));
+
+                // Dynamically contract & soften shadow when character bobs up
+                const bobLift = Math.max(0, (e.bobY || 0) / (isFlying ? 10 : 5.5));
+                const shadowW = baseShadowW * (1 - bobLift * (isFlying ? 0.25 : 0.18));
+                const shadowH = baseShadowH * (1 - bobLift * (isFlying ? 0.25 : 0.18));
+                const shadowAlpha = (isFlying ? 0.18 : 0.32) * (1 - bobLift * (isFlying ? 0.35 : 0.28));
+
+                graphics.beginFill(0x000000, shadowAlpha)
+                    .drawEllipse(e.x, shadowY, shadowW, shadowH)
+                    .endFill();
+            }
+
+            // --- 2. Footstep Dust Particles ---
+            for (let dp of dustParticles) {
+                const alpha = (dp.duration / dp.maxDuration) * 0.55;
+                graphics.beginFill(dp.color || 0x94a3b8, alpha)
+                    .drawCircle(dp.x, dp.y, dp.radius * (1 + (1 - dp.duration / dp.maxDuration) * 0.6))
+                    .endFill();
+            }
+
+            // --- 3. Towers (Dynamic Aiming, Recoil, Upgrades & Elemental Energy) ---
             for (let t of towers) {
-                // Try to draw tower image if available
+                const towerCenterX = t.x * TILE_SIZE + TILE_SIZE / 2;
+                const towerCenterY = t.y * TILE_SIZE + TILE_SIZE / 2;
+
+                // Calculate recoil displacement opposite to aiming heading
+                const recoilDist = (t.recoil || 0) * (4.5 + (t.level || 1) * 0.6);
+                const recoilX = -Math.sin(t.angle || 0) * recoilDist;
+                const recoilY = Math.cos(t.angle || 0) * recoilDist;
+
                 const towerTexture = towerImageMap[t.type.name];
                 if (towerTexture) {
-                    // Create or reuse a sprite for the tower image
                     let towerSprite = t._sprite;
                     if (!towerSprite) {
                         towerSprite = new PIXI.Sprite(towerTexture);
@@ -4760,123 +5103,130 @@
                         t._sprite = towerSprite;
                     }
 
-                    // Position the sprite accurately at tile center
-                    towerSprite.x = t.x * TILE_SIZE + TILE_SIZE / 2;
-                    towerSprite.y = t.y * TILE_SIZE + TILE_SIZE / 2;
+                    towerSprite.x = towerCenterX + recoilX;
+                    towerSprite.y = towerCenterY + recoilY;
+                    towerSprite.rotation = t.angle || 0;
 
-                    // Scale the sprite to fit nicely within the tile while maintaining aspect ratio
-                    const targetSize = TILE_SIZE * 0.9; // Use 90% of tile size
-                    const imageScale = Math.min(targetSize / towerTexture.width, targetSize / towerTexture.height);
-                    towerSprite.scale.set(imageScale);
-
+                    const targetSize = TILE_SIZE * 0.9;
+                    const baseScale = Math.min(targetSize / towerTexture.width, targetSize / towerTexture.height);
+                    // Punchy recoil squash-and-stretch
+                    const recoilScaleY = baseScale * (1 + (t.recoil || 0) * 0.12);
+                    const recoilScaleX = baseScale * (1 - (t.recoil || 0) * 0.08);
+                    towerSprite.scale.set(recoilScaleX, recoilScaleY);
                     towerSprite.visible = true;
 
-                    // Calculate radius for rings based on the scaled sprite size
-                    const radius = Math.max(towerTexture.width, towerTexture.height) * imageScale / 2;
+                    const radius = Math.max(towerTexture.width, towerTexture.height) * baseScale / 2;
 
-                    // Add level-based visual enhancements around the image (rings only)
+                    // Level 2+ glowing rings & elemental energy runes
                     if (t.level >= 2) {
-                        // Level 2+: Add glowing outline
                         graphics.lineStyle(2, 0xffffff, 0.4)
-                            .drawCircle(t.x * TILE_SIZE + TILE_SIZE / 2, t.y * TILE_SIZE + TILE_SIZE / 2, radius * 1.15);
+                            .drawCircle(towerCenterX, towerCenterY, radius * 1.15);
                     }
-
                     if (t.level >= 3) {
-                        // Level 3+: Add white ring
                         graphics.lineStyle(2, 0xffffff, 0.7)
-                            .drawCircle(t.x * TILE_SIZE + TILE_SIZE / 2, t.y * TILE_SIZE + TILE_SIZE / 2, radius * 1.25);
+                            .drawCircle(towerCenterX, towerCenterY, radius * 1.25);
                     }
-
                     if (t.level >= 4) {
-                        // Level 4+: Add golden ring
                         graphics.lineStyle(3, 0xffdd00, 0.8)
-                            .drawCircle(t.x * TILE_SIZE + TILE_SIZE / 2, t.y * TILE_SIZE + TILE_SIZE / 2, radius * 1.35);
-                    }
-
-                    if (t.level >= 5) {
-                        // Level 5+: Add pulsing golden ring
-                        const pulseAlpha = 0.6 + Math.sin(Date.now() / 300) * 0.3;
-                        graphics.lineStyle(4, 0xffdd00, pulseAlpha)
-                            .drawCircle(t.x * TILE_SIZE + TILE_SIZE / 2, t.y * TILE_SIZE + TILE_SIZE / 2, radius * 1.45);
-                    }
-                } else {
-                    // Fallback: Draw original circle if image not available (also constant size)
-                    const radius = TILE_SIZE / 2.2;
-                    graphics.beginFill(t.type.color)
-                        .drawCircle(t.x * TILE_SIZE + TILE_SIZE / 2, t.y * TILE_SIZE + TILE_SIZE / 2, radius)
-                        .endFill();
-
-                    // Add visual features based on level (original code with constant radius)
-                    if (t.level >= 2) {
-                        graphics.beginFill(0xffffff, 0.3)
-                            .drawCircle(t.x * TILE_SIZE + TILE_SIZE / 2, t.y * TILE_SIZE + TILE_SIZE / 2, radius * 0.6)
+                            .drawCircle(towerCenterX, towerCenterY, radius * 1.35);
+                        // Rotating elemental energy sparklets around level 4+
+                        const orbitAngle = (nowTime * 0.003) + (t.x * 2 + t.y);
+                        const orbR = radius * 1.35;
+                        graphics.beginFill(0xffdd00, 0.9)
+                            .drawCircle(towerCenterX + Math.cos(orbitAngle) * orbR, towerCenterY + Math.sin(orbitAngle) * orbR, 3)
+                            .drawCircle(towerCenterX - Math.cos(orbitAngle) * orbR, towerCenterY - Math.sin(orbitAngle) * orbR, 3)
                             .endFill();
                     }
-
-                    if (t.level >= 3) {
-                        graphics.lineStyle(2, 0xffffff, 0.7)
-                            .drawCircle(t.x * TILE_SIZE + TILE_SIZE / 2, t.y * TILE_SIZE + TILE_SIZE / 2, radius * 0.8);
-                    }
-
-                    if (t.level >= 4) {
-                        graphics.lineStyle(2, 0xffdd00, 0.8)
-                            .drawCircle(t.x * TILE_SIZE + TILE_SIZE / 2, t.y * TILE_SIZE + TILE_SIZE / 2, radius * 0.9);
-                    }
-
                     if (t.level >= 5) {
-                        // Level 5+: Add pulsing effect for fallback towers too
-                        const pulseAlpha = 0.6 + Math.sin(Date.now() / 300) * 0.3;
-                        graphics.lineStyle(3, 0xffdd00, pulseAlpha)
-                            .drawCircle(t.x * TILE_SIZE + TILE_SIZE / 2, t.y * TILE_SIZE + TILE_SIZE / 2, radius * 1.1);
+                        const pulseAlpha = 0.6 + Math.sin(nowTime / 300) * 0.3;
+                        graphics.lineStyle(4, 0xffdd00, pulseAlpha)
+                            .drawCircle(towerCenterX, towerCenterY, radius * 1.45);
+                    }
+                    // Boost Active Energy Aura
+                    if (boostActive) {
+                        const boostPulse = 0.5 + Math.sin(nowTime * 0.01) * 0.3;
+                        graphics.lineStyle(2, 0x38bdf8, boostPulse)
+                            .drawCircle(towerCenterX, towerCenterY, radius * 1.55);
+                    }
+                } else {
+                    // Fallback circle drawing with recoil
+                    const radius = TILE_SIZE / 2.2;
+                    const bx = towerCenterX + recoilX;
+                    const by = towerCenterY + recoilY;
+                    graphics.beginFill(t.type.color)
+                        .drawCircle(bx, by, radius)
+                        .endFill();
+
+                    if (t.level >= 2) {
+                        graphics.beginFill(0xffffff, 0.3).drawCircle(bx, by, radius * 0.6).endFill();
+                    }
+                    if (t.level >= 3) {
+                        graphics.lineStyle(2, 0xffffff, 0.7).drawCircle(bx, by, radius * 0.8);
+                    }
+                    if (t.level >= 4) {
+                        graphics.lineStyle(2, 0xffdd00, 0.8).drawCircle(bx, by, radius * 0.9);
+                    }
+                    if (t.level >= 5) {
+                        const pulseAlpha = 0.6 + Math.sin(nowTime / 300) * 0.3;
+                        graphics.lineStyle(3, 0xffdd00, pulseAlpha).drawCircle(bx, by, radius * 1.1);
                     }
                 }
 
                 // Show range for selected tower
                 if (selectedTower === t) {
                     graphics.lineStyle(2, 0xffffff, 0.2);
-                    graphics.drawCircle(t.x * TILE_SIZE + TILE_SIZE / 2, t.y * TILE_SIZE + TILE_SIZE / 2, t.type.range);
+                    graphics.drawCircle(towerCenterX, towerCenterY, t.type.range);
                 }
             }
 
-            // Draw sword swings
+            // --- 4. Sword Swings ---
             for (let swing of swordSwings) {
-                // Calculate fade based on duration (starts at 1, fades to 0)
                 const fade = swing.duration / 15;
-
-                // Calculate swing arc parameters
                 const startAngle = swing.angle;
                 const endAngle = startAngle + Math.PI * 0.75; // 135 degrees arc
 
-                // Draw the sword swing arc
                 graphics.lineStyle(4, swing.color, fade)
                     .arc(swing.x, swing.y, swing.radius * 0.8, startAngle, endAngle);
 
-                // Draw a smaller inner arc for effect
                 graphics.lineStyle(2, 0xFFFFFF, fade * 0.8)
                     .arc(swing.x, swing.y, swing.radius * 0.6, startAngle, endAngle);
             }
 
-            // Draw items
+            // --- 5. Tower Muzzle Flashes ---
+            for (let mf of muzzleFlashes) {
+                const progress = 1 - (mf.duration / mf.maxDuration);
+                const alpha = (mf.duration / mf.maxDuration) * 0.9;
+                const rad = mf.radius * (0.6 + progress * 0.5);
+
+                graphics.beginFill(mf.color || 0xffd700, alpha * 0.6)
+                    .drawCircle(mf.x, mf.y, rad)
+                    .endFill();
+                graphics.beginFill(0xffffff, alpha)
+                    .drawCircle(mf.x, mf.y, rad * 0.45)
+                    .endFill();
+            }
+
+            // --- 6. Items ---
             for (let item of items) {
                 const pulseSize = 5 + (item.pulseValue * 3);
 
-                // Main item
                 graphics.beginFill(parseInt(item.type.color), 0.8)
                     .drawCircle(item.x, item.y, pulseSize)
                     .endFill();
 
-                // Glow effect
                 graphics.beginFill(parseInt(item.type.color), 0.3)
                     .drawCircle(item.x, item.y, pulseSize * 1.5)
                     .endFill();
             }
 
-            // Draw enemies
+            // --- 7. Enemies (Walk Gait, Bobbing, Tilt, Facing, Hit Reactions) ---
             for (let e of enemies) {
-                // Try to draw enemy image if available
+                const isBoss = e.type.name === "Boss";
+                const renderX = e.x + (e.hitFlash > 0 ? (e.hitJitterX || 0) : 0);
+                const renderY = e.y - (e.bobY || 0) + (e.hitFlash > 0 ? (e.hitJitterY || 0) : 0);
+
                 const enemyTexture = enemyImageMap[e.type.name];
                 if (enemyTexture) {
-                    // Create or reuse a sprite for the enemy image
                     let enemySprite = e._sprite;
                     if (!enemySprite) {
                         enemySprite = new PIXI.Sprite(enemyTexture);
@@ -4885,100 +5235,111 @@
                         e._sprite = enemySprite;
                     }
 
-                    // Position the sprite accurately at enemy location
-                    enemySprite.x = e.x;
-                    enemySprite.y = e.y;
+                    enemySprite.x = renderX;
+                    enemySprite.y = renderY;
+                    enemySprite.rotation = e.tilt || 0;
 
-                    // Scale the sprite based on enemy size
-                    const targetSize = e.type.name === "Boss" ? TILE_SIZE * 1.2 : TILE_SIZE * 0.8;
-                    const imageScale = Math.min(targetSize / enemyTexture.width, targetSize / enemyTexture.height);
-                    enemySprite.scale.set(imageScale);
+                    const targetSize = isBoss ? TILE_SIZE * 1.2 : TILE_SIZE * 0.8;
+                    const baseScale = Math.min(targetSize / enemyTexture.width, targetSize / enemyTexture.height);
+
+                    const facingScaleX = baseScale * (e.facing || 1) * (e.scaleXMod || 1);
+                    const stretchScaleY = baseScale * (e.scaleYMod || 1);
+                    enemySprite.scale.set(facingScaleX, stretchScaleY);
+
+                    // Hit reaction flash tint
+                    if (e.hitFlash > 0) {
+                        enemySprite.tint = 0xff7777; // Soft red/white damage flash
+                    } else {
+                        enemySprite.tint = 0xffffff;
+                    }
 
                     enemySprite.visible = true;
                 } else {
-                    // Fallback: Draw original circle if image not available
-                    graphics.beginFill(e.type.color)
-                        .drawCircle(e.x, e.y, e.type.name === "Boss" ? TILE_SIZE / 1.7 : TILE_SIZE / 2.5)
+                    const baseRadius = isBoss ? TILE_SIZE / 1.7 : TILE_SIZE / 2.5;
+                    const rx = baseRadius * (e.scaleXMod || 1);
+                    const ry = baseRadius * (e.scaleYMod || 1);
+                    graphics.beginFill(e.hitFlash > 0 ? 0xff6666 : e.type.color)
+                        .drawEllipse(renderX, renderY, rx, ry)
                         .endFill();
                 }
 
-                if (e.type.name === "Boss") {
+                if (isBoss) {
                     graphics.lineStyle(3, 0xffffff, 0.7);
-                    graphics.drawCircle(e.x, e.y, TILE_SIZE / 1.7);
+                    graphics.drawCircle(renderX, renderY, TILE_SIZE / 1.7);
                 }
 
-                // Draw yellow selection circle for selected enemy
+                // Yellow selection circle
                 if (selectedEnemy === e) {
-                    graphics.lineStyle(3, 0xffff00, 0.8); // Yellow circle
-                    graphics.drawCircle(e.x, e.y, (e.type.name === "Boss" ? TILE_SIZE / 1.5 : TILE_SIZE / 2.2) + 5);
+                    graphics.lineStyle(3, 0xffff00, 0.8);
+                    graphics.drawCircle(renderX, renderY, (isBoss ? TILE_SIZE / 1.5 : TILE_SIZE / 2.2) + 5);
                 }
 
-                // Draw slowed effect if enemy is slowed
+                // Slowed frost aura
                 if (e.slowed) {
-                    // Draw frost effect around the enemy
-                    const pulseAmount = 0.5 + Math.sin(Date.now() / 300) * 0.2; // Pulsing effect
+                    const pulseAmount = 0.5 + Math.sin(nowTime / 300) * 0.2;
                     graphics.lineStyle(3, e.slowed.effectColor, 0.7 * pulseAmount)
-                        .drawCircle(e.x, e.y, (e.type.name === "Boss" ? TILE_SIZE / 1.5 : TILE_SIZE / 2.2) + pulseAmount * 3);
+                        .drawCircle(renderX, renderY, (isBoss ? TILE_SIZE / 1.5 : TILE_SIZE / 2.2) + pulseAmount * 3);
 
-                    // Add some frost particles
                     for (let i = 0; i < 2; i++) {
                         const angle = Math.random() * Math.PI * 2;
-                        const distance = (Math.random() * 10) + (e.type.name === "Boss" ? TILE_SIZE / 2 : TILE_SIZE / 3);
+                        const distance = (Math.random() * 10) + (isBoss ? TILE_SIZE / 2 : TILE_SIZE / 3);
                         graphics.beginFill(e.slowed.effectColor, 0.6)
-                            .drawCircle(
-                                e.x + Math.cos(angle) * distance,
-                                e.y + Math.sin(angle) * distance,
-                                1 + Math.random() * 2
-                            )
+                            .drawCircle(renderX + Math.cos(angle) * distance, renderY + Math.sin(angle) * distance, 1 + Math.random() * 2)
                             .endFill();
                     }
                 }
 
-                // Draw element emoji if available
+                // Element emoji tracking
                 if (e.type.emoji && e.type.element !== "physical") {
-                    // Create or reuse text for emoji
                     if (!e.emojiText) {
                         e.emojiText = new PIXI.Text(e.type.emoji, {
-                            fontSize: e.type.name === "Boss" ? 20 : 14,
+                            fontSize: isBoss ? 20 : 14,
                             align: "center"
                         });
                         e.emojiText.anchor.set(0.5);
                         app.stage.addChild(e.emojiText);
                     }
-
-                    // Update position
-                    e.emojiText.position.x = e.x;
-                    e.emojiText.position.y = e.y;
+                    e.emojiText.position.x = renderX;
+                    e.emojiText.position.y = renderY;
                     e.emojiText.visible = true;
                 } else if (e.emojiText) {
                     e.emojiText.visible = false;
                 }
 
-                // Draw health bar
-                const healthPercentage = e.hp / e.maxHp;
-                const barWidth = e.type.name === "Boss" ? TILE_SIZE * 1.5 : TILE_SIZE;
+                // Health bar tracking
+                const healthPercentage = Math.max(0, e.hp / e.maxHp);
+                const barWidth = isBoss ? TILE_SIZE * 1.5 : TILE_SIZE;
                 const barHeight = 6;
-                const barX = e.x - barWidth / 2;
-                const barY = e.y - (e.type.name === "Boss" ? TILE_SIZE / 1.3 : TILE_SIZE / 1.8);
+                const barX = renderX - barWidth / 2;
+                const barY = renderY - (isBoss ? TILE_SIZE / 1.3 : TILE_SIZE / 1.8);
 
-                // Background (dark gray)
                 graphics.beginFill(0x333333)
                     .drawRect(barX, barY, barWidth, barHeight)
                     .endFill();
 
-                // Health color based on percentage
                 let healthColor;
-                if (healthPercentage > 0.6) healthColor = 0x66dd66; // Green
-                else if (healthPercentage > 0.3) healthColor = 0xdddd66; // Yellow
-                else healthColor = 0xdd6666; // Red
+                if (healthPercentage > 0.6) healthColor = 0x66dd66;
+                else if (healthPercentage > 0.3) healthColor = 0xdddd66;
+                else healthColor = 0xdd6666;
 
-                // Health bar (colored)
                 graphics.beginFill(healthColor)
                     .drawRect(barX, barY, barWidth * healthPercentage, barHeight)
                     .endFill();
             }
 
-            // Draw projectiles
+            // --- 8. Death Shockwaves & Death Particles ---
+            for (let sw of deathShockwaves) {
+                graphics.lineStyle(3, sw.color, sw.alpha)
+                    .drawCircle(sw.x, sw.y, sw.radius);
+            }
+
+            for (let p of deathParticles) {
+                graphics.beginFill(p.color, p.alpha)
+                    .drawCircle(p.x, p.y, p.radius * (0.6 + (p.duration / p.maxDuration) * 0.5))
+                    .endFill();
+            }
+
+            // --- 9. Projectiles ---
             for (let p of projectiles) {
                 // Basic projectile circle
                 graphics.beginFill(p.color).drawCircle(p.x, p.y, 7).endFill();
@@ -5035,7 +5396,7 @@
                 }
             }
 
-            // Draw damage numbers using text pool
+            // --- 10. Damage Numbers ---
             for (let d of damageNumbers) {
                 // Find available text object from pool
                 if (!d.textObj) {
@@ -5064,55 +5425,46 @@
                 d.textObj.alpha = d.alpha;
             }
 
-            // Draw explosions
+            // --- 11. Explosions ---
             for (let explosion of explosions) {
-                // Outer explosion circle
                 graphics.beginFill(explosion.color, explosion.alpha * 0.4)
                     .drawCircle(explosion.x, explosion.y, explosion.radius)
                     .endFill();
 
-                // Inner bright core
                 graphics.beginFill(0xffffff, explosion.alpha * 0.7)
                     .drawCircle(explosion.x, explosion.y, explosion.radius * 0.3)
                     .endFill();
 
-                // Add a ring at the edge of explosion for better visual
                 graphics.lineStyle(2, 0xffdd00, explosion.alpha * 0.8)
                     .drawCircle(explosion.x, explosion.y, explosion.radius * 0.8);
             }
 
-            // Draw splash effects
+            // --- 12. Splash Effects ---
             for (let splash of splashEffects) {
-                // Outer splash circle
                 graphics.beginFill(splash.color, splash.alpha * 0.3)
                     .drawCircle(splash.x, splash.y, splash.radius)
                     .endFill();
 
-                // Inner bright core
                 graphics.beginFill(0xffffff, splash.alpha * 0.6)
                     .drawCircle(splash.x, splash.y, splash.radius * 0.4)
                     .endFill();
 
-                // Add a ring at the edge of splash for better visual
                 graphics.lineStyle(2, splash.color, splash.alpha * 0.8)
                     .drawCircle(splash.x, splash.y, splash.radius * 0.8);
             }
 
-            // Draw bomb placement preview
+            // --- 13. Bomb Placement Preview ---
             if (placingBomb) {
                 const mx = app.renderer.events.pointer.global?.x || 0;
                 const my = app.renderer.events.pointer.global?.y || 0;
 
-                // Draw bomb radius preview
                 graphics.lineStyle(2, BOMB_CONFIG.color, 0.8)
                     .drawCircle(mx, my, BOMB_CONFIG.radius);
 
-                // Draw bomb icon
                 graphics.beginFill(BOMB_CONFIG.color, 0.7)
                     .drawCircle(mx, my, 20)
                     .endFill();
 
-                // Add crosshair to help with aiming
                 graphics.lineStyle(2, 0xffffff, 0.8)
                     .moveTo(mx - 10, my)
                     .lineTo(mx + 10, my)
@@ -5145,38 +5497,48 @@
         });
 
         // --- Game Start/End/Over ---
-        function showGameOver(msg) {
-            let over = document.createElement('div');
-            over.style.position = 'fixed';
-            over.style.left = '50%';
-            over.style.top = '50%';
-            over.style.transform = 'translate(-50%,-50%)';
-            over.style.background = '#23273a';
-            over.style.color = '#fff';
-            over.style.padding = '32px 48px';
-            over.style.borderRadius = '16px';
-            over.style.fontSize = '2em';
-            over.style.boxShadow = '0 2px 24px #000a';
+        function showGameOver(title = "💀 Game Over", customMessage = null) {
+            const modal = document.getElementById('game-over-modal');
+            if (!modal) return;
 
-            // Only show New Game button (removed Restart)
-            over.innerHTML = `
-        <b>${msg}</b><br>
-        <button id="new-game-btn" style="margin-top: 20px; background: #de6e6e;">New Game</button>
-    `;
+            const titleEl = document.getElementById('game-over-title');
+            const messageEl = document.getElementById('game-over-message');
+            const waveEl = document.getElementById('game-over-stat-wave');
+            const goldEl = document.getElementById('game-over-stat-gold');
+            const towersEl = document.getElementById('game-over-stat-towers');
 
-            document.body.appendChild(over);
+            if (titleEl) {
+                titleEl.textContent = title;
+                titleEl.style.color = (lives <= 0) ? '#f87171' : '#38bdf8';
+            }
+            if (messageEl) {
+                if (customMessage) {
+                    messageEl.textContent = customMessage;
+                } else if (lives <= 0) {
+                    messageEl.innerHTML = `The enemy forces breached your defenses! You reached <strong>Wave ${wave}</strong>.`;
+                } else {
+                    messageEl.innerHTML = `Game concluded. You reached <strong>Wave ${wave}</strong>.`;
+                }
+            }
+            if (waveEl) waveEl.textContent = wave;
+            if (goldEl) goldEl.textContent = gold;
+            if (towersEl) towersEl.textContent = towers.length;
 
-            // New Game button - clears localStorage
-            over.querySelector('#new-game-btn').onclick = () => {
-                // Clear ALL game-related localStorage
-                localStorage.removeItem('purchasedTowers');
-                document.body.removeChild(over);
-                restartGame(true);  // true = clear localStorage
-            };
+            modal.style.display = 'flex';
+            try { app.view.style.pointerEvents = 'none'; } catch { }
+        }
+
+        function hideGameOver() {
+            const modal = document.getElementById('game-over-modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+            try { app.view.style.pointerEvents = ''; } catch { }
         }
 
         // Updated restartGame function to accept a parameter
         function restartGame(clearStorage = true) {
+            hideGameOver();
             // Clean up tower sprites before clearing towers array
             towers.forEach(tower => {
                 if (tower._sprite) {
@@ -5207,6 +5569,10 @@
             activeEffects = [];
             explosions = [];
             splashEffects = []; // Clear splash effects
+            deathParticles = [];
+            deathShockwaves = [];
+            dustParticles = [];
+            muzzleFlashes = [];
             enemySpawnQueue = []; // Clear spawn queue
             gold = CONFIG.gameSettings.startingGold;
             wave = 1;
