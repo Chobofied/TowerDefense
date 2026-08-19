@@ -15,17 +15,19 @@ export class EnemyManager {
     createEnemy(config, startPos, endPos, path, waveNum = 1) {
         const isBoss = config.name === 'Boss';
         const isFlying = !!config.flying;
+        const hp = config.hp || config.baseHp || 45;
+        const speed = config.speed || config.baseSpeed || 1.0;
 
         const enemy = {
             id: 'e_' + Math.random().toString(36).substr(2, 9),
             type: config,
             x: startPos.x * this.tileSize + this.tileSize / 2,
             y: startPos.y * this.tileSize + this.tileSize / 2,
-            hp: config.hp,
-            maxHp: config.hp,
-            chipHp: config.hp, // For trailing white damage health bar
-            speed: config.speed,
-            baseSpeed: config.speed,
+            hp: hp,
+            maxHp: hp,
+            chipHp: hp, // For trailing white damage health bar
+            speed: speed,
+            baseSpeed: speed,
             flying: isFlying,
             alive: true,
             path: path,
@@ -98,7 +100,7 @@ export class EnemyManager {
     update(delta, pathfinding, effects, audio, meta, onEnemyReachExit, onEnemyKilled, onSpawnMinions, onEmpDisrupt) {
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             const e = this.enemies[i];
-            if (!e.alive) {
+            if (!e.alive || isNaN(e.x) || isNaN(e.y) || isNaN(e.hp)) {
                 if (e._sprite) e._sprite.visible = false;
                 if (e._emojiText) e._emojiText.visible = false;
                 this.enemies.splice(i, 1);
@@ -244,9 +246,39 @@ export class EnemyManager {
             } else {
                 // Ground Movement along Path
                 if (!e.path || e.pathIdx >= e.path.length) {
-                    e.alive = false;
-                    onEnemyReachExit(e);
-                    continue;
+                    const egx = Math.max(0, Math.min(13, Math.round((e.x - this.tileSize / 2) / this.tileSize)));
+                    const egy = Math.max(0, Math.min(13, Math.round((e.y - this.tileSize / 2) / this.tileSize)));
+                    if (egx === e.endPos.x && egy === e.endPos.y) {
+                        e.alive = false;
+                        onEnemyReachExit(e);
+                        continue;
+                    } else if (pathfinding) {
+                        const newPath = pathfinding.findPath({ x: egx, y: egy }, e.endPos);
+                        if (newPath && newPath.length > 1) {
+                            e.path = newPath;
+                            e.pathIdx = 1;
+                        } else {
+                            // Direct glide towards exit
+                            const tx = e.endPos.x * this.tileSize + this.tileSize / 2;
+                            const ty = e.endPos.y * this.tileSize + this.tileSize / 2;
+                            const dx = tx - e.x;
+                            const dy = ty - e.y;
+                            const dist = Math.hypot(dx, dy);
+                            if (dist < 8) {
+                                e.alive = false;
+                                onEnemyReachExit(e);
+                                continue;
+                            }
+                            const spd = currentSpeed * delta * 2.2;
+                            e.x += (dx / dist) * spd;
+                            e.y += (dy / dist) * spd;
+                            continue;
+                        }
+                    } else {
+                        e.alive = false;
+                        onEnemyReachExit(e);
+                        continue;
+                    }
                 }
 
                 const node = e.path[e.pathIdx];
@@ -333,7 +365,7 @@ export class EnemyManager {
             const renderY = e.y - (e.bobY || 0);
 
             // Sprite Rendering
-            const texture = this.enemyTextures[e.type.name];
+            const texture = this.enemyTextures[e.type.name] || this.enemyTextures['Normal'];
             if (texture) {
                 if (!e._sprite) {
                     e._sprite = new PIXI.Sprite(texture);
@@ -348,7 +380,13 @@ export class EnemyManager {
                 const baseScale = Math.min(targetSize / texture.width, targetSize / texture.height);
                 e._sprite.scale.set(baseScale * (e.facing || 1) * (e.scaleXMod || 1), baseScale * (e.scaleYMod || 1));
 
-                // Hit Flash / Enrage Tint
+                // Trait / Elemental Base Tints
+                let baseTint = 0xffffff;
+                if (e.trait === 'shielded') baseTint = 0x93c5fd; // Steel Blue
+                else if (e.trait === 'splitter') baseTint = 0xd8b4fe; // Purple
+                else if (e.trait === 'healer') baseTint = 0x86efac; // Emerald Green
+
+                // Hit Flash / Enrage Tint Overrides
                 if (e.hitFlash > 0) {
                     e._sprite.tint = 0xff7777;
                 } else if (e.enraged) {
@@ -358,9 +396,18 @@ export class EnemyManager {
                 } else if (e.statuses['sunder']) {
                     e._sprite.tint = 0xddaa77;
                 } else {
-                    e._sprite.tint = 0xffffff;
+                    e._sprite.tint = baseTint;
                 }
                 e._sprite.visible = true;
+            } else {
+                // Procedural Fallback Avatar (Guarantees enemy is never invisible)
+                const col = parseInt(e.type.color || '0xcccccc');
+                const rad = isBoss ? this.tileSize * 0.55 : this.tileSize * 0.35;
+                graphics.beginFill(col, 0.95).drawCircle(renderX, renderY, rad).endFill();
+                graphics.lineStyle(2, 0xffffff, 0.8).drawCircle(renderX, renderY, rad);
+                const eyeOff = (e.facing || 1) * (rad * 0.35);
+                graphics.beginFill(0xffffff).drawCircle(renderX + eyeOff - 4, renderY - 3, 3).drawCircle(renderX + eyeOff + 4, renderY - 3, 3).endFill();
+                graphics.beginFill(0x000000).drawCircle(renderX + eyeOff - 3, renderY - 3, 1.5).drawCircle(renderX + eyeOff + 5, renderY - 3, 1.5).endFill();
             }
 
             // Shield Bubble for Shielded Trait

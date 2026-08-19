@@ -834,10 +834,28 @@ class TowerDefenseGame {
             e => this.onEnemyReachExit(e),
             e => this.onEnemyKilled(e),
             (x, y) => {
-                // Spawn Boss Minions
+                // Spawn Boss Minions (Properly scaled to current wave)
+                const hpScale = 1 + (this.wave - 1) * 0.2;
+                const speedScale = 1 + (this.wave - 1) * 0.025;
+                const baseEnemy = CONFIG.enemies.find(e => e.name === 'Normal') || CONFIG.enemies[0];
+                const minionConfig = {
+                    ...baseEnemy,
+                    hp: Math.round((baseEnemy.baseHp || 45) * hpScale * 0.4),
+                    maxHp: Math.round((baseEnemy.baseHp || 45) * hpScale * 0.4),
+                    speed: (baseEnemy.baseSpeed || 1.0) * speedScale * 1.15,
+                    baseSpeed: (baseEnemy.baseSpeed || 1.0) * speedScale * 1.15,
+                    reward: 4
+                };
+
+                const egx = Math.max(0, Math.min(13, Math.round((x - 24) / 48)));
+                const egy = Math.max(0, Math.min(13, Math.round((y - 24) / 48)));
+                const ends = this.mapManager.getEnds();
+                const endPos = ends[0] || { x: 13, y: 7 };
+                const path = this.pathfinding.findPath({ x: egx, y: egy }, endPos);
+
                 for (let k = 0; k < 3; k++) {
-                    const m = this.enemies.createEnemy(CONFIG.enemies[0], { x: 0, y: 7 }, { x: 13, y: 7 }, null, this.wave);
-                    m.x = x + (k * 16 - 16);
+                    const m = this.enemies.createEnemy(minionConfig, { x: egx, y: egy }, endPos, path, this.wave);
+                    m.x = x + (k * 14 - 14);
                     m.y = y;
                     this.enemies.enemies.push(m);
                 }

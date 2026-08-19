@@ -6,7 +6,7 @@
     "startingLives": 20,
     "waveCompleteGold": 50,
     "itemDropChance": 0.15,
-    "version": "0.2.0",
+    "version": "0.3.0",
     "backgroundImage": "Game_Images/Background.png",
     "bossLifePenalty": 3,
     "airWaveSpeedMultiplier": 0.75,
@@ -21,8 +21,14 @@
       "name": "Open Plains",
       "icon": "🌱",
       "description": "Classic open grid with full freedom to design intricate custom mazes.",
-      "start": { "x": 0, "y": 7 },
-      "end": { "x": 13, "y": 7 },
+      "start": {
+        "x": 0,
+        "y": 7
+      },
+      "end": {
+        "x": 13,
+        "y": 7
+      },
       "obstacles": []
     },
     {
@@ -30,13 +36,71 @@
       "name": "The Chasm",
       "icon": "⛰️",
       "description": "Natural rock pillars and deep chasms divide the map into tactical chokepoints.",
-      "start": { "x": 0, "y": 7 },
-      "end": { "x": 13, "y": 7 },
+      "start": {
+        "x": 0,
+        "y": 7
+      },
+      "end": {
+        "x": 13,
+        "y": 7
+      },
       "obstacles": [
-        { "x": 3, "y": 2 }, { "x": 3, "y": 3 }, { "x": 3, "y": 4 },
-        { "x": 3, "y": 10 }, { "x": 3, "y": 11 }, { "x": 3, "y": 12 },
-        { "x": 7, "y": 5 }, { "x": 7, "y": 6 }, { "x": 7, "y": 8 }, { "x": 7, "y": 9 },
-        { "x": 10, "y": 1 }, { "x": 10, "y": 2 }, { "x": 10, "y": 11 }, { "x": 10, "y": 12 }
+        {
+          "x": 3,
+          "y": 2
+        },
+        {
+          "x": 3,
+          "y": 3
+        },
+        {
+          "x": 3,
+          "y": 4
+        },
+        {
+          "x": 3,
+          "y": 10
+        },
+        {
+          "x": 3,
+          "y": 11
+        },
+        {
+          "x": 3,
+          "y": 12
+        },
+        {
+          "x": 7,
+          "y": 5
+        },
+        {
+          "x": 7,
+          "y": 6
+        },
+        {
+          "x": 7,
+          "y": 8
+        },
+        {
+          "x": 7,
+          "y": 9
+        },
+        {
+          "x": 10,
+          "y": 1
+        },
+        {
+          "x": 10,
+          "y": 2
+        },
+        {
+          "x": 10,
+          "y": 11
+        },
+        {
+          "x": 10,
+          "y": 12
+        }
       ]
     },
     {
@@ -45,14 +109,48 @@
       "icon": "⚔️",
       "description": "Enemies emerge from two separate portals and converge toward a single core.",
       "multiStart": [
-        { "x": 0, "y": 2 },
-        { "x": 0, "y": 11 }
+        {
+          "x": 0,
+          "y": 2
+        },
+        {
+          "x": 0,
+          "y": 11
+        }
       ],
-      "start": { "x": 0, "y": 2 },
-      "end": { "x": 13, "y": 7 },
+      "start": {
+        "x": 0,
+        "y": 2
+      },
+      "end": {
+        "x": 13,
+        "y": 7
+      },
       "obstacles": [
-        { "x": 5, "y": 6 }, { "x": 5, "y": 7 }, { "x": 5, "y": 8 },
-        { "x": 8, "y": 6 }, { "x": 8, "y": 7 }, { "x": 8, "y": 8 }
+        {
+          "x": 5,
+          "y": 6
+        },
+        {
+          "x": 5,
+          "y": 7
+        },
+        {
+          "x": 5,
+          "y": 8
+        },
+        {
+          "x": 8,
+          "y": 6
+        },
+        {
+          "x": 8,
+          "y": 7
+        },
+        {
+          "x": 8,
+          "y": 8
+        }
       ]
     },
     {
@@ -60,15 +158,41 @@
       "name": "Twin Exits",
       "icon": "🛡️",
       "description": "A single invasion portal branches toward two separate exits to defend.",
-      "start": { "x": 0, "y": 7 },
+      "start": {
+        "x": 0,
+        "y": 7
+      },
       "multiEnd": [
-        { "x": 13, "y": 2 },
-        { "x": 13, "y": 11 }
+        {
+          "x": 13,
+          "y": 2
+        },
+        {
+          "x": 13,
+          "y": 11
+        }
       ],
-      "end": { "x": 13, "y": 2 },
+      "end": {
+        "x": 13,
+        "y": 2
+      },
       "obstacles": [
-        { "x": 6, "y": 6 }, { "x": 6, "y": 7 }, { "x": 6, "y": 8 },
-        { "x": 7, "y": 7 }
+        {
+          "x": 6,
+          "y": 6
+        },
+        {
+          "x": 6,
+          "y": 7
+        },
+        {
+          "x": 6,
+          "y": 8
+        },
+        {
+          "x": 7,
+          "y": 7
+        }
       ]
     }
   ],
@@ -471,8 +595,12 @@
         "speed": 0.025
       },
       "elementalProperties": {
-        "weaknesses": { "water": 0.5 },
-        "resistances": { "fire": 0.5 }
+        "weaknesses": {
+          "water": 0.5
+        },
+        "resistances": {
+          "fire": 0.5
+        }
       }
     },
     {
@@ -489,8 +617,12 @@
         "speed": 0.025
       },
       "elementalProperties": {
-        "weaknesses": { "earth": 0.5 },
-        "resistances": { "water": 0.5 }
+        "weaknesses": {
+          "earth": 0.5
+        },
+        "resistances": {
+          "water": 0.5
+        }
       }
     },
     {
@@ -507,8 +639,12 @@
         "speed": 0.025
       },
       "elementalProperties": {
-        "weaknesses": { "fire": 0.5 },
-        "resistances": { "earth": 0.5 }
+        "weaknesses": {
+          "fire": 0.5
+        },
+        "resistances": {
+          "earth": 0.5
+        }
       }
     },
     {
@@ -554,6 +690,7 @@
       "color": "0x5b92e5",
       "element": "physical",
       "emoji": "🛡️",
+      "image": "Normal_Enemy.png",
       "trait": "shielded",
       "shieldHits": 4,
       "waveScaling": {
@@ -573,6 +710,7 @@
       "color": "0xb85cf6",
       "element": "physical",
       "emoji": "👥",
+      "image": "Normal_Enemy.png",
       "trait": "splitter",
       "splitCount": 2,
       "waveScaling": {
@@ -592,6 +730,7 @@
       "color": "0x10b981",
       "element": "earth",
       "emoji": "💚",
+      "image": "Earth_Enemy.png",
       "trait": "healer",
       "healRadius": 110,
       "healPercent": 0.12,
@@ -601,8 +740,12 @@
         "speed": 0.02
       },
       "elementalProperties": {
-        "weaknesses": { "fire": 0.5 },
-        "resistances": { "earth": 0.5 }
+        "weaknesses": {
+          "fire": 0.5
+        },
+        "resistances": {
+          "earth": 0.5
+        }
       }
     }
   ],
@@ -637,48 +780,89 @@
     "patterns": [
       {
         "name": "Fire Wave",
-        "enemies": ["Fire"],
+        "enemies": [
+          "Fire"
+        ],
         "color": "0xff4400",
         "icon": "🔥"
       },
       {
         "name": "Water Wave",
-        "enemies": ["Water"],
+        "enemies": [
+          "Water"
+        ],
         "color": "0x0099ff",
         "icon": "🌊"
       },
       {
         "name": "Earth Wave",
-        "enemies": ["Earth"],
+        "enemies": [
+          "Earth"
+        ],
         "color": "0x996633",
         "icon": "🌲"
       },
       {
         "name": "Normal Wave",
-        "enemies": ["Normal"],
+        "enemies": [
+          "Normal"
+        ],
         "color": "0xcccccc",
         "icon": "⚪"
       },
       {
         "name": "Mixed Wave",
-        "enemies": ["Fire", "Water", "Earth", "Normal", "Shielded", "Splitter", "Healer"],
+        "enemies": [
+          "Fire",
+          "Water",
+          "Earth",
+          "Normal",
+          "Shielded",
+          "Splitter",
+          "Healer"
+        ],
         "color": "0x9966cc",
         "icon": "💯"
       },
       {
         "name": "Air Wave",
-        "enemies": ["Flying"],
+        "enemies": [
+          "Flying"
+        ],
         "color": "0xaaddff",
         "icon": "✈️"
       },
       {
         "name": "Boss Wave",
-        "enemies": ["Boss"],
+        "enemies": [
+          "Boss"
+        ],
         "color": "0xf2e96d",
         "icon": "👑"
       }
     ],
-    "sequence": [0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0, 1]
+    "sequence": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      0,
+      1
+    ]
   },
   "items": [
     {
@@ -773,22 +957,34 @@
       "name": "Fire",
       "color": "0xff4400",
       "emoji": "🔥",
-      "strongAgainst": ["earth"],
-      "weakAgainst": ["water"]
+      "strongAgainst": [
+        "earth"
+      ],
+      "weakAgainst": [
+        "water"
+      ]
     },
     "water": {
       "name": "Water",
       "color": "0x0099ff",
       "emoji": "🌊",
-      "strongAgainst": ["fire"],
-      "weakAgainst": ["earth"]
+      "strongAgainst": [
+        "fire"
+      ],
+      "weakAgainst": [
+        "earth"
+      ]
     },
     "earth": {
       "name": "Earth",
       "color": "0x996633",
       "emoji": "🌲",
-      "strongAgainst": ["water"],
-      "weakAgainst": ["fire"]
+      "strongAgainst": [
+        "water"
+      ],
+      "weakAgainst": [
+        "fire"
+      ]
     },
     "slow": {
       "name": "Slow",
