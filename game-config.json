@@ -6,9 +6,196 @@
     "startingLives": 20,
     "waveCompleteGold": 50,
     "itemDropChance": 0.15,
-    "version": "0.1.2",
-    "backgroundImage": "Game_Images/Background.png"
+    "version": "0.3.0",
+    "backgroundImage": "Game_Images/Background.png",
+    "bossLifePenalty": 3,
+    "airWaveSpeedMultiplier": 0.75,
+    "airWaveCountDivisor": 4,
+    "upgradeCostMultiplier": 0.7,
+    "sellRefundRatio": 0.5,
+    "sellGracePeriodSeconds": 5
   },
+  "maps": [
+    {
+      "id": "plains",
+      "name": "Open Plains",
+      "icon": "🌱",
+      "description": "Classic open grid with full freedom to design intricate custom mazes.",
+      "start": {
+        "x": 0,
+        "y": 7
+      },
+      "end": {
+        "x": 13,
+        "y": 7
+      },
+      "obstacles": []
+    },
+    {
+      "id": "chasm",
+      "name": "The Chasm",
+      "icon": "⛰️",
+      "description": "Natural rock pillars and deep chasms divide the map into tactical chokepoints.",
+      "start": {
+        "x": 0,
+        "y": 7
+      },
+      "end": {
+        "x": 13,
+        "y": 7
+      },
+      "obstacles": [
+        {
+          "x": 3,
+          "y": 2
+        },
+        {
+          "x": 3,
+          "y": 3
+        },
+        {
+          "x": 3,
+          "y": 4
+        },
+        {
+          "x": 3,
+          "y": 10
+        },
+        {
+          "x": 3,
+          "y": 11
+        },
+        {
+          "x": 3,
+          "y": 12
+        },
+        {
+          "x": 7,
+          "y": 5
+        },
+        {
+          "x": 7,
+          "y": 6
+        },
+        {
+          "x": 7,
+          "y": 8
+        },
+        {
+          "x": 7,
+          "y": 9
+        },
+        {
+          "x": 10,
+          "y": 1
+        },
+        {
+          "x": 10,
+          "y": 2
+        },
+        {
+          "x": 10,
+          "y": 11
+        },
+        {
+          "x": 10,
+          "y": 12
+        }
+      ]
+    },
+    {
+      "id": "crossroads",
+      "name": "Crossroads",
+      "icon": "⚔️",
+      "description": "Enemies emerge from two separate portals and converge toward a single core.",
+      "multiStart": [
+        {
+          "x": 0,
+          "y": 2
+        },
+        {
+          "x": 0,
+          "y": 11
+        }
+      ],
+      "start": {
+        "x": 0,
+        "y": 2
+      },
+      "end": {
+        "x": 13,
+        "y": 7
+      },
+      "obstacles": [
+        {
+          "x": 5,
+          "y": 6
+        },
+        {
+          "x": 5,
+          "y": 7
+        },
+        {
+          "x": 5,
+          "y": 8
+        },
+        {
+          "x": 8,
+          "y": 6
+        },
+        {
+          "x": 8,
+          "y": 7
+        },
+        {
+          "x": 8,
+          "y": 8
+        }
+      ]
+    },
+    {
+      "id": "twinexits",
+      "name": "Twin Exits",
+      "icon": "🛡️",
+      "description": "A single invasion portal branches toward two separate exits to defend.",
+      "start": {
+        "x": 0,
+        "y": 7
+      },
+      "multiEnd": [
+        {
+          "x": 13,
+          "y": 2
+        },
+        {
+          "x": 13,
+          "y": 11
+        }
+      ],
+      "end": {
+        "x": 13,
+        "y": 2
+      },
+      "obstacles": [
+        {
+          "x": 6,
+          "y": 6
+        },
+        {
+          "x": 6,
+          "y": 7
+        },
+        {
+          "x": 6,
+          "y": 8
+        },
+        {
+          "x": 7,
+          "y": 7
+        }
+      ]
+    }
+  ],
   "towers": [
     {
       "name": "Cannon",
@@ -63,7 +250,7 @@
   ],
   "slowTower": {
     "slowAmount": 0.4,
-    "slowDuration": 2,
+    "slowDuration": 2.5,
     "effectColor": "0x88ccff"
   },
   "shopTowers": [
@@ -133,7 +320,7 @@
       "shopPrice": 400,
       "element": "fire",
       "image": "fire.png",
-      "description": "Fire elemental tower, strong against earth enemies",
+      "description": "Fire elemental tower, strong against earth enemies and inflicts burning",
       "tips": "Weak against water enemies, strong against earth enemies"
     },
     {
@@ -150,7 +337,7 @@
       "shopPrice": 400,
       "element": "water",
       "image": "water.png",
-      "description": "Water elemental tower, strong against fire enemies",
+      "description": "Water elemental tower, drenches enemies to amplify elemental damage",
       "tips": "Weak against earth enemies, strong against fire enemies"
     },
     {
@@ -167,10 +354,232 @@
       "shopPrice": 400,
       "element": "earth",
       "image": "earth.png",
-      "description": "Earth elemental tower, strong against water enemies",
+      "description": "Earth elemental tower, sunders armor and micro-stuns targets",
       "tips": "Weak against fire enemies, strong against water enemies"
     }
   ],
+  "towerSpecializations": {
+    "Cannon": [
+      {
+        "id": "gatling",
+        "name": "Gatling Turret",
+        "icon": "⚡",
+        "desc": "Ultra-rapid fire machine gun shreds fast waves.",
+        "fireRateMult": 0.35,
+        "damageMult": 0.75,
+        "rangeBonus": 15,
+        "critChanceBonus": 0.1
+      },
+      {
+        "id": "howitzer",
+        "name": "Artillery Mortar",
+        "icon": "💥",
+        "desc": "Long-range heavy cannon with explosive splash shells.",
+        "fireRateMult": 1.6,
+        "damageMult": 2.6,
+        "rangeBonus": 70,
+        "splashRadius": 60,
+        "splashDamageRatio": 0.6
+      }
+    ],
+    "Melee": [
+      {
+        "id": "whirlwind",
+        "name": "Whirlwind Blade",
+        "icon": "🌪️",
+        "desc": "360-degree sweeping strikes with expanded attack range.",
+        "fireRateMult": 0.8,
+        "damageMult": 1.4,
+        "rangeBonus": 25
+      },
+      {
+        "id": "executioner",
+        "name": "Executioner",
+        "icon": "🪓",
+        "desc": "Devastating strikes deal +150% damage to enemies below 40% HP.",
+        "fireRateMult": 1.1,
+        "damageMult": 1.9,
+        "critChanceBonus": 0.2,
+        "critMultBonus": 1.5,
+        "executeThreshold": 0.4
+      }
+    ],
+    "Splash": [
+      {
+        "id": "cluster",
+        "name": "Cluster Launcher",
+        "icon": "🚀",
+        "desc": "Fires cluster bomblets covering a massive blast radius.",
+        "splashRadiusBonus": 45,
+        "splashRatioBonus": 0.25,
+        "fireRateMult": 0.9
+      },
+      {
+        "id": "nuke",
+        "name": "Nuclear Silo",
+        "icon": "☢️",
+        "desc": "Slow, catastrophic warheads leaving a radioactive burn zone.",
+        "damageMult": 3.2,
+        "fireRateMult": 1.8,
+        "splashRadiusBonus": 60,
+        "leavesHazard": true
+      }
+    ],
+    "Anti-Air": [
+      {
+        "id": "flak",
+        "name": "Flak Cannon",
+        "icon": "🎆",
+        "desc": "Explosive shrapnel shreds tightly packed aerial swarms.",
+        "fireRateMult": 0.7,
+        "splashRadius": 65,
+        "splashDamageRatio": 0.65
+      },
+      {
+        "id": "sam",
+        "name": "SAM Interceptor",
+        "icon": "🎯",
+        "desc": "Precision homing missiles with extreme range and critical lethality.",
+        "rangeBonus": 80,
+        "damageMult": 2.2,
+        "critChanceBonus": 0.35
+      }
+    ],
+    "Slow": [
+      {
+        "id": "blizzard",
+        "name": "Blizzard Vortex",
+        "icon": "❄️",
+        "desc": "Continuous 360-degree freezing aura slows all nearby units.",
+        "slowAmountBonus": 0.2,
+        "rangeBonus": 30,
+        "fireRateMult": 0.6
+      },
+      {
+        "id": "permafrost",
+        "name": "Permafrost",
+        "icon": "🧊",
+        "desc": "Infuses ice spikes with a 25% chance to freeze creeps solid for 1.2s.",
+        "freezeChance": 0.25,
+        "freezeDuration": 1.2,
+        "damageMult": 1.5
+      }
+    ],
+    "Sniper": [
+      {
+        "id": "railgun",
+        "name": "Railgun Accelerator",
+        "icon": "⚡",
+        "desc": "Hyper-velocity magnetic beam that pierces through enemy lines.",
+        "damageMult": 2.2,
+        "pierce": true,
+        "critChanceBonus": 0.15
+      },
+      {
+        "id": "headhunter",
+        "name": "Headhunter",
+        "icon": "👁️",
+        "desc": "Supreme long-range assassination with 4.5x critical multiplier.",
+        "rangeBonus": 90,
+        "critMultBonus": 2.0,
+        "critChanceBonus": 0.25,
+        "damageMult": 1.7
+      }
+    ],
+    "Fire": [
+      {
+        "id": "inferno",
+        "name": "Inferno Beam",
+        "icon": "🔥",
+        "desc": "Ramps continuous thermal heat into a blazing single-target laser.",
+        "fireRateMult": 0.4,
+        "burnDurationBonus": 2,
+        "burnTickMultiplier": 1.5
+      },
+      {
+        "id": "napalm",
+        "name": "Napalm Launcher",
+        "icon": "☄️",
+        "desc": "Ignites ground patches that continuously burn all walking creeps.",
+        "splashRadius": 50,
+        "splashDamageRatio": 0.5,
+        "leavesFireGround": true
+      }
+    ],
+    "Water": [
+      {
+        "id": "tsunami",
+        "name": "Tsunami Surge",
+        "icon": "🌊",
+        "desc": "Powerful hydro-blasts that briefly push back ground enemies.",
+        "knockback": 18,
+        "damageMult": 1.5,
+        "soakedDurationBonus": 3
+      },
+      {
+        "id": "geyser",
+        "name": "Geyser Torrent",
+        "icon": "🌀",
+        "desc": "Rapid pressurized geysers with widespread Soaked amplification.",
+        "fireRateMult": 0.5,
+        "rangeBonus": 35,
+        "soakedAmpBonus": 0.2
+      }
+    ],
+    "Earth": [
+      {
+        "id": "tectonic",
+        "name": "Tectonic Quake",
+        "icon": "🏔️",
+        "desc": "Sends shockwaves through the ground with 30% stun chance.",
+        "stunChance": 0.3,
+        "stunDuration": 0.8,
+        "damageMult": 1.6
+      },
+      {
+        "id": "monolith",
+        "name": "Obsidian Monolith",
+        "icon": "🗿",
+        "desc": "Heavy obsidian boulders that shatter 50% enemy armor on impact.",
+        "sunderArmorBonus": 0.25,
+        "damageMult": 2.0,
+        "critChanceBonus": 0.15
+      }
+    ]
+  },
+  "statusEffects": {
+    "burn": {
+      "name": "Burn",
+      "duration": 4.0,
+      "tickInterval": 0.8,
+      "damagePercentMaxHp": 0.025,
+      "color": "0xff4400"
+    },
+    "soaked": {
+      "name": "Soaked",
+      "duration": 5.0,
+      "damageMultiplier": 1.3,
+      "color": "0x0099ff"
+    },
+    "sunder": {
+      "name": "Sunder",
+      "duration": 4.0,
+      "armorReduction": 0.3,
+      "color": "0x996633"
+    },
+    "bleed": {
+      "name": "Bleed",
+      "duration": 3.0,
+      "tickInterval": 0.6,
+      "damagePerTick": 5,
+      "color": "0xde3333"
+    },
+    "stun": {
+      "name": "Stun",
+      "duration": 0.6,
+      "color": "0xffff55"
+    }
+  },
   "enemies": [
     {
       "name": "Fire",
@@ -272,6 +681,72 @@
         "weaknesses": {},
         "resistances": {}
       }
+    },
+    {
+      "name": "Shielded",
+      "baseSpeed": 0.9,
+      "baseHp": 60,
+      "reward": 18,
+      "color": "0x5b92e5",
+      "element": "physical",
+      "emoji": "🛡️",
+      "image": "Normal_Enemy.png",
+      "trait": "shielded",
+      "shieldHits": 4,
+      "waveScaling": {
+        "hp": 0.22,
+        "speed": 0.02
+      },
+      "elementalProperties": {
+        "weaknesses": {},
+        "resistances": {}
+      }
+    },
+    {
+      "name": "Splitter",
+      "baseSpeed": 1.1,
+      "baseHp": 50,
+      "reward": 16,
+      "color": "0xb85cf6",
+      "element": "physical",
+      "emoji": "👥",
+      "image": "Normal_Enemy.png",
+      "trait": "splitter",
+      "splitCount": 2,
+      "waveScaling": {
+        "hp": 0.21,
+        "speed": 0.025
+      },
+      "elementalProperties": {
+        "weaknesses": {},
+        "resistances": {}
+      }
+    },
+    {
+      "name": "Healer",
+      "baseSpeed": 0.95,
+      "baseHp": 55,
+      "reward": 20,
+      "color": "0x10b981",
+      "element": "earth",
+      "emoji": "💚",
+      "image": "Earth_Enemy.png",
+      "trait": "healer",
+      "healRadius": 110,
+      "healPercent": 0.12,
+      "healCooldown": 2.5,
+      "waveScaling": {
+        "hp": 0.22,
+        "speed": 0.02
+      },
+      "elementalProperties": {
+        "weaknesses": {
+          "fire": 0.5
+        },
+        "resistances": {
+          "earth": 0.5
+        }
+      }
     }
   ],
   "boss": {
@@ -286,6 +761,14 @@
       "hp": 0.34,
       "speed": 0.03
     },
+    "abilities": {
+      "enrageHpThreshold": 0.3,
+      "enrageSpeedMult": 1.35,
+      "summonMinionsHpThreshold": 0.5,
+      "empCooldown": 10.0,
+      "empRadius": 130,
+      "empDuration": 2.5
+    },
     "elementalProperties": {
       "weaknesses": {},
       "resistances": {}
@@ -297,69 +780,96 @@
     "patterns": [
       {
         "name": "Fire Wave",
-        "enemies": ["Fire"],
+        "enemies": [
+          "Fire"
+        ],
         "color": "0xff4400",
         "icon": "🔥"
       },
       {
         "name": "Water Wave",
-        "enemies": ["Water"],
+        "enemies": [
+          "Water"
+        ],
         "color": "0x0099ff",
         "icon": "🌊"
       },
       {
         "name": "Earth Wave",
-        "enemies": ["Earth"],
+        "enemies": [
+          "Earth"
+        ],
         "color": "0x996633",
         "icon": "🌲"
       },
       {
         "name": "Normal Wave",
-        "enemies": ["Normal"],
+        "enemies": [
+          "Normal"
+        ],
         "color": "0xcccccc",
         "icon": "⚪"
       },
       {
         "name": "Mixed Wave",
-        "enemies": ["Fire", "Water", "Earth", "Normal"],
+        "enemies": [
+          "Fire",
+          "Water",
+          "Earth",
+          "Normal",
+          "Shielded",
+          "Splitter",
+          "Healer"
+        ],
         "color": "0x9966cc",
         "icon": "💯"
       },
       {
         "name": "Air Wave",
-        "enemies": ["Flying"],
+        "enemies": [
+          "Flying"
+        ],
         "color": "0xaaddff",
         "icon": "✈️"
       },
       {
         "name": "Boss Wave",
-        "enemies": ["Boss"],
+        "enemies": [
+          "Boss"
+        ],
         "color": "0xf2e96d",
         "icon": "👑"
       }
     ],
-    "sequence": [0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0, 1]
+    "sequence": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      0,
+      1
+    ]
   },
   "items": [
     {
       "name": "Gold",
-      "value": 25,
-      "color": "0xffd700",
-      "weight": 50
-    },
-    {
-      "name": "Damage Boost",
-      "value": 0.3,
-      "duration": 20,
-      "color": "0xff4500",
-      "weight": 25
-    },
-    {
-      "name": "Speed Boost",
-      "value": 0.5,
-      "duration": 20,
-      "color": "0x00ffff",
-      "weight": 25
+      "value": 35,
+      "color": "0xfacc15",
+      "weight": 100
     }
   ],
   "boost": {
@@ -377,6 +887,53 @@
     "key": "X",
     "color": "0xff3300"
   },
+  "relics": [
+    {
+      "id": "starterTreasury",
+      "name": "Starter Treasury",
+      "icon": "🪙",
+      "desc": "+50 starting gold per rank.",
+      "maxRank": 5,
+      "costPerRank": 1,
+      "goldPerRank": 50
+    },
+    {
+      "id": "fortifiedCore",
+      "name": "Fortified Core",
+      "icon": "❤️",
+      "desc": "+2 starting lives per rank.",
+      "maxRank": 5,
+      "costPerRank": 1,
+      "livesPerRank": 2
+    },
+    {
+      "id": "engineeringGuild",
+      "name": "Engineering Guild",
+      "icon": "🛠️",
+      "desc": "6% cheaper tower upgrade costs per rank.",
+      "maxRank": 5,
+      "costPerRank": 2,
+      "discountPerRank": 0.06
+    },
+    {
+      "id": "merchantContract",
+      "name": "Merchant Contract",
+      "icon": "📜",
+      "desc": "10% cheaper Shop unlock costs per rank.",
+      "maxRank": 4,
+      "costPerRank": 2,
+      "shopDiscountPerRank": 0.10
+    },
+    {
+      "id": "overclockReactor",
+      "name": "Overclock Reactor",
+      "icon": "⚡",
+      "desc": "Global Boost duration increased by +1s per rank.",
+      "maxRank": 3,
+      "costPerRank": 2,
+      "boostDurationBonus": 1.0
+    }
+  ],
   "elements": {
     "physical": {
       "name": "Physical",
@@ -386,22 +943,34 @@
       "name": "Fire",
       "color": "0xff4400",
       "emoji": "🔥",
-      "strongAgainst": ["earth"],
-      "weakAgainst": ["water"]
+      "strongAgainst": [
+        "earth"
+      ],
+      "weakAgainst": [
+        "water"
+      ]
     },
     "water": {
       "name": "Water",
       "color": "0x0099ff",
       "emoji": "🌊",
-      "strongAgainst": ["fire"],
-      "weakAgainst": ["earth"]
+      "strongAgainst": [
+        "fire"
+      ],
+      "weakAgainst": [
+        "earth"
+      ]
     },
     "earth": {
       "name": "Earth",
       "color": "0x996633",
       "emoji": "🌲",
-      "strongAgainst": ["water"],
-      "weakAgainst": ["fire"]
+      "strongAgainst": [
+        "water"
+      ],
+      "weakAgainst": [
+        "fire"
+      ]
     },
     "slow": {
       "name": "Slow",
