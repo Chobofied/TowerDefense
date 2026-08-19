@@ -633,7 +633,7 @@
             margin-top: 2px;
         }
 
-        .relic-buy-btn, .map-select-btn {
+        .relic-buy-btn {
             background: rgba(255, 255, 255, 0.08);
             border: 1px solid var(--border-subtle);
             color: var(--text-muted);
@@ -648,6 +648,25 @@
             background: var(--accent-amber);
             color: #0f172a;
             border-color: var(--accent-amber);
+        }
+
+        .map-select-btn {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+            border: 1px solid #10b981 !important;
+            color: #ffffff !important;
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            font-size: 0.85em;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(16, 185, 129, 0.35);
+            transition: all 0.15s ease;
+        }
+
+        .map-select-btn:hover {
+            filter: brightness(1.15);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.5);
         }
 
         /* Save & Load Slots */
@@ -919,7 +938,41 @@
                 overflow-y: auto;
             }
 
+            #tab-towers {
+                order: 1;
+            }
+
+            #action-bar {
+                order: 2;
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 4px;
+            }
+
+            #start-btn {
+                grid-column: 1 / -1;
+                padding: 10px 8px;
+                font-size: 0.95em;
+            }
+
+            .action-btn:not(#start-btn) {
+                padding: 6px 4px;
+                font-size: 0.75em;
+            }
+
+            #tactical-toolbar {
+                order: 3;
+                padding: 3px 5px;
+                gap: 2px;
+            }
+
+            .icon-tool-btn, .speed-btn {
+                padding: 3px 5px;
+                font-size: 0.7em;
+            }
+
             #ui-header-stats {
+                order: 4;
                 padding: 4px 6px;
                 gap: 3px;
             }
@@ -936,17 +989,8 @@
                 font-size: 0.82em;
             }
 
-            #tactical-toolbar {
-                padding: 3px 5px;
-                gap: 2px;
-            }
-
-            .icon-tool-btn, .speed-btn {
-                padding: 3px 5px;
-                font-size: 0.7em;
-            }
-
             #mobile-tabs {
+                order: 5;
                 display: grid;
                 padding: 2px;
                 gap: 3px;
@@ -959,6 +1003,10 @@
 
             .tab-panel:not(#tab-towers) {
                 display: none;
+            }
+
+            #tab-waves, #tab-intel {
+                order: 6;
             }
 
             #tab-towers .section-header-title {
@@ -1003,23 +1051,6 @@
                 width: 16px;
                 height: 16px;
                 font-size: 9px;
-            }
-
-            #action-bar {
-                display: grid;
-                grid-template-columns: repeat(3, 1fr);
-                gap: 4px;
-            }
-
-            #start-btn {
-                grid-column: 1 / -1;
-                padding: 10px 8px;
-                font-size: 0.9em;
-            }
-
-            .action-btn:not(#start-btn) {
-                padding: 6px 4px;
-                font-size: 0.75em;
             }
         }
     </style>
