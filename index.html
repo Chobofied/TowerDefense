@@ -1867,6 +1867,7 @@
             renderTowerSelect();
             renderWaveInfo();
             updateUI();
+            try { app.view.style.pointerEvents = ''; } catch { }
             showMessage('Game loaded.', '#88dd88');
             return true;
         }
@@ -1907,6 +1908,7 @@
                         if (isGameRunning && !confirm('Loading will overwrite current run. Continue?')) return;
                         applyGameSnapshot(snap);
                         modal.style.display = 'none';
+                        try { app.view.style.pointerEvents = ''; } catch { }
                     };
                     loadBtn.addEventListener('touchstart', (e) => { e.preventDefault(); loadBtn.click(); });
                     const delBtn = document.createElement('button');
