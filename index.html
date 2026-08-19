@@ -94,7 +94,7 @@
             top: 16px;
             left: 50%;
             transform: translateX(-50%);
-            z-index: 150;
+            z-index: 999;
             pointer-events: none;
             display: flex;
             flex-direction: column;
@@ -596,6 +596,99 @@
             border-radius: var(--radius-md);
             cursor: pointer;
         }
+
+        /* Batch Multi-Tower Management */
+        .batch-summary-box {
+            background: rgba(56, 189, 248, 0.12);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: var(--radius-md);
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.82em;
+            color: #fff;
+        }
+
+        .batch-actions-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .batch-targeting-strip {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            overflow-x: auto;
+            padding: 4px 0;
+        }
+
+        .batch-target-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            font-size: 0.72em;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.15s ease;
+        }
+
+        .batch-target-btn:hover {
+            background: rgba(56, 189, 248, 0.2);
+            color: var(--accent-cyan);
+            border-color: var(--accent-cyan);
+        }
+
+        .batch-groups-container {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 240px;
+            overflow-y: auto;
+            margin: 6px 0;
+        }
+
+        .batch-group-card {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 8px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .batch-group-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85em;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .batch-group-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 2px;
+        }
+
+        .batch-sub-btn {
+            flex: 1;
+            padding: 4px 6px;
+            font-size: 0.75em;
+            font-weight: 800;
+            border-radius: var(--radius-sm);
+            border: none;
+            cursor: pointer;
+        }
+
+        .batch-sub-up { background: #10b981; color: #fff; }
+        .batch-sub-sell { background: #f43f5e; color: #fff; }
 
         /* Relic & Map Cards */
         .relic-card, .map-card {

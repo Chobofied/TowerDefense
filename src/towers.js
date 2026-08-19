@@ -419,7 +419,7 @@ export class TowerManager {
     }
 
     // --- Draw Towers, Specialization Runes & Overlays ---
-    draw(graphics, stage, selectedTower, hoverTower) {
+    draw(graphics, stage, selectedTower, hoverTower, selectedTowers = []) {
         const nowTime = Date.now();
 
         // 1. Draw All-Towers Range Overlay (if Shift is held or enabled)
@@ -488,9 +488,25 @@ export class TowerManager {
             }
         }
 
-        // 3. Selected / Hovered Tower Range & Line-of-Sight Laser
+        // 3. Multi-Tower Selection Highlights & Ranges
+        if (selectedTowers && selectedTowers.length > 0) {
+            for (const t of selectedTowers) {
+                const cx = t.x * this.tileSize + this.tileSize / 2;
+                const cy = t.y * this.tileSize + this.tileSize / 2;
+
+                // Glowing bounding bracket
+                graphics.lineStyle(2, 0x38bdf8, 0.9).drawRoundedRect(t.x * this.tileSize + 2, t.y * this.tileSize + 2, this.tileSize - 4, this.tileSize - 4, 6);
+                graphics.beginFill(0x38bdf8, 0.12).drawRoundedRect(t.x * this.tileSize + 2, t.y * this.tileSize + 2, this.tileSize - 4, this.tileSize - 4, 6).endFill();
+
+                // Tower range
+                graphics.lineStyle(1.5, t.type.color || 0x38bdf8, 0.35).drawCircle(cx, cy, t.type.range);
+                graphics.beginFill(t.type.color || 0x38bdf8, 0.03).drawCircle(cx, cy, t.type.range).endFill();
+            }
+        }
+
+        // 4. Single Selected / Hovered Tower Range & Line-of-Sight Laser
         const activeTower = selectedTower || hoverTower;
-        if (activeTower) {
+        if (activeTower && (!selectedTowers || selectedTowers.length <= 1)) {
             const cx = activeTower.x * this.tileSize + this.tileSize / 2;
             const cy = activeTower.y * this.tileSize + this.tileSize / 2;
 

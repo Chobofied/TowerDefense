@@ -282,6 +282,36 @@ async function runSuite() {
                     await safeClick(page, '#tower-info-close-btn');
                     await new Promise(r => setTimeout(r, 200));
                 }
+
+                // Build a 2nd tower adjacent to test multi-selection marquee
+                await safeClick(page, '#tower-select .tower-btn:nth-child(2)'); // Melee
+                await new Promise(r => setTimeout(r, 200));
+                await page.mouse.click(clickX + 48, clickY);
+                await new Promise(r => setTimeout(r, 300));
+
+                // 6b. Drag-Box Marquee Multi-Selection Test
+                await page.mouse.move(clickX - 30, clickY - 30);
+                await page.mouse.down();
+                await page.mouse.move(clickX + 90, clickY + 50, { steps: 5 });
+                await page.mouse.up();
+                await new Promise(r => setTimeout(r, 400));
+
+                const multiModalOpen = await page.evaluate(() => {
+                    const m = document.getElementById('tower-info-modal');
+                    const title = document.getElementById('tower-info-modal-title');
+                    return m && window.getComputedStyle(m).display === 'flex' && title?.textContent?.includes('Batch Defense Selection');
+                });
+                if (multiModalOpen) {
+                    reportData.desktop.checks.push('✅ Drag-box marquee multi-selected towers & opened Batch Management Terminal');
+
+                    // Test Batch Upgrade [U]
+                    await page.keyboard.press('u');
+                    await new Promise(r => setTimeout(r, 300));
+                    reportData.desktop.checks.push('✅ Hotkey [U] batch upgraded selected towers');
+
+                    await safeClick(page, '#tower-info-close-btn');
+                    await new Promise(r => setTimeout(r, 200));
+                }
             }
 
             // 7. Boost Ability

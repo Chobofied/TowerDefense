@@ -41,9 +41,15 @@ class TowerDefenseGame {
         this.placingBomb = false;
         this.selectedTowerTypeIdx = -1;
         this.selectedTower = null;
+        this.selectedTowers = [];
         this.selectedEnemy = null;
         this.activeEffects = [];
         this.items = [];
+
+        // Box Marquee Drag Selection (Desktop)
+        this.isBoxSelecting = false;
+        this.boxStartPos = null;
+        this.boxCurrentPos = null;
 
         // Speed & Pacing
         this.gameSpeed = 1.0;
@@ -97,7 +103,7 @@ class TowerDefenseGame {
         // 2. Create Background Texture & Beveled Grid System Overlay
         this.createBackgroundAndGrid();
 
-        // 3. Graphics Layer (for dynamic paths, towers, and combat)
+        // 3. Graphics Layer (for dynamic paths, towers, combat & marquee)
         this.graphics = new PIXI.Graphics();
         this.worldContainer.addChild(this.graphics);
 
@@ -332,20 +338,36 @@ class TowerDefenseGame {
                 return;
             }
 
-            // U: Quick Upgrade Selected Tower
-            if (key === 'u' && this.selectedTower) {
-                this.upgradeTower(this.selectedTower);
-                return;
+            // U: Quick Upgrade Selected Tower or Multi-Selection
+            if (key === 'u') {
+                if (this.selectedTowers && this.selectedTowers.length > 1) {
+                    this.batchUpgradeTowers(this.selectedTowers);
+                    return;
+                } else if (this.selectedTower) {
+                    this.upgradeTower(this.selectedTower);
+                    return;
+                }
             }
 
-            // S / Delete / Backspace: Quick Sell Selected Tower (when a tower is selected)
-            if ((key === 's' || e.key === 'Delete' || e.key === 'Backspace') && this.selectedTower) {
-                this.sellTower(this.selectedTower);
-                return;
+            // S / Delete / Backspace: Quick Sell Selected Tower or Multi-Selection
+            if (key === 's' || e.key === 'Delete' || e.key === 'Backspace') {
+                if (this.selectedTowers && this.selectedTowers.length > 1) {
+                    this.batchSellTowers(this.selectedTowers);
+                    return;
+                } else if (this.selectedTower) {
+                    this.sellTower(this.selectedTower);
+                    return;
+                }
             }
 
-            // Escape: Deselect tower or cancel placement
+            // Escape: Deselect tower or multi-selection or cancel placement
             if (e.key === 'Escape') {
+                if (this.selectedTowers && this.selectedTowers.length > 0) {
+                    this.selectedTowers = [];
+                    this.selectedTower = null;
+                    this.closeTowerStatsModal();
+                    return;
+                }
                 if (this.selectedTower) {
                     this.selectedTower = null;
                     this.closeTowerStatsModal();
@@ -377,12 +399,14 @@ class TowerDefenseGame {
                 return;
             }
 
-            // Tower Hotkeys (Q, W, E, A, S, T, F, Y, U)
-            const tIdx = CONFIG.towers.findIndex(t => t.key.toLowerCase() === key);
-            if (tIdx !== -1) {
-                this.selectedTowerTypeIdx = this.selectedTowerTypeIdx === tIdx ? -1 : tIdx;
-                this.placingBomb = false;
-                this.renderTowerSelect();
+            // Tower Hotkeys (Q, W, E, A, S, T, F, Y, U) - only when NOT having multi-selection
+            if (!this.selectedTowers || this.selectedTowers.length <= 1) {
+                const tIdx = CONFIG.towers.findIndex(t => t.key.toLowerCase() === key);
+                if (tIdx !== -1) {
+                    this.selectedTowerTypeIdx = this.selectedTowerTypeIdx === tIdx ? -1 : tIdx;
+                    this.placingBomb = false;
+                    this.renderTowerSelect();
+                }
             }
         });
 
@@ -394,9 +418,79 @@ class TowerDefenseGame {
 
         // Pointer Canvas Handlers
         const canvas = this.app.view;
-        canvas.addEventListener('mousemove', e => this.handlePointerMove(e));
+        let isMouseDown = false;
+        let mouseDownPos = null;
+        let didDragBox = false;
+
+        canvas.addEventListener('mousedown', e => {
+            if (e.button === 0) { // Left click
+                isMouseDown = true;
+                didDragBox = false;
+                mouseDownPos = this.getPointerWorldPos(e);
+                this.boxStartPos = mouseDownPos;
+                this.boxCurrentPos = mouseDownPos;
+                this.isBoxSelecting = false;
+            }
+        });
+
+        window.addEventListener('mousemove', e => {
+            if (isMouseDown && mouseDownPos && !this.placingBomb && this.selectedTowerTypeIdx < 0) {
+                const curPos = this.getPointerWorldPos(e);
+                const dragDist = Math.hypot(curPos.x - mouseDownPos.x, curPos.y - mouseDownPos.y);
+                if (dragDist > 14) {
+                    this.isBoxSelecting = true;
+                    didDragBox = true;
+                    this.boxCurrentPos = curPos;
+                }
+            }
+            this.handlePointerMove(e);
+        });
+
+        window.addEventListener('mouseup', e => {
+            if (isMouseDown) {
+                isMouseDown = false;
+                if (this.isBoxSelecting && this.boxStartPos && this.boxCurrentPos) {
+                    const minX = Math.min(this.boxStartPos.x, this.boxCurrentPos.x);
+                    const maxX = Math.max(this.boxStartPos.x, this.boxCurrentPos.x);
+                    const minY = Math.min(this.boxStartPos.y, this.boxCurrentPos.y);
+                    const maxY = Math.max(this.boxStartPos.y, this.boxCurrentPos.y);
+
+                    const TILE = CONFIG.gameSettings.tileSize;
+                    const inside = this.towers.towers.filter(t => {
+                        const cx = t.x * TILE + TILE / 2;
+                        const cy = t.y * TILE + TILE / 2;
+                        return cx >= minX && cx <= maxX && cy >= minY && cy <= maxY;
+                    });
+
+                    this.isBoxSelecting = false;
+                    this.boxStartPos = null;
+                    this.boxCurrentPos = null;
+
+                    if (inside.length === 0) {
+                        this.selectedTower = null;
+                        this.selectedTowers = [];
+                        this.closeTowerStatsModal();
+                    } else if (inside.length === 1) {
+                        this.selectedTower = inside[0];
+                        this.selectedTowers = [inside[0]];
+                        this.showTowerStatsModal(inside[0]);
+                    } else {
+                        this.selectedTower = null;
+                        this.selectedTowers = inside;
+                        this.showMultiTowerStatsModal(inside);
+                    }
+                }
+            }
+        });
+
         canvas.addEventListener('mouseleave', () => { this.previewTile = null; });
-        canvas.addEventListener('click', e => this.handlePointerClick(e));
+        canvas.addEventListener('click', e => {
+            if (didDragBox) {
+                didDragBox = false;
+                return;
+            }
+            this.handlePointerClick(e);
+        });
 
         // Desktop Mouse Wheel Zoom
         canvas.addEventListener('wheel', e => {
@@ -588,6 +682,7 @@ class TowerDefenseGame {
         if (clickedEnemy) {
             this.selectedEnemy = clickedEnemy;
             this.selectedTower = null;
+            this.selectedTowers = [];
             this.showEnemyStats(clickedEnemy);
             return;
         }
@@ -596,6 +691,7 @@ class TowerDefenseGame {
         const clickedTower = this.towers.towers.find(t => t.x === tx && t.y === ty);
         if (clickedTower) {
             this.selectedTower = clickedTower;
+            this.selectedTowers = [clickedTower];
             this.selectedEnemy = null;
             this.selectedTowerTypeIdx = -1;
             this.renderTowerSelect();
@@ -618,6 +714,7 @@ class TowerDefenseGame {
             this.placeTowerAt(tx, ty);
         } else {
             this.selectedTower = null;
+            this.selectedTowers = [];
             this.selectedEnemy = null;
             this.hideStatsPanel();
         }
@@ -671,6 +768,10 @@ class TowerDefenseGame {
         const cost = this.towers.getUpgradeCost(tower, CONFIG.gameSettings.upgradeCostMultiplier || 0.7, discount);
 
         if (this.gold < cost) {
+            this.closeTowerStatsModal();
+            this.selectedTower = null;
+            this.selectedTowers = [];
+            Audio.playLifeLost();
             this.ui.showToast('Not enough gold for upgrade!', '#f87171');
             return;
         }
@@ -695,10 +796,80 @@ class TowerDefenseGame {
         this.towers.removeTower(tower);
         this.refreshGrid();
         this.selectedTower = null;
+        this.selectedTowers = [];
         Audio.playCoin();
         this.ui.showToast(`+${refund}g refunded`, '#facc15');
         this.updateUI();
         this.closeTowerStatsModal();
+    }
+
+    // --- Batch Multi-Tower Operations ---
+    batchUpgradeTowers(towersList) {
+        if (!towersList || towersList.length === 0) return;
+        const discount = this.meta.getUpgradeDiscount();
+        const mult = CONFIG.gameSettings.upgradeCostMultiplier || 0.7;
+
+        // Sort ascending by level so lowest level towers upgrade first
+        const sorted = [...towersList].sort((a, b) => a.level - b.level);
+        let upgradedCount = 0;
+        let totalCost = 0;
+
+        for (const t of sorted) {
+            const cost = this.towers.getUpgradeCost(t, mult, discount);
+            if (this.gold >= cost) {
+                this.gold -= cost;
+                t.level++;
+                totalCost += cost;
+                upgradedCount++;
+            }
+        }
+
+        if (upgradedCount > 0) {
+            Audio.playUpgrade();
+            this.ui.showToast(`Upgraded ${upgradedCount} towers for -${totalCost}g!`, '#10b981');
+            this.updateUI();
+            this.showMultiTowerStatsModal(this.selectedTowers);
+        } else {
+            this.closeTowerStatsModal();
+            this.selectedTower = null;
+            this.selectedTowers = [];
+            Audio.playLifeLost();
+            this.ui.showToast('Not enough gold to upgrade selected towers!', '#f87171');
+        }
+    }
+
+    batchSellTowers(towersList) {
+        if (!towersList || towersList.length === 0) return;
+        let totalRefund = 0;
+        const count = towersList.length;
+
+        for (const t of [...towersList]) {
+            const refund = this.towers.getSellValue(
+                t,
+                CONFIG.gameSettings.sellRefundRatio || 0.5,
+                CONFIG.gameSettings.sellGracePeriodSeconds || 5,
+                this.wave,
+                this.isGameRunning
+            );
+            totalRefund += refund;
+            this.towers.removeTower(t);
+        }
+
+        this.gold += totalRefund;
+        this.refreshGrid();
+        this.selectedTowers = [];
+        this.selectedTower = null;
+        Audio.playCoin();
+        this.ui.showToast(`Sold ${count} towers (+${totalRefund}g refunded)!`, '#facc15');
+        this.updateUI();
+        this.closeTowerStatsModal();
+    }
+
+    batchSetTargeting(towersList, mode) {
+        if (!towersList || towersList.length === 0) return;
+        towersList.forEach(t => { t.targetingMode = mode; });
+        this.ui.showToast(`Targeting set to ${mode.toUpperCase()} for ${towersList.length} towers!`, '#38bdf8', 1200);
+        this.showMultiTowerStatsModal(towersList);
     }
 
     detonateBomb(x, y) {
@@ -1089,13 +1260,24 @@ class TowerDefenseGame {
         // 3. Effects & Combat Visuals
         this.effects.draw(this.graphics);
 
-        // 4. Towers & Range Overlays
-        this.towers.draw(this.graphics, this.worldContainer, this.selectedTower, null);
+        // 4. Towers & Range Overlays (Single + Multi-Selection)
+        this.towers.draw(this.graphics, this.worldContainer, this.selectedTower, null, this.selectedTowers);
 
         // 5. Enemies & Health Bars
         this.enemies.draw(this.graphics, this.worldContainer, this.selectedEnemy);
 
-        // 6. Placement Preview
+        // 6. Marquee Drag-Box Selection (Desktop)
+        if (this.isBoxSelecting && this.boxStartPos && this.boxCurrentPos) {
+            const minX = Math.min(this.boxStartPos.x, this.boxCurrentPos.x);
+            const minY = Math.min(this.boxStartPos.y, this.boxCurrentPos.y);
+            const w = Math.abs(this.boxCurrentPos.x - this.boxStartPos.x);
+            const h = Math.abs(this.boxCurrentPos.y - this.boxStartPos.y);
+
+            this.graphics.lineStyle(1.5, 0x38bdf8, 0.95).drawRoundedRect(minX, minY, w, h, 4);
+            this.graphics.beginFill(0x38bdf8, 0.15).drawRoundedRect(minX, minY, w, h, 4).endFill();
+        }
+
+        // 7. Placement Preview
         if (this.previewTile && this.selectedTowerTypeIdx >= 0) {
             const towerType = CONFIG.towers[this.selectedTowerTypeIdx];
             const px = this.previewTile.x * CONFIG.gameSettings.tileSize;
@@ -1249,6 +1431,8 @@ class TowerDefenseGame {
                 }
                 this.selectedTowerTypeIdx = this.selectedTowerTypeIdx === i ? -1 : i;
                 this.placingBomb = false;
+                this.selectedTower = null;
+                this.selectedTowers = [];
                 this.renderTowerSelect();
             };
 
@@ -1406,7 +1590,183 @@ class TowerDefenseGame {
         }
 
         const closeBtn = document.getElementById('tower-info-close-btn');
-        if (closeBtn) closeBtn.onclick = () => this.closeTowerStatsModal();
+        if (closeBtn) {
+            closeBtn.onclick = () => {
+                this.selectedTower = null;
+                this.selectedTowers = [];
+                this.closeTowerStatsModal();
+            };
+        }
+
+        modal.style.display = 'flex';
+    }
+
+    // --- Multi-Tower Batch Management Modal ---
+    showMultiTowerStatsModal(towersList) {
+        const modal = document.getElementById('tower-info-modal');
+        if (!modal) return;
+
+        const title = document.getElementById('tower-info-modal-title');
+        const content = document.getElementById('tower-info-modal-content');
+
+        if (title) title.textContent = `🛡️ Batch Defense Selection (${towersList.length} Towers)`;
+
+        const discount = this.meta.getUpgradeDiscount();
+        const mult = CONFIG.gameSettings.upgradeCostMultiplier || 0.7;
+
+        // Calculate Collective Metrics
+        let totalDps = 0;
+        let totalLifetimeDamage = 0;
+        let totalKills = 0;
+        let totalUpgradeCost = 0;
+        let totalSellRefund = 0;
+
+        for (const t of towersList) {
+            const dps = (t.type.damage * t.level) / t.type.fireRate;
+            totalDps += dps;
+            totalLifetimeDamage += (t.lifetimeDamage || 0);
+            totalKills += (t.lifetimeKills || 0);
+            totalUpgradeCost += this.towers.getUpgradeCost(t, mult, discount);
+            totalSellRefund += this.towers.getSellValue(
+                t,
+                CONFIG.gameSettings.sellRefundRatio || 0.5,
+                CONFIG.gameSettings.sellGracePeriodSeconds || 5,
+                this.wave,
+                this.isGameRunning
+            );
+        }
+
+        // Group by Archetype Name
+        const groups = {};
+        for (const t of towersList) {
+            const key = t.baseType.name;
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(t);
+        }
+
+        let groupCardsHtml = '';
+        for (const [name, gTowers] of Object.entries(groups)) {
+            const minLvl = Math.min(...gTowers.map(t => t.level));
+            const maxLvl = Math.max(...gTowers.map(t => t.level));
+            const lvlText = minLvl === maxLvl ? `Level ${minLvl}` : `Levels ${minLvl}-${maxLvl}`;
+            const gUpCost = gTowers.reduce((sum, t) => sum + this.towers.getUpgradeCost(t, mult, discount), 0);
+            const gSellVal = gTowers.reduce((sum, t) => sum + this.towers.getSellValue(t, CONFIG.gameSettings.sellRefundRatio || 0.5, CONFIG.gameSettings.sellGracePeriodSeconds || 5, this.wave, this.isGameRunning), 0);
+
+            // Specialization prompt if any in this group need it
+            let specHtml = '';
+            const unspec = gTowers.filter(t => t.level >= 4 && !t.specialization);
+            const specs = SPECIALIZATIONS[name] || [];
+            if (unspec.length > 0 && specs.length > 0) {
+                specHtml = `
+                    <div style="background:rgba(236,72,153,0.15); border:1px solid rgba(236,72,153,0.3); border-radius:6px; padding:6px; margin:4px 0;">
+                        <div style="font-size:0.75em; font-weight:800; color:#f472b6; margin-bottom:4px;">🌟 ${unspec.length} UNCHOSEN SPECIALIZATION(S)</div>
+                        <div style="display:flex; gap:4px;">
+                            ${specs.map(s => `
+                                <button class="spec-group-choose-btn" data-type="${name}" data-spec="${s.id}" style="flex:1; background:#ec4899; color:#fff; border:none; padding:4px; font-size:0.72em; font-weight:800; border-radius:4px; cursor:pointer;">
+                                    ${s.icon} ${s.name}
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            groupCardsHtml += `
+                <div class="batch-group-card">
+                    <div class="batch-group-header">
+                        <span>🏰 ${name} (${gTowers.length}x) • <span style="color:#38bdf8;">${lvlText}</span></span>
+                        <span style="font-size:0.8em; color:#94a3b8;">${gTowers[0].type.element}</span>
+                    </div>
+                    ${specHtml}
+                    <div class="batch-group-actions">
+                        <button class="batch-sub-btn batch-sub-up" data-group="${name}">Upgrade Group (🪙${gUpCost})</button>
+                        <button class="batch-sub-btn batch-sub-sell" data-group="${name}">Sell Group (🪙${gSellVal})</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (content) {
+            content.innerHTML = `
+                <div class="batch-summary-box">
+                    <div><strong>Total DPS:</strong> <span style="color:#38bdf8;">${totalDps.toFixed(1)}</span></div>
+                    <div><strong>Lifetime Dmg:</strong> <span style="color:#facc15;">${Math.round(totalLifetimeDamage).toLocaleString()}</span></div>
+                    <div><strong>Kills:</strong> <span style="color:#f43f5e;">${totalKills}</span></div>
+                </div>
+
+                <div style="margin-top:6px;">
+                    <div style="font-size:0.75em; font-weight:800; color:var(--text-secondary); text-transform:uppercase; margin-bottom:2px;">Sync All Targeting AI</div>
+                    <div class="batch-targeting-strip">
+                        ${['first', 'last', 'strongest', 'weakest', 'fastest', 'flying', 'closest'].map(m => `
+                            <button class="batch-target-btn" data-target="${m}">${m.toUpperCase()}</button>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <div style="font-size:0.75em; font-weight:800; color:var(--text-secondary); text-transform:uppercase; margin-top:6px;">Selected Groups Breakdown</div>
+                <div class="batch-groups-container">
+                    ${groupCardsHtml}
+                </div>
+
+                <div class="batch-actions-grid">
+                    <button id="batch-upgrade-all-btn" class="btn-upgrade" style="padding:10px; font-size:0.85em;">🔼 Upgrade All [U] (🪙${totalUpgradeCost})</button>
+                    <button id="batch-sell-all-btn" class="btn-sell" style="padding:10px; font-size:0.85em;">💰 Sell All [S] (🪙${totalSellRefund})</button>
+                </div>
+            `;
+
+            // Global Upgrade All click
+            const upAllBtn = content.querySelector('#batch-upgrade-all-btn');
+            if (upAllBtn) upAllBtn.onclick = () => this.batchUpgradeTowers(this.selectedTowers);
+
+            // Global Sell All click
+            const sellAllBtn = content.querySelector('#batch-sell-all-btn');
+            if (sellAllBtn) sellAllBtn.onclick = () => this.batchSellTowers(this.selectedTowers);
+
+            // Global Targeting buttons
+            content.querySelectorAll('.batch-target-btn').forEach(btn => {
+                btn.onclick = () => this.batchSetTargeting(this.selectedTowers, btn.dataset.target);
+            });
+
+            // Group Upgrade buttons
+            content.querySelectorAll('.batch-sub-up').forEach(btn => {
+                btn.onclick = () => {
+                    const gName = btn.dataset.group;
+                    const gList = this.selectedTowers.filter(t => t.baseType.name === gName);
+                    this.batchUpgradeTowers(gList);
+                };
+            });
+
+            // Group Sell buttons
+            content.querySelectorAll('.batch-sub-sell').forEach(btn => {
+                btn.onclick = () => {
+                    const gName = btn.dataset.group;
+                    const gList = this.selectedTowers.filter(t => t.baseType.name === gName);
+                    this.batchSellTowers(gList);
+                };
+            });
+
+            // Spec buttons inside groups
+            content.querySelectorAll('.spec-group-choose-btn').forEach(btn => {
+                btn.onclick = () => {
+                    const gName = btn.dataset.type;
+                    const specId = btn.dataset.spec;
+                    const unspec = this.selectedTowers.filter(t => t.baseType.name === gName && t.level >= 4 && !t.specialization);
+                    unspec.forEach(t => this.towers.applySpecialization(t, specId));
+                    Audio.playUpgrade();
+                    this.ui.showToast(`Applied specialization to ${unspec.length} ${gName} tower(s)!`, '#10b981');
+                    this.showMultiTowerStatsModal(this.selectedTowers);
+                };
+            });
+        }
+
+        const closeBtn = document.getElementById('tower-info-close-btn');
+        if (closeBtn) {
+            closeBtn.onclick = () => {
+                this.selectedTowers = [];
+                this.selectedTower = null;
+                this.closeTowerStatsModal();
+            };
+        }
 
         modal.style.display = 'flex';
     }
@@ -1610,7 +1970,11 @@ class TowerDefenseGame {
         this.placingBomb = false;
         this.selectedTowerTypeIdx = -1;
         this.selectedTower = null;
+        this.selectedTowers = [];
         this.selectedEnemy = null;
+        this.isBoxSelecting = false;
+        this.boxStartPos = null;
+        this.boxCurrentPos = null;
 
         // Reset camera zoom/pan
         this.viewScale = 1.0;
