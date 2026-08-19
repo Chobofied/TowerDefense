@@ -65,26 +65,62 @@ You can tweak values and immediately test by refreshing the browser—no bundlin
 
 ## Run Locally
 
-Option 1 (quick): double-click `index.html` to open in your browser.
+The game itself is **100% client-side with zero build steps and zero dependencies required to play**. PixiJS is loaded directly from CDN.
 
-Option 2 (serve locally for consistent file loading):
+### To Play the Game:
 
-```powershell
-# From the project folder
-# If you have Node.js
-npx serve . -p 8080
+**Option 1 (Quick)**: Double-click `index.html` to open in your browser, or open with the VS Code / Antigravity Live Server extension.
+
+**Option 2 (Serve with Node.js / live-server)**:
+```bash
+# Serve locally with your favorite static server
+npx live-server --port=5500
 # or
-npx http-server -p 8080
+npx serve . -p 8080
+```
+Then visit `http://localhost:5500` (or `http://localhost:8080`).
+
+---
+
+## Automated QA Testing (Optional Dev Tooling)
+
+The project includes an automated headless browser test suite (`tests/run-tests.js`) that simulates real user interactions (tower placement, touch gestures, wave progression, modals) across both **Desktop (1280x800)** and **Mobile (390x844)** viewports, capturing visual regression screenshots and generating markdown reports.
+
+*(Note: `node_modules` is only used for this test runner and is ignored by git).*
+
+### 1. Install Test Dependencies:
+```bash
+npm install
 ```
 
-Then visit http://localhost:8080/TowerDefense/index.html (or the path served by your tool).
+### 2. Run Test Suite:
+```bash
+# Run full suite (Desktop + Mobile)
+npm test
+
+# Run Desktop only
+npm run test:desktop
+
+# Run Mobile only
+npm run test:mobile
+
+# Custom port if live-server is on a different port:
+node tests/run-tests.js --port=8080
+```
+
+### 3. Test Outputs:
+- **Screenshots**: Saved to `tests/screenshots/` (`desktop_gameplay.png`, `mobile_towers_tab.png`, etc.)
+- **Reports**: Markdown summaries generated in `tests/reports/`
+
+---
 
 ## Tech Notes
 
-- Rendering: PixiJS Application with autoDensity and device-pixel scaling.
-- Pathfinding: grid-based; ground enemies follow paths around placed towers; flying can bypass.
-- State: towers, enemies, projectiles, items, effects, and pooled damage text.
-- Mobile: orientation-resilient canvas sizing and touch placement flow.
+- Rendering: PixiJS Application (v7.2.4) with autoDensity and device-pixel scaling.
+- UI: Unified dark glassmorphic responsive design (desktop sidebar + mobile bottom dock & tabs).
+- Pathfinding: Grid-based A* pathfinding; ground enemies route around placed towers; flying creeps bypass.
+- State: Towers, enemies, projectiles, items, effects, and pooled damage text.
+- Mobile: Touch event handling, `100dvh` dynamic height, and `env(safe-area-inset-bottom)` support.
 
 ## Credits
 

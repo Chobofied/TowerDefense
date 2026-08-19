@@ -1,0 +1,22 @@
+{
+  "name": "pixijs-tower-defense",
+  "version": "0.1.2",
+  "description": "PixiJS Tower Defense Game with Unified Responsive Desktop & Mobile UI",
+  "main": "index.html",
+  "scripts": {
+    "test": "node tests/run-tests.js",
+    "test:desktop": "node tests/run-tests.js --desktop",
+    "test:mobile": "node tests/run-tests.js --mobile"
+  },
+  "keywords": [
+    "tower-defense",
+    "pixijs",
+    "game",
+    "responsive"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "puppeteer-core": "^24.4.0"
+  }
+}
