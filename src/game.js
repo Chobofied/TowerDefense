@@ -14,6 +14,7 @@ import { SaveManager } from './save.js';
 class TowerDefenseGame {
     constructor() {
         this.app = null;
+        this.worldContainer = null;
         this.graphics = null;
         this.backgroundSprite = null;
         this.gridOverlay = null;
@@ -48,6 +49,11 @@ class TowerDefenseGame {
         this.gameSpeed = 1.0;
         this.isPaused = false;
         this.autoWave = false;
+
+        // Zoom & Pan Camera System
+        this.viewScale = 1.0;
+        this.viewOffsetX = 0;
+        this.viewOffsetY = 0;
 
         // Boost Ability
         this.boostActive = false;
@@ -84,15 +90,19 @@ class TowerDefenseGame {
         });
         container.appendChild(this.app.view);
 
-        // 1. Create Background Texture & Beveled Grid System Overlay
+        // 1. World Container for Pan & Pinch-to-Zoom
+        this.worldContainer = new PIXI.Container();
+        this.app.stage.addChild(this.worldContainer);
+
+        // 2. Create Background Texture & Beveled Grid System Overlay
         this.createBackgroundAndGrid();
 
-        // 2. Graphics Layer (for dynamic paths, towers, and combat)
+        // 3. Graphics Layer (for dynamic paths, towers, and combat)
         this.graphics = new PIXI.Graphics();
-        this.app.stage.addChild(this.graphics);
+        this.worldContainer.addChild(this.graphics);
 
-        // 3. Instantiate Managers
-        this.effects = new EffectsManager(this.app, this.app.stage);
+        // 4. Instantiate Managers
+        this.effects = new EffectsManager(this.app, this.worldContainer);
         this.pathfinding = new PathfindingManager(CONFIG.gameSettings.gridSize, CONFIG.gameSettings.tileSize);
         this.mapManager = new MapManager(MAPS, CONFIG.gameSettings.tileSize);
         this.meta = new MetaProgressionManager(RELICS);
@@ -134,6 +144,11 @@ class TowerDefenseGame {
         this.app.ticker.add(delta => this.gameLoop(delta));
 
         this.ui.showToast(`Tower Defense v${CONFIG.gameSettings.version} Ready!`, '#38bdf8');
+
+        // Choose Battlefield Map on Start
+        setTimeout(() => {
+            this.ui.openMapModal(this.mapManager);
+        }, 150);
     }
 
     createBackgroundAndGrid() {
@@ -147,14 +162,14 @@ class TowerDefenseGame {
             this.backgroundSprite = new PIXI.Sprite(bgTexture);
             this.backgroundSprite.width = MAP_SIZE;
             this.backgroundSprite.height = MAP_SIZE;
-            this.app.stage.addChildAt(this.backgroundSprite, 0);
+            this.worldContainer.addChildAt(this.backgroundSprite, 0);
         } catch (e) {
             console.warn('Background image could not be loaded:', e);
         }
 
         // 2. Beveled Grid Overlay
         if (this.gridOverlay) {
-            this.app.stage.removeChild(this.gridOverlay);
+            this.worldContainer.removeChild(this.gridOverlay);
             this.gridOverlay.destroy(true);
         }
 
@@ -209,9 +224,9 @@ class TowerDefenseGame {
         this.gridOverlay.cacheAsBitmap = true;
 
         if (this.backgroundSprite) {
-            this.app.stage.addChildAt(this.gridOverlay, 1);
+            this.worldContainer.addChildAt(this.gridOverlay, 1);
         } else {
-            this.app.stage.addChildAt(this.gridOverlay, 0);
+            this.worldContainer.addChildAt(this.gridOverlay, 0);
         }
     }
 
@@ -252,6 +267,27 @@ class TowerDefenseGame {
     refreshGrid() {
         const obstacles = this.mapManager.getObstacles();
         this.pathfinding.createGrid(obstacles, this.towers.towers);
+    }
+
+    // --- Camera Zoom & Pan System ---
+    clampViewOffset() {
+        const MAP_SIZE = CONFIG.gameSettings.gridSize * CONFIG.gameSettings.tileSize;
+        if (this.viewScale <= 1.0) {
+            this.viewScale = 1.0;
+            this.viewOffsetX = 0;
+            this.viewOffsetY = 0;
+            return;
+        }
+        const minOffset = MAP_SIZE * (1 - this.viewScale);
+        this.viewOffsetX = Math.min(0, Math.max(minOffset, this.viewOffsetX));
+        this.viewOffsetY = Math.min(0, Math.max(minOffset, this.viewOffsetY));
+    }
+
+    updateWorldTransform() {
+        if (this.worldContainer) {
+            this.worldContainer.scale.set(this.viewScale, this.viewScale);
+            this.worldContainer.position.set(this.viewOffsetX, this.viewOffsetY);
+        }
     }
 
     // --- Input & Hotkey Handlers ---
@@ -347,13 +383,147 @@ class TowerDefenseGame {
         canvas.addEventListener('mouseleave', () => { this.previewTile = null; });
         canvas.addEventListener('click', e => this.handlePointerClick(e));
 
-        // Touch Handlers
-        canvas.addEventListener('touchmove', e => { e.preventDefault(); this.handlePointerMove(e); });
-        canvas.addEventListener('touchstart', e => { e.preventDefault(); this.handlePointerClick(e); });
+        // Desktop Mouse Wheel Zoom
+        canvas.addEventListener('wheel', e => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const MAP_SIZE = CONFIG.gameSettings.gridSize * CONFIG.gameSettings.tileSize;
+            const screenX = (e.clientX - rect.left) * (MAP_SIZE / rect.width);
+            const screenY = (e.clientY - rect.top) * (MAP_SIZE / rect.height);
+
+            const zoomFactor = e.deltaY < 0 ? 1.15 : 0.87;
+            const prevScale = this.viewScale;
+            const newScale = Math.min(2.8, Math.max(1.0, this.viewScale * zoomFactor));
+
+            if (newScale !== prevScale) {
+                this.viewScale = newScale;
+                this.viewOffsetX = screenX - (screenX - this.viewOffsetX) * (newScale / prevScale);
+                this.viewOffsetY = screenY - (screenY - this.viewOffsetY) * (newScale / prevScale);
+                this.clampViewOffset();
+                this.updateWorldTransform();
+            }
+        }, { passive: false });
+
+        // Touch Gestures: Pinch-to-Zoom & Pan
+        let initialPinchDist = 0;
+        let startPinchScale = 1.0;
+        let lastTouchCenter = null;
+        let touchStartPos = null;
+        let isTouchDragging = false;
+        let lastTapTime = 0;
+
+        canvas.addEventListener('touchstart', e => {
+            Audio.resume();
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                const t1 = e.touches[0];
+                const t2 = e.touches[1];
+                initialPinchDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+                startPinchScale = this.viewScale;
+                lastTouchCenter = {
+                    x: (t1.clientX + t2.clientX) / 2,
+                    y: (t1.clientY + t2.clientY) / 2
+                };
+            } else if (e.touches.length === 1) {
+                touchStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                isTouchDragging = false;
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', e => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                const t1 = e.touches[0];
+                const t2 = e.touches[1];
+                const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+                if (initialPinchDist > 0) {
+                    const factor = dist / initialPinchDist;
+                    const newScale = Math.min(2.8, Math.max(1.0, startPinchScale * factor));
+
+                    const center = {
+                        x: (t1.clientX + t2.clientX) / 2,
+                        y: (t1.clientY + t2.clientY) / 2
+                    };
+                    const rect = canvas.getBoundingClientRect();
+                    const MAP_SIZE = CONFIG.gameSettings.gridSize * CONFIG.gameSettings.tileSize;
+                    const screenCenterX = (center.x - rect.left) * (MAP_SIZE / rect.width);
+                    const screenCenterY = (center.y - rect.top) * (MAP_SIZE / rect.height);
+
+                    const prevScale = this.viewScale;
+                    this.viewScale = newScale;
+                    this.viewOffsetX = screenCenterX - (screenCenterX - this.viewOffsetX) * (newScale / prevScale);
+                    this.viewOffsetY = screenCenterY - (screenCenterY - this.viewOffsetY) * (newScale / prevScale);
+
+                    if (lastTouchCenter) {
+                        const dx = (center.x - lastTouchCenter.x) * (MAP_SIZE / rect.width);
+                        const dy = (center.y - lastTouchCenter.y) * (MAP_SIZE / rect.height);
+                        this.viewOffsetX += dx;
+                        this.viewOffsetY += dy;
+                    }
+                    lastTouchCenter = center;
+                    this.clampViewOffset();
+                    this.updateWorldTransform();
+                }
+            } else if (e.touches.length === 1) {
+                const cur = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                if (touchStartPos) {
+                    const moveDist = Math.hypot(cur.x - touchStartPos.x, cur.y - touchStartPos.y);
+                    if (moveDist > 8) {
+                        isTouchDragging = true;
+                    }
+                    if (isTouchDragging && this.viewScale > 1.0) {
+                        e.preventDefault();
+                        const rect = canvas.getBoundingClientRect();
+                        const MAP_SIZE = CONFIG.gameSettings.gridSize * CONFIG.gameSettings.tileSize;
+                        const dx = (cur.x - touchStartPos.x) * (MAP_SIZE / rect.width);
+                        const dy = (cur.y - touchStartPos.y) * (MAP_SIZE / rect.height);
+                        this.viewOffsetX += dx;
+                        this.viewOffsetY += dy;
+                        touchStartPos = cur;
+                        this.clampViewOffset();
+                        this.updateWorldTransform();
+                    }
+                }
+                if (!isTouchDragging) {
+                    this.handlePointerMove(e);
+                }
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', e => {
+            if (e.touches.length === 0) {
+                const now = Date.now();
+                if (now - lastTapTime < 280 && !isTouchDragging) {
+                    // Double tap: toggle zoom
+                    if (this.viewScale > 1.1) {
+                        this.viewScale = 1.0;
+                        this.viewOffsetX = 0;
+                        this.viewOffsetY = 0;
+                    } else {
+                        const pos = this.getPointerWorldPos(e);
+                        this.viewScale = 1.8;
+                        const MAP_SIZE = CONFIG.gameSettings.gridSize * CONFIG.gameSettings.tileSize;
+                        this.viewOffsetX = MAP_SIZE / 2 - pos.x * 1.8;
+                        this.viewOffsetY = MAP_SIZE / 2 - pos.y * 1.8;
+                    }
+                    this.clampViewOffset();
+                    this.updateWorldTransform();
+                } else if (!isTouchDragging && touchStartPos) {
+                    this.handlePointerClick(e);
+                }
+
+                lastTapTime = now;
+                touchStartPos = null;
+                isTouchDragging = false;
+                initialPinchDist = 0;
+                lastTouchCenter = null;
+            }
+        }, { passive: false });
     }
 
     getPointerWorldPos(e) {
         const rect = this.app.view.getBoundingClientRect();
+        const MAP_SIZE = CONFIG.gameSettings.gridSize * CONFIG.gameSettings.tileSize;
         let clientX = e.clientX;
         let clientY = e.clientY;
 
@@ -365,13 +535,13 @@ class TowerDefenseGame {
             clientY = e.changedTouches[0].clientY;
         }
 
-        const scaleX = (CONFIG.gameSettings.gridSize * CONFIG.gameSettings.tileSize) / rect.width;
-        const scaleY = (CONFIG.gameSettings.gridSize * CONFIG.gameSettings.tileSize) / rect.height;
+        const screenX = (clientX - rect.left) * (MAP_SIZE / rect.width);
+        const screenY = (clientY - rect.top) * (MAP_SIZE / rect.height);
 
-        return {
-            x: (clientX - rect.left) * scaleX,
-            y: (clientY - rect.top) * scaleY
-        };
+        const worldX = (screenX - this.viewOffsetX) / this.viewScale;
+        const worldY = (screenY - this.viewOffsetY) / this.viewScale;
+
+        return { x: worldX, y: worldY };
     }
 
     handlePointerMove(e) {
@@ -905,10 +1075,10 @@ class TowerDefenseGame {
         this.effects.draw(this.graphics);
 
         // 4. Towers & Range Overlays
-        this.towers.draw(this.graphics, this.app.stage, this.selectedTower, null);
+        this.towers.draw(this.graphics, this.worldContainer, this.selectedTower, null);
 
         // 5. Enemies & Health Bars
-        this.enemies.draw(this.graphics, this.app.stage, this.selectedEnemy);
+        this.enemies.draw(this.graphics, this.worldContainer, this.selectedEnemy);
 
         // 6. Placement Preview
         if (this.previewTile && this.selectedTowerTypeIdx >= 0) {
@@ -1007,12 +1177,6 @@ class TowerDefenseGame {
         const relicClose = document.getElementById('relic-close-btn');
         if (relicClose) relicClose.onclick = () => this.ui.closeRelicModal();
 
-        // Map Selector Trigger
-        const mapBtn = document.getElementById('map-select-trigger-btn');
-        if (mapBtn) mapBtn.onclick = () => this.ui.openMapModal(this.mapManager);
-        const mapClose = document.getElementById('map-close-btn');
-        if (mapClose) mapClose.onclick = () => this.ui.closeMapModal();
-
         // Mobile Tabs
         document.querySelectorAll('#mobile-tabs .tab-btn').forEach(btn => {
             btn.onclick = () => {
@@ -1044,7 +1208,7 @@ class TowerDefenseGame {
                 <div class="tower-meta-info">
                     <div class="tower-meta-name">${t.name}</div>
                     <div class="tower-meta-sub">
-                        <span>[${t.key}]</span>
+                        <span class="hide-mobile">[${t.key}]</span>
                         <span class="tower-cost-pill">🪙 ${t.cost}</span>
                     </div>
                 </div>
@@ -1399,7 +1563,9 @@ class TowerDefenseGame {
         const mvp = this.towers.getMvpTower();
         const summary = this.meta.finalizeRun(mvp);
 
-        this.ui.openRunSummaryModal(summary, () => this.restartGame(true));
+        this.ui.openRunSummaryModal(summary, () => {
+            this.ui.openMapModal(this.mapManager);
+        });
     }
 
     restartGame(clearStorage = false) {
@@ -1420,6 +1586,12 @@ class TowerDefenseGame {
         this.selectedTower = null;
         this.selectedEnemy = null;
 
+        // Reset camera zoom/pan
+        this.viewScale = 1.0;
+        this.viewOffsetX = 0;
+        this.viewOffsetY = 0;
+        this.updateWorldTransform();
+
         this.meta.resetRunStats();
         CONFIG.towers = JSON.parse(JSON.stringify(BASE_TOWERS));
         try { localStorage.removeItem('purchasedTowers'); } catch { }
@@ -1435,7 +1607,16 @@ class TowerDefenseGame {
         const container = document.getElementById('game-canvas-container');
         if (!container || !this.app) return;
 
-        const size = Math.min(container.clientWidth - 16, container.clientHeight - 16, 750);
+        const isMobile = window.innerWidth <= 900;
+        let size;
+        if (isMobile) {
+            const availW = window.innerWidth - 4;
+            const availH = container.clientHeight || (window.innerHeight * 0.52);
+            size = Math.min(availW, availH, 750);
+        } else {
+            size = Math.min(container.clientWidth - 16, container.clientHeight - 16, 750);
+        }
+
         if (size > 0) {
             this.app.view.style.width = size + 'px';
             this.app.view.style.height = size + 'px';

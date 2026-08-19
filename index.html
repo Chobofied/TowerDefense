@@ -249,6 +249,13 @@
             border: 1px solid var(--border-accent);
         }
 
+        .tab-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            width: 100%;
+        }
+
         /* Section Titles */
         .section-header-title {
             font-size: 0.75em;
@@ -865,17 +872,155 @@
             color: var(--accent-cyan);
         }
 
+        .hide-mobile {
+            display: inline;
+        }
+
         /* Responsive Mobile Dock */
         @media (max-width: 900px) {
-            #game-wrapper { flex-direction: column; }
+            #game-wrapper {
+                flex-direction: column;
+                height: 100vh;
+                height: 100dvh;
+                overflow: hidden;
+            }
+
+            #game-canvas-container {
+                flex: 0 0 auto;
+                width: 100vw;
+                height: auto;
+                aspect-ratio: 1 / 1;
+                max-height: 52vh;
+                max-width: 52vh;
+                margin: 0 auto;
+                padding: 2px;
+                background: #000;
+                overflow: hidden;
+            }
+
+            #game-canvas-container canvas {
+                width: 100% !important;
+                height: 100% !important;
+                max-width: 52vh;
+                max-height: 52vh;
+                touch-action: none;
+                border-radius: var(--radius-sm);
+            }
+
             #game-ui {
+                flex: 1;
                 width: 100%;
-                max-height: 48vh;
+                min-height: 0;
+                max-height: none;
                 border-left: none;
                 border-top: 1px solid var(--border-subtle);
+                padding: 6px 8px;
+                gap: 5px;
+                overflow-y: auto;
             }
-            #mobile-tabs { display: grid; }
-            .tab-panel:not(#tab-towers) { display: none; }
+
+            #ui-header-stats {
+                padding: 4px 6px;
+                gap: 3px;
+            }
+
+            .stat-pill {
+                padding: 2px;
+            }
+
+            .stat-label {
+                font-size: 0.55em;
+            }
+
+            .stat-val {
+                font-size: 0.82em;
+            }
+
+            #tactical-toolbar {
+                padding: 3px 5px;
+                gap: 2px;
+            }
+
+            .icon-tool-btn, .speed-btn {
+                padding: 3px 5px;
+                font-size: 0.7em;
+            }
+
+            #mobile-tabs {
+                display: grid;
+                padding: 2px;
+                gap: 3px;
+            }
+
+            .tab-btn {
+                padding: 4px;
+                font-size: 0.72em;
+            }
+
+            .tab-panel:not(#tab-towers) {
+                display: none;
+            }
+
+            #tab-towers .section-header-title {
+                display: none !important;
+            }
+
+            .hide-mobile {
+                display: none !important;
+            }
+
+            #tower-select {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 4px;
+            }
+
+            .tower-btn {
+                padding: 3px 4px;
+                min-height: 44px;
+            }
+
+            .tower-icon-wrapper {
+                width: 28px;
+                height: 28px;
+                flex: 0 0 28px;
+            }
+
+            .tower-meta-name {
+                font-size: 0.78em;
+            }
+
+            .tower-meta-sub {
+                font-size: 0.68em;
+            }
+
+            .tower-cost-pill {
+                padding: 1px 3px;
+                font-size: 0.85em;
+            }
+
+            .tower-info-trigger {
+                width: 16px;
+                height: 16px;
+                font-size: 9px;
+            }
+
+            #action-bar {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 4px;
+            }
+
+            #start-btn {
+                grid-column: 1 / -1;
+                padding: 10px 8px;
+                font-size: 0.9em;
+            }
+
+            .action-btn:not(#start-btn) {
+                padding: 6px 4px;
+                font-size: 0.75em;
+            }
         }
     </style>
 </head>
@@ -943,7 +1088,7 @@
             <div class="tab-panel" id="tab-towers">
                 <div class="section-header-title">
                     <span>Defensive Towers</span>
-                    <span style="font-size:0.8em; color:var(--accent-cyan);">Click / Hotkey</span>
+                    <span class="tower-hint-text hide-mobile" style="font-size:0.8em; color:var(--accent-cyan);">Click / Hotkey</span>
                 </div>
                 <div id="tower-select"></div>
             </div>
@@ -970,7 +1115,6 @@
                 <button class="action-btn btn-boost" id="boost-btn">⚡ Boost [B]</button>
                 <button class="action-btn btn-bomb" id="place-bomb-btn">💣 Place Bomb [X] (0)</button>
                 <button class="action-btn btn-shop" id="shop-btn">🛍️ Shop [P]</button>
-                <button class="action-btn btn-map" id="map-select-trigger-btn">🗺️ Maps</button>
                 <button class="action-btn btn-relics" id="relic-vault-btn">⭐ Star Relics</button>
                 <button class="action-btn btn-save" id="action-save-btn">💾 Save Game</button>
                 <button class="action-btn btn-load" id="action-load-btn">📂 Load Game</button>

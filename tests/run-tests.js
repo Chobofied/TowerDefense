@@ -149,7 +149,18 @@ async function runSuite() {
             });
 
             await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
-            await new Promise(r => setTimeout(r, 1500));
+            await new Promise(r => setTimeout(r, 800));
+
+            // Verify Map Selection Modal on startup
+            const mapModalOpenOnStart = await page.evaluate(() => {
+                const m = document.getElementById('map-modal');
+                return m && window.getComputedStyle(m).display === 'flex';
+            });
+            if (mapModalOpenOnStart) {
+                reportData.desktop.checks.push('✅ Map Selector modal opened automatically on startup');
+                await safeClick(page, '.map-select-btn');
+                await new Promise(r => setTimeout(r, 400));
+            }
 
             // Verify live header stats and tower buttons
             const stats = await page.evaluate(() => {
@@ -190,19 +201,6 @@ async function runSuite() {
             if (cheatModalOpen) {
                 reportData.desktop.checks.push('✅ Hotkey Cheat Sheet modal opened and rendered');
                 await safeClick(page, '#cheat-close-btn');
-                await new Promise(r => setTimeout(r, 200));
-            }
-
-            // 4. Map Selector Modal
-            await safeClick(page, '#map-select-trigger-btn');
-            await new Promise(r => setTimeout(r, 300));
-            const mapModalOpen = await page.evaluate(() => {
-                const m = document.getElementById('map-modal');
-                return m && window.getComputedStyle(m).display === 'flex';
-            });
-            if (mapModalOpen) {
-                reportData.desktop.checks.push('✅ Map Selector modal opened with multi-map layouts');
-                await safeClick(page, '#map-close-btn');
                 await new Promise(r => setTimeout(r, 200));
             }
 
@@ -339,7 +337,17 @@ async function runSuite() {
             });
 
             await mobilePage.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
-            await new Promise(r => setTimeout(r, 1500));
+            await new Promise(r => setTimeout(r, 800));
+
+            // Select map on mobile startup
+            const mobileMapModal = await mobilePage.evaluate(() => {
+                const m = document.getElementById('map-modal');
+                return m && window.getComputedStyle(m).display === 'flex';
+            });
+            if (mobileMapModal) {
+                await safeClick(mobilePage, '.map-select-btn');
+                await new Promise(r => setTimeout(r, 400));
+            }
 
             // Mobile Tabs Navigation
             // Waves Tab

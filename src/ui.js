@@ -181,18 +181,17 @@ export class UIManager {
                         </div>
                         <div class="map-desc">${map.description}</div>
                     </div>
-                    <button class="map-select-btn" ${isCurrent ? 'disabled' : ''}>
-                        ${isCurrent ? 'Current' : 'Select'}
+                    <button class="map-select-btn ${isCurrent ? 'active-map-btn' : ''}">
+                        Start Game ⚔️
                     </button>
                 `;
 
                 const btn = card.querySelector('.map-select-btn');
-                if (btn && !isCurrent) {
+                if (btn) {
                     btn.onclick = () => {
-                        if (mapManager.setMap(map.id)) {
-                            this.closeMapModal();
-                            if (this.callbacks.onMapChanged) this.callbacks.onMapChanged(map);
-                        }
+                        mapManager.setMap(map.id);
+                        this.closeMapModal();
+                        if (this.callbacks.onMapChanged) this.callbacks.onMapChanged(map);
                     };
                 }
 
