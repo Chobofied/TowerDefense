@@ -338,10 +338,25 @@ class TowerDefenseGame {
                 return;
             }
 
-            // Delete / Backspace: Quick Sell Selected Tower
-            if ((e.key === 'Delete' || e.key === 'Backspace') && this.selectedTower) {
+            // S / Delete / Backspace: Quick Sell Selected Tower (when a tower is selected)
+            if ((key === 's' || e.key === 'Delete' || e.key === 'Backspace') && this.selectedTower) {
                 this.sellTower(this.selectedTower);
                 return;
+            }
+
+            // Escape: Deselect tower or cancel placement
+            if (e.key === 'Escape') {
+                if (this.selectedTower) {
+                    this.selectedTower = null;
+                    this.closeTowerStatsModal();
+                    return;
+                }
+                if (this.placingBomb || this.selectedTowerTypeIdx >= 0) {
+                    this.placingBomb = false;
+                    this.selectedTowerTypeIdx = -1;
+                    this.renderTowerSelect();
+                    return;
+                }
             }
 
             // B: Boost
@@ -1127,6 +1142,17 @@ class TowerDefenseGame {
         const loadClose = document.getElementById('load-close-btn');
         if (loadClose) loadClose.onclick = () => this.ui.closeLoadModal();
 
+        // Map Modal Close Button (defaults to Open Plains active map)
+        const mapClose = document.getElementById('map-close-btn');
+        if (mapClose) {
+            mapClose.onclick = () => {
+                this.mapManager.setMap('open_plains');
+                this.ui.closeMapModal();
+                this.restartGame(false);
+                this.ui.showToast('Battlefield: Open Plains deployed!', '#38bdf8');
+            };
+        }
+
         // Speed Buttons
         document.querySelectorAll('.speed-btn').forEach(btn => {
             btn.onclick = () => {
@@ -1344,8 +1370,8 @@ class TowerDefenseGame {
                 </div>
                 ${specHtml}
                 <div class="modal-actions-row">
-                    <button id="modal-upgrade-btn" class="btn-upgrade">Upgrade (🪙${upCost})</button>
-                    <button id="modal-sell-btn" class="btn-sell">Sell (🪙${sellVal})${isGrace ? ' [100% Grace]' : ''}</button>
+                    <button id="modal-upgrade-btn" class="btn-upgrade">Upgrade [U] (🪙${upCost})</button>
+                    <button id="modal-sell-btn" class="btn-sell">Sell [S] (🪙${sellVal})${isGrace ? ' [100% Grace]' : ''}</button>
                 </div>
             `;
 
