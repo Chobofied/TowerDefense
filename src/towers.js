@@ -338,16 +338,23 @@ export class TowerManager {
         // --- Update Projectiles ---
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
             const p = this.projectiles[i];
+            p.life = (p.life || 0) + delta;
+            if (p.life > 90) {
+                this.projectiles.splice(i, 1);
+                continue;
+            }
+
             const targetX = p.target && p.target.alive ? p.target.x : p.tx;
             const targetY = p.target && p.target.alive ? p.target.y : p.ty;
             const dx = targetX - p.x;
             const dy = targetY - p.y;
             const dist = Math.hypot(dx, dy);
+            const step = p.speed * delta;
 
             p.dirX = dx / (dist || 1);
             p.dirY = dy / (dist || 1);
 
-            if (dist < p.speed) {
+            if (dist <= step || isNaN(dist)) {
                 p.x = targetX;
                 p.y = targetY;
 
@@ -412,8 +419,8 @@ export class TowerManager {
 
                 this.projectiles.splice(i, 1);
             } else {
-                p.x += p.dirX * p.speed * delta;
-                p.y += p.dirY * p.speed * delta;
+                p.x += p.dirX * step;
+                p.y += p.dirY * step;
             }
         }
     }

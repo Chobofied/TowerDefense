@@ -867,23 +867,9 @@
   "items": [
     {
       "name": "Gold",
-      "value": 25,
-      "color": "0xffd700",
-      "weight": 50
-    },
-    {
-      "name": "Damage Boost",
-      "value": 0.3,
-      "duration": 20,
-      "color": "0xff4500",
-      "weight": 25
-    },
-    {
-      "name": "Speed Boost",
-      "value": 0.5,
-      "duration": 20,
-      "color": "0x00ffff",
-      "weight": 25
+      "value": 35,
+      "color": "0xfacc15",
+      "weight": 100
     }
   ],
   "boost": {

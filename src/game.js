@@ -671,13 +671,23 @@ class TowerDefenseGame {
         const tx = Math.floor(pos.x / CONFIG.gameSettings.tileSize);
         const ty = Math.floor(pos.y / CONFIG.gameSettings.tileSize);
 
-        // 1. Placing Bomb
+        // 1. Click Item Drop (High priority & generous 32px hitbox)
+        for (let i = this.items.length - 1; i >= 0; i--) {
+            const it = this.items[i];
+            if (Math.hypot(it.x - pos.x, it.y - pos.y) <= 32) {
+                this.collectItem(it);
+                this.items.splice(i, 1);
+                return;
+            }
+        }
+
+        // 2. Placing Bomb
         if (this.placingBomb) {
             this.detonateBomb(pos.x, pos.y);
             return;
         }
 
-        // 2. Click Enemy
+        // 3. Click Enemy
         const clickedEnemy = this.enemies.enemies.find(en => en.alive && Math.hypot(en.x - pos.x, en.y - pos.y) <= (en.isBoss ? 28 : 18));
         if (clickedEnemy) {
             this.selectedEnemy = clickedEnemy;
@@ -687,7 +697,7 @@ class TowerDefenseGame {
             return;
         }
 
-        // 3. Click Placed Tower
+        // 4. Click Placed Tower
         const clickedTower = this.towers.towers.find(t => t.x === tx && t.y === ty);
         if (clickedTower) {
             this.selectedTower = clickedTower;
@@ -697,16 +707,6 @@ class TowerDefenseGame {
             this.renderTowerSelect();
             this.showTowerStatsModal(clickedTower);
             return;
-        }
-
-        // 4. Click Item Drop
-        for (let i = this.items.length - 1; i >= 0; i--) {
-            const it = this.items[i];
-            if (Math.hypot(it.x - pos.x, it.y - pos.y) <= 22) {
-                this.collectItem(it);
-                this.items.splice(i, 1);
-                return;
-            }
         }
 
         // 5. Place Tower
@@ -1020,7 +1020,8 @@ class TowerDefenseGame {
                     baseSpeed: enemy.baseSpeed * 1.3,
                     reward: 4,
                     color: 0xb85cf6,
-                    element: 'physical'
+                    element: 'physical',
+                    image: 'Normal_Enemy.png'
                 };
                 const egx = Math.max(0, Math.min(13, Math.round((enemy.x - 24) / 48)));
                 const egy = Math.max(0, Math.min(13, Math.round((enemy.y - 24) / 48)));
@@ -1044,30 +1045,23 @@ class TowerDefenseGame {
 
     tryDropItem(x, y) {
         if (Math.random() < (CONFIG.gameSettings.itemDropChance || 0.15)) {
-            const items = CONFIG.items || [];
-            const itemType = items[Math.floor(Math.random() * items.length)];
-            if (itemType) {
-                this.items.push({
-                    x, y,
-                    type: itemType,
-                    lifetime: 300
-                });
-            }
+            const goldAmount = Math.round(30 + this.wave * 1.5);
+            this.items.push({
+                x, y,
+                type: { name: 'Gold', value: goldAmount, color: '0xfacc15' },
+                lifetime: 8.0, // 8 real-time seconds
+                maxLifetime: 8.0,
+                spawnTime: Date.now()
+            });
         }
     }
 
     collectItem(item) {
         Audio.playCoin();
-        if (item.type.name === 'Gold') {
-            this.gold += item.type.value;
-            this.ui.showToast(`+${item.type.value}g Collected!`, '#ffd700');
-        } else if (item.type.name === 'Damage Boost') {
-            this.activeEffects.push({ type: 'damage', multiplier: item.type.value, duration: item.type.duration * 60 });
-            this.ui.showToast(`Damage Boost +${Math.round(item.type.value * 100)}%!`, '#ff4500');
-        } else if (item.type.name === 'Speed Boost') {
-            this.activeEffects.push({ type: 'fireRate', multiplier: item.type.value, duration: item.type.duration * 60 });
-            this.ui.showToast(`Fire Rate Boost +${Math.round(item.type.value * 100)}%!`, '#00ffff');
-        }
+        const goldVal = item.type.value || 35;
+        this.gold += goldVal;
+        this.effects.addDamageNumber(item.x, item.y - 12, `+${goldVal}g Gold!`, true);
+        this.ui.showToast(`+${goldVal}g Gold Collected! 🪙`, '#ffd700');
         this.updateUI();
     }
 
@@ -1174,6 +1168,15 @@ class TowerDefenseGame {
             if (eff.duration <= 0) this.activeEffects.splice(i, 1);
         }
 
+        // Update Dropped Collectible Items (Decays in real-world seconds so items don't vanish in 1s on 3x speed!)
+        for (let i = this.items.length - 1; i >= 0; i--) {
+            const it = this.items[i];
+            it.lifetime -= (delta / 60);
+            if (it.lifetime <= 0) {
+                this.items.splice(i, 1);
+            }
+        }
+
         // Update Pathfinding Flow Line Animation
         this.pathfinding.updateFlow(effectiveDelta);
 
@@ -1259,6 +1262,30 @@ class TowerDefenseGame {
 
         // 3. Effects & Combat Visuals
         this.effects.draw(this.graphics);
+
+        // 3b. Dropped Gold Coins (floating animated gold coins with glowing halo)
+        const itemNow = Date.now();
+        for (const it of this.items) {
+            const bob = Math.sin(itemNow * 0.006 + it.x) * 4;
+            const iy = it.y + bob;
+
+            // Flashing when low on lifetime (< 2.0s remaining)
+            let alpha = 1.0;
+            if (it.lifetime < 2.0) {
+                alpha = Math.sin(itemNow * 0.02) > 0 ? 0.95 : 0.25;
+            }
+
+            // Outer glowing gold halo
+            this.graphics.lineStyle(2, 0xfacc15, alpha * 0.85).drawCircle(it.x, iy, 13);
+            this.graphics.beginFill(0xfacc15, alpha * 0.25).drawCircle(it.x, iy, 13).endFill();
+
+            // Inner solid gold coin
+            this.graphics.beginFill(0xf59e0b, alpha * 0.95).drawCircle(it.x, iy, 9).endFill();
+            this.graphics.lineStyle(1.5, 0xfef08a, alpha * 0.9).drawCircle(it.x, iy, 7);
+
+            // Center coin glint
+            this.graphics.beginFill(0xffffff, alpha * 0.95).drawCircle(it.x - 2, iy - 2, 2.2).endFill();
+        }
 
         // 4. Towers & Range Overlays (Single + Multi-Selection)
         this.towers.draw(this.graphics, this.worldContainer, this.selectedTower, null, this.selectedTowers);

@@ -364,8 +364,8 @@ export class EnemyManager {
             const renderX = e.x;
             const renderY = e.y - (e.bobY || 0);
 
-            // Sprite Rendering
-            const texture = this.enemyTextures[e.type.name] || this.enemyTextures['Normal'];
+            // Sprite Rendering (Guaranteed sprite for all enemies & minions)
+            const texture = this.enemyTextures[e.type.name] || (e.type.image && this.enemyTextures[e.type.image]) || this.enemyTextures['Normal'] || Object.values(this.enemyTextures)[0];
             if (texture) {
                 if (!e._sprite) {
                     e._sprite = new PIXI.Sprite(texture);
