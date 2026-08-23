@@ -1,7 +1,7 @@
 {
-  "name": "pixijs-tower-defense",
-  "version": "0.1.2",
-  "description": "PixiJS Tower Defense Game with Unified Responsive Desktop & Mobile UI",
+  "name": "gridfall",
+  "version": "0.3.0",
+  "description": "Gridfall - Tactical Elemental Tower Defense",
   "main": "index.html",
   "scripts": {
     "test": "node tests/run-tests.js",

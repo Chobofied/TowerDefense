@@ -3,13 +3,14 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>PixiJS Tower Defense Pro</title>
+    <title>Gridfall: Tactical Defense</title>
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#0a0e17">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏰</text></svg>">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏰</text></svg>">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.2.4/pixi.min.js"></script>
     <style>
         :root {
@@ -40,7 +41,8 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        html, body {
+        html,
+        body {
             margin: 0;
             padding: 0;
             width: 100%;
@@ -56,7 +58,11 @@
         }
 
         @supports (height: 100dvh) {
-            html, body { height: 100dvh; }
+
+            html,
+            body {
+                height: 100dvh;
+            }
         }
 
         /* Master Layout */
@@ -118,10 +124,25 @@
         }
 
         @keyframes toastPop {
-            0% { opacity: 0; transform: scale(0.8) translateY(-8px); }
-            15% { opacity: 1; transform: scale(1) translateY(0); }
-            75% { opacity: 1; transform: scale(1) translateY(0); }
-            100% { opacity: 0; transform: scale(0.9) translateY(-12px); }
+            0% {
+                opacity: 0;
+                transform: scale(0.8) translateY(-8px);
+            }
+
+            15% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+
+            75% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+
+            100% {
+                opacity: 0;
+                transform: scale(0.9) translateY(-12px);
+            }
         }
 
         /* Unified Glassmorphic Sidebar UI */
@@ -173,11 +194,25 @@
             color: #fff;
         }
 
-        .stat-gold .stat-val { color: var(--accent-amber); }
-        .stat-lives .stat-val { color: var(--accent-rose); }
-        .stat-wave .stat-val { color: var(--accent-cyan); }
-        .stat-enemies .stat-val { color: var(--accent-purple); }
-        .stat-stars .stat-val { color: #facc15; }
+        .stat-gold .stat-val {
+            color: var(--accent-amber);
+        }
+
+        .stat-lives .stat-val {
+            color: var(--accent-rose);
+        }
+
+        .stat-wave .stat-val {
+            color: var(--accent-cyan);
+        }
+
+        .stat-enemies .stat-val {
+            color: var(--accent-purple);
+        }
+
+        .stat-stars .stat-val {
+            color: #facc15;
+        }
 
         /* Tactical Speed & Control Strip */
         #tactical-toolbar {
@@ -197,7 +232,8 @@
             gap: 3px;
         }
 
-        .icon-tool-btn, .speed-btn {
+        .icon-tool-btn,
+        .speed-btn {
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid var(--border-subtle);
             color: var(--text-secondary);
@@ -209,13 +245,15 @@
             transition: all 0.15s ease;
         }
 
-        .icon-tool-btn:hover, .speed-btn:hover {
+        .icon-tool-btn:hover,
+        .speed-btn:hover {
             background: rgba(56, 189, 248, 0.15);
             color: var(--accent-cyan);
             border-color: var(--accent-cyan);
         }
 
-        .speed-btn.active, .icon-tool-btn.active {
+        .speed-btn.active,
+        .icon-tool-btn.active {
             background: rgba(56, 189, 248, 0.25);
             color: var(--accent-cyan);
             border-color: var(--accent-cyan);
@@ -426,12 +464,32 @@
             text-align: center;
         }
 
-        .btn-start { background: linear-gradient(135deg, #10b981 0%, #059669 100%); grid-column: span 2; }
-        .btn-boost { background: #10b981; }
-        .btn-bomb { background: #f97316; }
-        .btn-shop { background: #6366f1; }
-        .btn-map { background: #3b82f6; }
-        .btn-relics { background: #eab308; color: #0f172a; font-weight: 800; }
+        .btn-start {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            grid-column: span 2;
+        }
+
+        .btn-boost {
+            background: #10b981;
+        }
+
+        .btn-bomb {
+            background: #f97316;
+        }
+
+        .btn-shop {
+            background: #6366f1;
+        }
+
+        .btn-map {
+            background: #3b82f6;
+        }
+
+        .btn-relics {
+            background: #eab308;
+            color: #0f172a;
+            font-weight: 800;
+        }
 
         /* Universal Glassmorphic Modal */
         .modal-overlay {
@@ -471,7 +529,12 @@
             justify-content: space-between;
         }
 
-        .modal-title { font-size: 1.05em; font-weight: 800; color: #fff; }
+        .modal-title {
+            font-size: 1.05em;
+            font-weight: 800;
+            color: #fff;
+        }
+
         .modal-close-btn {
             background: transparent;
             border: none;
@@ -555,8 +618,18 @@
             padding: 6px 8px;
         }
 
-        .spec-card-head { font-size: 0.85em; font-weight: 700; color: #fff; }
-        .spec-card-desc { font-size: 0.75em; color: var(--text-secondary); margin: 3px 0 6px 0; }
+        .spec-card-head {
+            font-size: 0.85em;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .spec-card-desc {
+            font-size: 0.75em;
+            color: var(--text-secondary);
+            margin: 3px 0 6px 0;
+        }
+
         .spec-choose-btn {
             background: var(--accent-pink);
             border: none;
@@ -573,6 +646,88 @@
             display: flex;
             gap: 8px;
             margin-top: 6px;
+        }
+
+        .btn-repair {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: #fff;
+            font-weight: 800;
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+
+        .btn-repair:hover {
+            filter: brightness(1.15);
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+        }
+
+        /* Difficulty Selector UI */
+        .diff-selector-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .diff-card {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1.5px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 8px 6px;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            position: relative;
+            user-select: none;
+        }
+
+        .diff-card:hover:not(.locked) {
+            background: rgba(56, 189, 248, 0.12);
+            border-color: var(--accent-cyan);
+            transform: translateY(-2px);
+        }
+
+        .diff-card.selected {
+            background: rgba(16, 185, 129, 0.18);
+            border-color: #10b981;
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.35);
+        }
+
+        .diff-card.locked {
+            opacity: 0.55;
+            cursor: not-allowed;
+            filter: grayscale(0.85);
+        }
+
+        .diff-card-icon {
+            font-size: 1.4em;
+            margin-bottom: 2px;
+        }
+
+        .diff-card-name {
+            font-size: 0.85em;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .diff-card-waves {
+            font-size: 0.68em;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            margin-top: 2px;
+        }
+
+        .diff-card-lock-badge {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            font-size: 0.7em;
+            background: rgba(244, 63, 94, 0.85);
+            color: #fff;
+            padding: 1px 4px;
+            border-radius: 4px;
         }
 
         .btn-upgrade {
@@ -687,11 +842,19 @@
             cursor: pointer;
         }
 
-        .batch-sub-up { background: #10b981; color: #fff; }
-        .batch-sub-sell { background: #f43f5e; color: #fff; }
+        .batch-sub-up {
+            background: #10b981;
+            color: #fff;
+        }
+
+        .batch-sub-sell {
+            background: #f43f5e;
+            color: #fff;
+        }
 
         /* Relic & Map Cards */
-        .relic-card, .map-card {
+        .relic-card,
+        .map-card {
             display: flex;
             align-items: center;
             gap: 10px;
@@ -701,7 +864,8 @@
             padding: 8px 10px;
         }
 
-        .relic-icon-wrapper, .map-icon-box {
+        .relic-icon-wrapper,
+        .map-icon-box {
             font-size: 1.5em;
             width: 36px;
             height: 36px;
@@ -710,8 +874,14 @@
             justify-content: center;
         }
 
-        .relic-info, .map-info { flex: 1; min-width: 0; }
-        .relic-title-row, .map-title-row {
+        .relic-info,
+        .map-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .relic-title-row,
+        .map-title-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -720,7 +890,8 @@
             color: #fff;
         }
 
-        .relic-desc, .map-desc {
+        .relic-desc,
+        .map-desc {
             font-size: 0.75em;
             color: var(--text-secondary);
             margin-top: 2px;
@@ -825,11 +996,17 @@
             cursor: pointer;
         }
 
-        .btn-save { background: #0284c7; }
-        .btn-load { background: #4f46e5; }
+        .btn-save {
+            background: #0284c7;
+        }
+
+        .btn-load {
+            background: #4f46e5;
+        }
 
         /* Rich Shop Items */
-        .shop-bomb-item, .shop-tower-item {
+        .shop-bomb-item,
+        .shop-tower-item {
             background: var(--bg-card);
             border: 1px solid var(--border-subtle);
             border-radius: var(--radius-md);
@@ -841,7 +1018,8 @@
             gap: 12px;
         }
 
-        .bomb-preview, .tower-preview {
+        .bomb-preview,
+        .tower-preview {
             width: 44px;
             height: 44px;
             border-radius: var(--radius-sm);
@@ -926,12 +1104,32 @@
             text-align: center;
         }
 
-        .s-label { font-size: 0.65em; text-transform: uppercase; color: var(--text-secondary); }
-        .s-val { font-size: 1.2em; font-weight: 800; }
-        .text-cyan { color: var(--accent-cyan); }
-        .text-purple { color: var(--accent-purple); }
-        .text-rose { color: var(--accent-rose); }
-        .text-amber { color: var(--accent-amber); }
+        .s-label {
+            font-size: 0.65em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+
+        .s-val {
+            font-size: 1.2em;
+            font-weight: 800;
+        }
+
+        .text-cyan {
+            color: var(--accent-cyan);
+        }
+
+        .text-purple {
+            color: var(--accent-purple);
+        }
+
+        .text-rose {
+            color: var(--accent-rose);
+        }
+
+        .text-amber {
+            color: var(--accent-amber);
+        }
 
         .summary-mvp-card {
             background: rgba(250, 204, 21, 0.1);
@@ -941,9 +1139,26 @@
             text-align: center;
         }
 
-        .mvp-badge { font-size: 0.7em; font-weight: 800; color: var(--accent-amber); }
-        .mvp-tower-title { font-size: 0.95em; font-weight: 800; color: #fff; margin: 2px 0; }
-        .mvp-stats-row { font-size: 0.8em; color: var(--text-secondary); display: flex; justify-content: center; gap: 12px; }
+        .mvp-badge {
+            font-size: 0.7em;
+            font-weight: 800;
+            color: var(--accent-amber);
+        }
+
+        .mvp-tower-title {
+            font-size: 0.95em;
+            font-weight: 800;
+            color: #fff;
+            margin: 2px 0;
+        }
+
+        .mvp-stats-row {
+            font-size: 0.8em;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+        }
 
         .summary-element-breakdown {
             background: rgba(0, 0, 0, 0.25);
@@ -1059,7 +1274,8 @@
                 gap: 2px;
             }
 
-            .icon-tool-btn, .speed-btn {
+            .icon-tool-btn,
+            .speed-btn {
                 padding: 3px 5px;
                 font-size: 0.7em;
             }
@@ -1098,7 +1314,8 @@
                 display: none;
             }
 
-            #tab-waves, #tab-intel {
+            #tab-waves,
+            #tab-intel {
                 order: 6;
             }
 
@@ -1195,7 +1412,8 @@
                     <button class="icon-tool-btn" id="save-btn" title="Save Game">💾 Save</button>
                     <button class="icon-tool-btn" id="load-btn" title="Load Game">📂 Load</button>
                     <button class="icon-tool-btn" id="auto-wave-btn" title="Auto-Wave Trigger">⚡ Auto</button>
-                    <button class="icon-tool-btn" id="range-toggle-btn" title="Toggle All Ranges (Shift)">👁️ Range</button>
+                    <button class="icon-tool-btn" id="range-toggle-btn" title="Toggle All Ranges (Shift)">👁️
+                        Range</button>
                     <button class="icon-tool-btn" id="audio-toggle-btn" title="Toggle Sound">🔊</button>
                     <button class="icon-tool-btn" id="cheat-sheet-btn" title="Hotkey Cheat Sheet (?)">❓</button>
                 </div>
@@ -1212,7 +1430,8 @@
             <div class="tab-panel" id="tab-towers">
                 <div class="section-header-title">
                     <span>Defensive Towers</span>
-                    <span class="tower-hint-text hide-mobile" style="font-size:0.8em; color:var(--accent-cyan);">Click / Hotkey</span>
+                    <span class="tower-hint-text hide-mobile" style="font-size:0.8em; color:var(--accent-cyan);">Click /
+                        Hotkey</span>
                 </div>
                 <div id="tower-select"></div>
             </div>
@@ -1228,8 +1447,10 @@
             <!-- Intel Tab Panel -->
             <div class="tab-panel" id="tab-intel">
                 <div class="section-header-title">Target & Map Intel</div>
-                <div id="stats-panel" style="background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:10px; font-size:0.82em;">
-                    <div style="text-align:center; color:var(--text-muted);">Tap any enemy or tower on map to inspect stats.</div>
+                <div id="stats-panel"
+                    style="background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:10px; font-size:0.82em;">
+                    <div style="text-align:center; color:var(--text-muted);">Tap any enemy or tower on map to inspect
+                        stats.</div>
                 </div>
             </div>
 
@@ -1270,14 +1491,26 @@
         </div>
     </div>
 
-    <!-- 3. Map Selector Modal -->
+    <!-- 3. Map Selector Modal (Opening Screen) -->
     <div class="modal-overlay" id="map-modal">
-        <div class="modal-card">
-            <div class="modal-header">
-                <div class="modal-title">🗺️ Choose Battlefield Map</div>
+        <div class="modal-card" style="max-width: 520px;">
+            <div class="opening-hero-banner"
+                style="text-align:center; padding: 18px 10px 14px; border-bottom: 1px solid var(--border-subtle); background: radial-gradient(circle at 50% 30%, rgba(56, 189, 248, 0.15) 0%, transparent 70%);">
+                <div
+                    style="font-size: 2.2em; font-weight: 900; letter-spacing: 4px; background: linear-gradient(135deg, #ffffff 15%, #38bdf8 55%, #818cf8 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 2px 12px rgba(56,189,248,0.45));">
+                    GRIDFALL
+                </div>
+                <div
+                    style="font-size: 0.82em; font-weight: 600; color: var(--text-secondary); letter-spacing: 1.5px; text-transform: uppercase; margin-top: 3px;">
+                    Tactical Tower Defense
+                </div>
+            </div>
+            <div class="modal-header" style="border-bottom:none; padding:12px 16px 4px;">
+                <div class="modal-title" style="font-size:1.0em; color:var(--text-secondary);">Select Battlefield Map
+                </div>
                 <button class="modal-close-btn" id="map-close-btn">&times;</button>
             </div>
-            <div class="modal-body" id="map-list-container"></div>
+            <div class="modal-body" id="map-list-container" style="padding-top:4px;"></div>
         </div>
     </div>
 
@@ -1306,6 +1539,7 @@
                     <div class="cheat-item"><span>Shift</span> <span class="cheat-key">All Range Circles</span></div>
                     <div class="cheat-item"><span>Tab</span> <span class="cheat-key">Cycle Target AI</span></div>
                     <div class="cheat-item"><span>U</span> <span class="cheat-key">Upgrade Selected</span></div>
+                    <div class="cheat-item"><span>R</span> <span class="cheat-key">Repair Towers</span></div>
                     <div class="cheat-item"><span>S / Del</span> <span class="cheat-key">Sell Selected</span></div>
                     <div class="cheat-item"><span>Esc</span> <span class="cheat-key">Deselect / Cancel</span></div>
                     <div class="cheat-item"><span>B</span> <span class="cheat-key">Speed Boost</span></div>
@@ -1325,8 +1559,29 @@
             </div>
             <div class="modal-body" id="run-summary-content"></div>
             <div style="padding:12px 16px; border-top:1px solid var(--border-subtle);">
-                <button id="summary-restart-btn" style="width:100%; background:linear-gradient(135deg, #10b981 0%, #059669 100%); color:#fff; border:none; padding:10px; font-weight:800; border-radius:var(--radius-md); cursor:pointer;">
+                <button id="summary-restart-btn"
+                    style="width:100%; background:linear-gradient(135deg, #10b981 0%, #059669 100%); color:#fff; border:none; padding:10px; font-weight:800; border-radius:var(--radius-md); cursor:pointer;">
                     Deploy New Mission
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6b. Campaign Victory & Endless Mode Modal -->
+    <div class="modal-overlay" id="victory-modal">
+        <div class="modal-card" style="max-width:480px; text-align:center;">
+            <div class="modal-header" style="justify-content:center; border-bottom:none; padding-bottom:0;">
+                <div class="modal-title" style="font-size:1.4em; color:#facc15;">🏆 100 WAVES CLEARED!</div>
+            </div>
+            <div class="modal-body" id="victory-modal-content" style="padding:16px 20px;"></div>
+            <div style="display:flex; flex-direction:column; gap:8px; padding:12px 20px 20px;">
+                <button id="victory-endless-btn"
+                    style="background:linear-gradient(135deg, #38bdf8 0%, #0284c7 100%); color:#fff; border:none; padding:12px; font-size:0.95em; font-weight:800; border-radius:var(--radius-md); cursor:pointer; box-shadow:0 0 16px rgba(56,189,248,0.35);">
+                    ♾️ Continue in Endless Mode (Waves 101+)
+                </button>
+                <button id="victory-finish-btn"
+                    style="background:rgba(255,255,255,0.08); color:var(--text-secondary); border:1px solid var(--border-subtle); padding:10px; font-size:0.85em; font-weight:700; border-radius:var(--radius-md); cursor:pointer;">
+                    🏁 Finish Mission & Collect Star Rewards
                 </button>
             </div>
         </div>

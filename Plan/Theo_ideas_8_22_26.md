@@ -1,0 +1,1 @@
+- Have the game autosave periodically, and be able to search for the loaded games by date

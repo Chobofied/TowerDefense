@@ -160,14 +160,68 @@ export class UIManager {
         if (modal) modal.style.display = 'none';
     }
 
-    // --- Map Selection Modal ---
-    openMapModal(mapManager) {
+    // --- Map & Difficulty Selection Modal ---
+    openMapModal(mapManager, metaManager = null, difficultiesConfig = []) {
         const modal = document.getElementById('map-modal');
         if (!modal) return;
 
         const container = document.getElementById('map-list-container');
         if (container) {
             container.innerHTML = '';
+
+            // 1. Difficulty Tier Selection Header
+            if (metaManager && difficultiesConfig && difficultiesConfig.length > 0) {
+                const curDiff = metaManager.getDifficulty();
+                const diffSection = document.createElement('div');
+                diffSection.style.marginBottom = '14px';
+
+                let diffCardsHtml = '';
+                difficultiesConfig.forEach(d => {
+                    const isUnlocked = metaManager.isDifficultyUnlocked(d.id);
+                    const isSelected = curDiff === d.id;
+                    diffCardsHtml += `
+                        <div class="diff-card ${isSelected ? 'selected' : ''} ${!isUnlocked ? 'locked' : ''}" data-diff="${d.id}">
+                            ${!isUnlocked ? '<div class="diff-card-lock-badge">🔒 LOCKED</div>' : ''}
+                            <div class="diff-card-icon">${d.icon || '⚔️'}</div>
+                            <div class="diff-card-name">${d.name}</div>
+                            <div class="diff-card-waves">100 Waves</div>
+                            <div style="font-size:0.68em; color:var(--text-secondary); margin-top:2px;">
+                                ${d.hpMult > 1 ? `HP: x${d.hpMult}` : 'Standard'}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                diffSection.innerHTML = `
+                    <div style="font-size:0.75em; font-weight:800; color:var(--text-secondary); text-transform:uppercase; margin-bottom:6px; letter-spacing:0.5px;">
+                        Select Campaign Difficulty
+                    </div>
+                    <div class="diff-selector-container">
+                        ${diffCardsHtml}
+                    </div>
+                    <div style="font-size:0.75em; font-weight:800; color:var(--text-secondary); text-transform:uppercase; margin-bottom:6px; letter-spacing:0.5px;">
+                        Select Battlefield Map
+                    </div>
+                `;
+
+                // Difficulty click handlers
+                diffSection.querySelectorAll('.diff-card').forEach(card => {
+                    card.onclick = () => {
+                        const diffId = parseInt(card.dataset.diff, 10);
+                        if (metaManager.isDifficultyUnlocked(diffId)) {
+                            metaManager.setDifficulty(diffId);
+                            this.showToast(`Selected Difficulty: ${card.querySelector('.diff-card-name').textContent}`, '#10b981', 1200);
+                            this.openMapModal(mapManager, metaManager, difficultiesConfig);
+                        } else {
+                            this.showToast(`Locked! Beat 100 Waves on previous difficulty to unlock.`, '#f43f5e', 2500);
+                        }
+                    };
+                });
+
+                container.appendChild(diffSection);
+            }
+
+            // 2. Map Cards
             mapManager.maps.forEach(map => {
                 const isCurrent = mapManager.getCurrentMap().id === map.id;
                 const card = document.createElement('div');
@@ -204,6 +258,56 @@ export class UIManager {
 
     closeMapModal() {
         const modal = document.getElementById('map-modal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    // --- Campaign Victory & Endless Mode Modal ---
+    openVictoryModal({ difficulty, difficultyName, nextDiffUnlocked, onContinueEndless, onFinishMission }) {
+        const modal = document.getElementById('victory-modal');
+        if (!modal) return;
+
+        const content = document.getElementById('victory-modal-content');
+        if (content) {
+            content.innerHTML = `
+                <div style="font-size:1.1em; font-weight:800; color:#fff; margin-bottom:8px;">
+                    🎉 Congratulations Commander!
+                </div>
+                <div style="font-size:0.85em; color:var(--text-secondary); line-height:1.5;">
+                    You have successfully defended all <strong>100 Waves</strong> on <strong>${difficultyName}</strong> difficulty!
+                </div>
+                ${nextDiffUnlocked ? `
+                    <div style="background:rgba(250,204,21,0.15); border:1px solid #facc15; border-radius:8px; padding:10px; margin:14px 0 6px;">
+                        <div style="color:#facc15; font-weight:800; font-size:0.9em;">⭐ REWARD: +5 STAR TOKENS!</div>
+                        <div style="font-size:0.75em; color:#fef08a; margin-top:2px;">Next difficulty tier is now unlocked in the Campaign selector!</div>
+                    </div>
+                ` : ''}
+                <div style="font-size:0.78em; color:var(--text-muted); margin-top:10px;">
+                    Would you like to continue pushing into <strong>Endless Mode (Waves 101+)</strong> for supreme high scores, or conclude this operation?
+                </div>
+            `;
+        }
+
+        const endlessBtn = document.getElementById('victory-endless-btn');
+        if (endlessBtn) {
+            endlessBtn.onclick = () => {
+                this.closeVictoryModal();
+                if (onContinueEndless) onContinueEndless();
+            };
+        }
+
+        const finishBtn = document.getElementById('victory-finish-btn');
+        if (finishBtn) {
+            finishBtn.onclick = () => {
+                this.closeVictoryModal();
+                if (onFinishMission) onFinishMission();
+            };
+        }
+
+        modal.style.display = 'flex';
+    }
+
+    closeVictoryModal() {
+        const modal = document.getElementById('victory-modal');
         if (modal) modal.style.display = 'none';
     }
 

@@ -133,8 +133,8 @@ class TowerDefenseGame {
         // Initial Grid Setup
         this.refreshGrid();
 
-        // Apply Meta Relics
-        this.applyRelicBonuses();
+        // Initialize Starting Resources
+        this.initStartingResources();
 
         // Setup Controls & UI Handlers
         this.setupInputHandlers();
@@ -148,13 +148,16 @@ class TowerDefenseGame {
         window.addEventListener('resize', () => this.resizeCanvas());
 
         // Start Pixi Ticker
-        this.app.ticker.add(delta => this.gameLoop(delta));
+        this.app.ticker.add(delta => {
+            this.gameLoop(delta);
+            this.draw();
+        });
 
-        this.ui.showToast(`Tower Defense v${CONFIG.gameSettings.version} Ready!`, '#38bdf8');
+        this.ui.showToast(`Gridfall v${CONFIG.gameSettings.version} Ready!`, '#38bdf8');
 
-        // Choose Battlefield Map on Start
+        // Always show the map & difficulty select modal at startup
         setTimeout(() => {
-            this.ui.openMapModal(this.mapManager);
+            this.ui.openMapModal(this.mapManager, this.meta, CONFIG.difficulties);
         }, 150);
     }
 
@@ -263,11 +266,22 @@ class TowerDefenseGame {
         }
     }
 
-    applyRelicBonuses() {
-        const bonusGold = this.meta.getStartingGoldBonus();
-        const bonusLives = this.meta.getStartingLivesBonus();
+    getDifficultyConfig() {
+        const diffId = this.meta ? this.meta.getDifficulty() : 1;
+        const diffs = CONFIG ? (CONFIG.difficulties || []) : [];
+        return diffs.find(d => d.id === diffId) || diffs[0] || { id: 1, name: 'Normal', hpMult: 1.0, speedMult: 1.0, rewardMult: 1.0, bossAttackInterval: 5.0, bossAttackDamage: 50 };
+    }
+
+    initStartingResources() {
+        const bonusGold = this.meta ? this.meta.getStartingGoldBonus() : 0;
+        const bonusLives = this.meta ? this.meta.getStartingLivesBonus() : 0;
         this.gold = (CONFIG.gameSettings.startingGold || 500) + bonusGold;
         this.lives = (CONFIG.gameSettings.startingLives || 20) + bonusLives;
+        this.updateUI();
+    }
+
+    applyRelicBonuses() {
+        // Safe mid-game upgrade: update UI and multiplier caches without overwriting current active gold/lives!
         this.updateUI();
     }
 
@@ -400,6 +414,16 @@ class TowerDefenseGame {
                 return;
             }
 
+            // R: Quick Repair / Batch Repair
+            if (key === 'r') {
+                if (this.selectedTower) {
+                    this.repairTower(this.selectedTower);
+                } else {
+                    this.repairAllTowers();
+                }
+                return;
+            }
+
             // Tower Hotkeys (Q, W, E, A, S, T, F, Y, U) - only when NOT having multi-selection
             if (!this.selectedTowers || this.selectedTowers.length <= 1) {
                 const tIdx = CONFIG.towers.findIndex(t => t.key.toLowerCase() === key);
@@ -424,6 +448,10 @@ class TowerDefenseGame {
         let didDragBox = false;
 
         canvas.addEventListener('mousedown', e => {
+            if (Date.now() < (this.ignoreCanvasClickUntil || 0)) {
+                isMouseDown = false;
+                return;
+            }
             if (e.button === 0) { // Left click
                 isMouseDown = true;
                 didDragBox = false;
@@ -435,10 +463,14 @@ class TowerDefenseGame {
         });
 
         window.addEventListener('mousemove', e => {
-            if (isMouseDown && mouseDownPos && !this.placingBomb && this.selectedTowerTypeIdx < 0) {
+            if (isMouseDown && mouseDownPos && !this.placingBomb) {
                 const curPos = this.getPointerWorldPos(e);
                 const dragDist = Math.hypot(curPos.x - mouseDownPos.x, curPos.y - mouseDownPos.y);
-                if (dragDist > 14) {
+                if (dragDist > 10) {
+                    if (this.selectedTowerTypeIdx >= 0) {
+                        this.selectedTowerTypeIdx = -1;
+                        this.renderTowerSelect();
+                    }
                     this.isBoxSelecting = true;
                     didDragBox = true;
                     this.boxCurrentPos = curPos;
@@ -489,6 +521,9 @@ class TowerDefenseGame {
             this.pointerWorldPos = null;
         });
         canvas.addEventListener('click', e => {
+            if (Date.now() < (this.ignoreCanvasClickUntil || 0)) {
+                return;
+            }
             if (didDragBox) {
                 didDragBox = false;
                 return;
@@ -632,6 +667,16 @@ class TowerDefenseGame {
                 lastTouchCenter = null;
             }
         }, { passive: false });
+
+        // Close tower modal when clicking backdrop
+        const towerModal = document.getElementById('tower-info-modal');
+        if (towerModal) {
+            towerModal.addEventListener('click', e => {
+                if (e.target === towerModal) {
+                    this.closeTowerStatsModal();
+                }
+            });
+        }
     }
 
     getPointerWorldPos(e) {
@@ -671,6 +716,9 @@ class TowerDefenseGame {
     }
 
     handlePointerClick(e) {
+        if (Date.now() < (this.ignoreCanvasClickUntil || 0)) {
+            return;
+        }
         Audio.resume();
         const pos = this.getPointerWorldPos(e);
         const tx = Math.floor(pos.x / CONFIG.gameSettings.tileSize);
@@ -808,6 +856,64 @@ class TowerDefenseGame {
         this.closeTowerStatsModal();
     }
 
+    repairTower(tower) {
+        if (!tower) return;
+        this.closeTowerStatsModal();
+        if (tower.hp >= tower.maxHp) return;
+
+        const res = this.towers.repairTower(tower, this.gold);
+        if (res.success) {
+            this.gold -= res.cost;
+            Audio.playBuy();
+            const cx = tower.x * CONFIG.gameSettings.tileSize + 24;
+            const cy = tower.y * CONFIG.gameSettings.tileSize + 24;
+            this.effects.addDamageNumber(cx, cy - 16, '+HP REPAIRED! 🔧', false, 'weakness');
+            this.ui.showToast(`Tower Repaired for 🪙${res.cost}g!`, '#10b981');
+            this.updateUI();
+        } else {
+            this.ui.showToast(`Not enough gold to repair! (Needs 🪙${res.cost}g)`, '#f43f5e');
+            Audio.playError();
+        }
+    }
+
+    repairAllTowers(towersList = null) {
+        const targetList = (towersList && towersList.length > 0) ? towersList : this.towers.towers;
+        const damagedTowers = targetList.filter(t => t.hp < t.maxHp);
+        this.closeTowerStatsModal();
+
+        if (damagedTowers.length === 0) {
+            this.ui.showToast('All defense towers are at 100% HP! 🛡️', '#38bdf8');
+            return;
+        }
+
+        let totalRepaired = 0;
+        let totalGoldSpent = 0;
+
+        // Sort by lowest health percentage first
+        damagedTowers.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
+
+        for (const t of damagedTowers) {
+            const cost = this.towers.getRepairCost(t);
+            if (this.gold >= cost) {
+                const res = this.towers.repairTower(t, this.gold);
+                if (res.success) {
+                    this.gold -= res.cost;
+                    totalGoldSpent += res.cost;
+                    totalRepaired++;
+                }
+            }
+        }
+
+        if (totalRepaired > 0) {
+            Audio.playBuy();
+            this.ui.showToast(`Repaired ${totalRepaired} towers for 🪙${totalGoldSpent}g! 🔧`, '#10b981');
+            this.updateUI();
+        } else {
+            this.ui.showToast('Not enough gold to repair any towers!', '#f43f5e');
+            Audio.playError();
+        }
+    }
+
     // --- Batch Multi-Tower Operations ---
     batchUpgradeTowers(towersList) {
         if (!towersList || towersList.length === 0) return;
@@ -932,6 +1038,10 @@ class TowerDefenseGame {
 
         const count = 8 + this.wave * 2;
         const wavePattern = this.getWavePattern(this.wave);
+        const diffConfig = this.getDifficultyConfig();
+        const diffHpMult = diffConfig.hpMult || 1.0;
+        const diffSpeedMult = diffConfig.speedMult || 1.0;
+        const diffRewardMult = diffConfig.rewardMult || 1.0;
 
         const starts = this.mapManager.getStarts();
         const ends = this.mapManager.getEnds();
@@ -939,22 +1049,38 @@ class TowerDefenseGame {
         let availableEnemies = [];
 
         if (wavePattern.name === 'Boss Wave') {
-            const hpScale = 1 + (this.wave - 1) * (CONFIG.boss.waveScaling.hp || 0.34);
-            const speedScale = 1 + (this.wave - 1) * (CONFIG.boss.waveScaling.speed || 0.03);
+            let bossHpScale;
+            if (this.wave <= 10) {
+                // Fair and beatable in early introductory waves
+                bossHpScale = 1 + (this.wave - 1) * 0.25;
+            } else {
+                // Progressive exponential scaling for mid, late, and endless waves
+                const waveProgress = (this.wave - 10) / 10;
+                const expScale = Math.pow(waveProgress, 2.2) * 2.8;
+                bossHpScale = 1 + (this.wave - 1) * 0.35 + expScale;
+            }
+            const bossSpeedScale = 1 + (this.wave - 1) * 0.012 + Math.min(0.85, (this.wave / 100) * 0.55);
+            const bossShields = this.wave >= 30 ? Math.min(8, Math.floor((this.wave - 20) / 12)) : 0;
+
             availableEnemies.push({
                 ...CONFIG.boss,
-                hp: Math.round(CONFIG.boss.baseHp * hpScale),
-                speed: CONFIG.boss.baseSpeed * speedScale
+                hp: Math.round(CONFIG.boss.baseHp * bossHpScale * diffHpMult),
+                speed: CONFIG.boss.baseSpeed * bossSpeedScale * diffSpeedMult,
+                shieldHits: bossShields,
+                reward: Math.round((CONFIG.boss.reward || 100) * diffRewardMult)
             });
         } else {
             CONFIG.enemies.forEach(enemy => {
                 if (wavePattern.enemies.includes(enemy.name)) {
-                    const hpScale = 1 + (this.wave - 1) * (enemy.waveScaling.hp || 0.2);
-                    const speedScale = 1 + (this.wave - 1) * (enemy.waveScaling.speed || 0.025);
+                    // Progressive exponential scaling for late-game enemies
+                    const lateGameFactor = Math.pow(Math.max(0, this.wave - 10) / 15, 1.75) * 1.15;
+                    const hpScale = 1 + (this.wave - 1) * (enemy.waveScaling.hp || 0.22) + lateGameFactor;
+                    const speedScale = 1 + (this.wave - 1) * 0.008 + Math.min(0.70, (this.wave / 100) * 0.45);
                     availableEnemies.push({
                         ...enemy,
-                        hp: Math.round(enemy.baseHp * hpScale),
-                        speed: enemy.baseSpeed * speedScale
+                        hp: Math.round(enemy.baseHp * hpScale * diffHpMult),
+                        speed: enemy.baseSpeed * speedScale * diffSpeedMult,
+                        reward: Math.round((enemy.reward || 12) * diffRewardMult)
                     });
                 }
             });
@@ -985,6 +1111,8 @@ class TowerDefenseGame {
     getWavePattern(waveNum) {
         if (waveNum % 10 === 5) return CONFIG.wavePatterns.patterns.find(p => p.name === 'Boss Wave');
         if (waveNum % 10 === 0) return CONFIG.wavePatterns.patterns.find(p => p.name === 'Air Wave');
+        // In Endless mode, frequent boss encounters
+        if (waveNum > 100 && waveNum % 5 === 0) return CONFIG.wavePatterns.patterns.find(p => p.name === 'Boss Wave');
         const nonBoss = CONFIG.wavePatterns.patterns.filter(p => p.name !== 'Boss Wave' && p.name !== 'Air Wave');
         return nonBoss[waveNum % nonBoss.length] || nonBoss[0];
     }
@@ -1050,7 +1178,8 @@ class TowerDefenseGame {
 
     tryDropItem(x, y) {
         if (Math.random() < (CONFIG.gameSettings.itemDropChance || 0.15)) {
-            const goldAmount = Math.round(30 + this.wave * 1.5);
+            // Rebalanced: ~1/3 of previous gold yields across all waves
+            const goldAmount = Math.max(6, Math.round(10 + this.wave * 0.45));
             this.items.push({
                 x, y,
                 type: { name: 'Gold', value: goldAmount, color: '0xfacc15' },
@@ -1063,7 +1192,7 @@ class TowerDefenseGame {
 
     collectItem(item) {
         Audio.playCoin();
-        const goldVal = item.type.value || 35;
+        const goldVal = item.type.value || 12;
         this.gold += goldVal;
         this.effects.addDamageNumber(item.x, item.y - 12, `+${goldVal}g Gold!`, true);
         this.ui.showToast(`+${goldVal}g Gold Collected! 🪙`, '#ffd700');
@@ -1149,11 +1278,35 @@ class TowerDefenseGame {
         // Check Wave Clear
         if (this.isGameRunning && !this.spawningWave && this.enemies.enemies.length === 0) {
             this.isGameRunning = false;
-            const reward = CONFIG.gameSettings.waveCompleteGold || 50;
+            const diff = this.getDifficultyConfig();
+            const reward = Math.round((CONFIG.gameSettings.waveCompleteGold || 50) * (diff.rewardMult || 1.0));
             this.gold += reward;
             this.meta.recordWaveComplete(this.wave, reward);
             Audio.playWaveClear();
             this.ui.showToast(`Wave ${this.wave} Cleared! +${reward}g`, '#10b981');
+
+            // 100-Wave Campaign Victory & Endless Choice Check
+            if (this.wave === 100 && !this.endlessMode) {
+                this.meta.recordDifficultyBeaten(this.difficulty);
+                const nextDiffUnlocked = this.meta.unlockDifficulty(this.difficulty + 1);
+                this.ui.openVictoryModal({
+                    difficulty: this.difficulty,
+                    difficultyName: diff.name,
+                    nextDiffUnlocked,
+                    onContinueEndless: () => {
+                        this.endlessMode = true;
+                        this.wave++;
+                        this.renderWaveInfo();
+                        this.updateUI();
+                        this.ui.showToast('♾️ ENDLESS MODE ENGAGED! Infinite Waves Ahead!', '#facc15', 3500);
+                    },
+                    onFinishMission: () => {
+                        this.handleGameOver();
+                    }
+                });
+                return;
+            }
+
             this.wave++;
             this.renderWaveInfo();
             this.updateUI();
@@ -1188,7 +1341,7 @@ class TowerDefenseGame {
         // Update Effects Manager
         this.effects.update(effectiveDelta);
 
-        // Update Enemies
+        // Update Enemies & Boss Combat Attacks
         this.enemies.update(
             effectiveDelta,
             this.pathfinding,
@@ -1233,6 +1386,13 @@ class TowerDefenseGame {
                         t.disruptedTimer = dur;
                     }
                 });
+            },
+            this.towers,
+            this.getDifficultyConfig(),
+            (attackedTower, dmg) => {
+                if (attackedTower.isDestroyed) {
+                    this.ui.showToast(`⚠️ Tower Destroyed by Boss! Press [R] to Repair!`, '#f43f5e', 3000);
+                }
             }
         );
 
@@ -1571,6 +1731,9 @@ class TowerDefenseGame {
         const upCost = this.towers.getUpgradeCost(tower, CONFIG.gameSettings.upgradeCostMultiplier || 0.7, discount);
         const sellVal = this.towers.getSellValue(tower, CONFIG.gameSettings.sellRefundRatio || 0.5, CONFIG.gameSettings.sellGracePeriodSeconds || 5, this.wave, this.isGameRunning);
         const isGrace = (Date.now() - tower.placedAtTime) <= ((CONFIG.gameSettings.sellGracePeriodSeconds || 5) * 1000);
+        const repairCost = this.towers.getRepairCost(tower);
+        const hpPercent = Math.max(0, Math.min(100, Math.round(((tower.hp || tower.maxHp) / (tower.maxHp || 250)) * 100)));
+        const hpColor = hpPercent > 50 ? '#10b981' : (hpPercent > 25 ? '#facc15' : '#f43f5e');
 
         // Specialization choice cards if level >= 4 and no spec chosen yet
         let specHtml = '';
@@ -1594,8 +1757,23 @@ class TowerDefenseGame {
             `;
         }
 
+        const repairBtnHtml = (tower.hp < tower.maxHp) ? `
+            <button id="modal-repair-btn" class="btn-repair" style="width:100%; padding:10px; margin-top:8px; font-size:0.9em;">
+                🔧 Repair Tower [R] (🪙${repairCost}g)
+            </button>
+        ` : '';
+
         if (content) {
             content.innerHTML = `
+                <div style="background:rgba(15,23,42,0.8); border:1px solid var(--border-subtle); border-radius:6px; padding:6px 10px; margin-bottom:8px;">
+                    <div style="display:flex; justify-content:space-between; font-size:0.8em; font-weight:800; margin-bottom:4px;">
+                        <span>Structure Integrity:</span>
+                        <span style="color:${hpColor};">${tower.hp || tower.maxHp} / ${tower.maxHp || 250} HP (${hpPercent}%)</span>
+                    </div>
+                    <div style="height:6px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden;">
+                        <div style="width:${hpPercent}%; height:100%; background:${hpColor}; transition:width 0.2s ease;"></div>
+                    </div>
+                </div>
                 <div class="tower-sheet-grid">
                     <div class="sheet-stat"><strong>Damage:</strong> ${Math.round(tower.type.damage * tower.level)}</div>
                     <div class="sheet-stat"><strong>DPS:</strong> ${( (tower.type.damage * tower.level) / tower.type.fireRate ).toFixed(1)}</div>
@@ -1613,11 +1791,21 @@ class TowerDefenseGame {
                     <button id="cycle-target-btn" class="target-badge-btn">${tower.targetingMode.toUpperCase()}</button>
                 </div>
                 ${specHtml}
+                ${repairBtnHtml}
                 <div class="modal-actions-row">
                     <button id="modal-upgrade-btn" class="btn-upgrade">Upgrade [U] (🪙${upCost})</button>
                     <button id="modal-sell-btn" class="btn-sell">Sell [S] (🪙${sellVal})${isGrace ? ' [100% Grace]' : ''}</button>
                 </div>
             `;
+
+            // Repair click
+            const repBtn = content.querySelector('#modal-repair-btn');
+            if (repBtn) {
+                repBtn.onclick = (e) => {
+                    if (e) { e.stopPropagation(); e.preventDefault(); }
+                    this.repairTower(tower);
+                };
+            }
 
             // Spec button clicks
             content.querySelectorAll('.spec-choose-btn').forEach(btn => {
@@ -1680,6 +1868,8 @@ class TowerDefenseGame {
         let totalKills = 0;
         let totalUpgradeCost = 0;
         let totalSellRefund = 0;
+        let totalRepairCost = 0;
+        let damagedCount = 0;
 
         for (const t of towersList) {
             const dps = (t.type.damage * t.level) / t.type.fireRate;
@@ -1694,6 +1884,10 @@ class TowerDefenseGame {
                 this.wave,
                 this.isGameRunning
             );
+            if (t.hp !== undefined && t.maxHp && t.hp < t.maxHp) {
+                damagedCount++;
+                totalRepairCost += this.towers.getRepairCost(t);
+            }
         }
 
         // Group by Archetype Name
@@ -1769,10 +1963,24 @@ class TowerDefenseGame {
                 </div>
 
                 <div class="batch-actions-grid">
+                    ${damagedCount > 0 ? `
+                        <button id="batch-repair-all-btn" class="btn-repair" style="grid-column:span 2; padding:10px; font-size:0.85em;">
+                            🔧 Repair ${damagedCount} Damaged Tower(s) [R] (🪙${totalRepairCost}g)
+                        </button>
+                    ` : ''}
                     <button id="batch-upgrade-all-btn" class="btn-upgrade" style="padding:10px; font-size:0.85em;">🔼 Upgrade All [U] (🪙${totalUpgradeCost})</button>
                     <button id="batch-sell-all-btn" class="btn-sell" style="padding:10px; font-size:0.85em;">💰 Sell All [S] (🪙${totalSellRefund})</button>
                 </div>
             `;
+
+            // Batch Repair click
+            const repAllBtn = content.querySelector('#batch-repair-all-btn');
+            if (repAllBtn) {
+                repAllBtn.onclick = (e) => {
+                    if (e) { e.stopPropagation(); e.preventDefault(); }
+                    this.repairAllTowers(this.selectedTowers);
+                };
+            }
 
             // Global Upgrade All click
             const upAllBtn = content.querySelector('#batch-upgrade-all-btn');
@@ -1832,8 +2040,19 @@ class TowerDefenseGame {
     }
 
     closeTowerStatsModal() {
+        this.ignoreCanvasClickUntil = Date.now() + 400;
         const modal = document.getElementById('tower-info-modal');
         if (modal) modal.style.display = 'none';
+        this.selectedTower = null;
+        this.selectedTowers = [];
+        if (this.app && this.app.view) {
+            this.app.view.style.pointerEvents = 'none';
+            setTimeout(() => {
+                if (this.app && this.app.view) {
+                    this.app.view.style.pointerEvents = 'auto';
+                }
+            }, 300);
+        }
     }
 
     showTowerTypeInfoModal(towerType) {
@@ -2002,15 +2221,15 @@ class TowerDefenseGame {
         modal.style.display = 'flex';
     }
 
-    handleGameOver() {
+    handleGameOver(isVictory = false) {
         this.isGameRunning = false;
-        Audio.playLifeLost();
+        if (!isVictory) Audio.playLifeLost();
 
         const mvp = this.towers.getMvpTower();
         const summary = this.meta.finalizeRun(mvp);
 
         this.ui.openRunSummaryModal(summary, () => {
-            this.ui.openMapModal(this.mapManager);
+            this.ui.openMapModal(this.mapManager, this.meta, CONFIG.difficulties);
         });
     }
 
@@ -2023,6 +2242,7 @@ class TowerDefenseGame {
         this.enemySpawnQueue = [];
 
         this.wave = 1;
+        this.endlessMode = false;
         this.isGameRunning = false;
         this.spawningWave = false;
         this.isPaused = false;
@@ -2045,7 +2265,7 @@ class TowerDefenseGame {
         this.meta.resetRunStats();
         CONFIG.towers = JSON.parse(JSON.stringify(BASE_TOWERS));
         try { localStorage.removeItem('purchasedTowers'); } catch { }
-        this.applyRelicBonuses();
+        this.initStartingResources();
         this.refreshGrid();
         this.renderTowerSelect();
         this.renderWaveInfo();
@@ -2077,6 +2297,7 @@ class TowerDefenseGame {
 // Global bootstrap
 window.addEventListener('DOMContentLoaded', () => {
     const game = new TowerDefenseGame();
+    window.game = game;
     window.gameInstance = game;
     game.init().catch(err => console.error('Game initialization failed:', err));
 });

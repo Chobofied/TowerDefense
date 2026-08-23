@@ -16,6 +16,7 @@ export class TowerManager {
     }
 
     createTower(towerType, tx, ty, currentWave = 1, isGameRunning = false) {
+        const baseHp = 250;
         const tower = {
             id: 't_' + Math.random().toString(36).substr(2, 9),
             type: { ...towerType },
@@ -23,6 +24,9 @@ export class TowerManager {
             x: tx,
             y: ty,
             level: 1,
+            maxHp: baseHp,
+            hp: baseHp,
+            isDestroyed: false,
             cooldown: 0,
             angle: 0,
             targetAngle: 0,
@@ -54,6 +58,32 @@ export class TowerManager {
 
         this.towers.push(tower);
         return tower;
+    }
+
+    getRepairCost(tower) {
+        if (!tower || tower.hp >= tower.maxHp) return 0;
+        const missingPct = 1 - (tower.hp / tower.maxHp);
+        const baseCost = tower.type.cost * 0.4 * tower.level;
+        return Math.max(5, Math.ceil(missingPct * baseCost));
+    }
+
+    repairTower(tower, availableGold) {
+        if (!tower || tower.hp >= tower.maxHp) return { success: false, cost: 0 };
+        const cost = this.getRepairCost(tower);
+        if (availableGold < cost) return { success: false, cost };
+
+        tower.hp = tower.maxHp;
+        tower.isDestroyed = false;
+        return { success: true, cost };
+    }
+
+    damageTower(tower, amount) {
+        if (!tower) return;
+        tower.hp = Math.max(0, tower.hp - amount);
+        if (tower.hp <= 0) {
+            tower.hp = 0;
+            tower.isDestroyed = true;
+        }
     }
 
     removeTower(tower) {
@@ -207,6 +237,11 @@ export class TowerManager {
     // --- Update Towers & Combat ---
     update(delta, enemies, effects, audio, meta, boostActive, activeEffects) {
         for (const tower of this.towers) {
+            // If tower is destroyed, disable combat until repaired
+            if (tower.isDestroyed || (tower.hp !== undefined && tower.hp <= 0)) {
+                continue;
+            }
+
             // Check EMP Disruption
             if (tower.disruptedTimer > 0) {
                 tower.disruptedTimer -= delta / 60;
@@ -448,6 +483,24 @@ export class TowerManager {
             const recoilX = -Math.sin(t.angle || 0) * recoilDist;
             const recoilY = Math.cos(t.angle || 0) * recoilDist;
 
+            // 1. Health and Dynamic Blinking Logic for Damaged Towers
+            const maxHp = t.maxHp || 250;
+            const curHp = t.hp !== undefined ? t.hp : maxHp;
+            const isDamaged = curHp < maxHp;
+            const hpRatio = Math.max(0, Math.min(1.0, curHp / maxHp));
+
+            // Compute Blink Wave based on missing health (lower HP = faster blinking)
+            let isBlinkOff = false;
+            let blinkAlpha = 0;
+            if (isDamaged) {
+                // Frequency scales from ~2.5 Hz (at 90% HP) up to ~12 Hz (at 0% HP / Destroyed)
+                // Speed constant ranges from 0.006 to 0.030
+                const blinkSpeed = 0.006 + (1.0 - hpRatio) * 0.024;
+                const wave = (Math.sin(nowTime * blinkSpeed) + 1) / 2; // 0.0 to 1.0
+                isBlinkOff = wave < 0.45; // Flash off period
+                blinkAlpha = (1.0 - hpRatio) * (0.25 + 0.75 * wave); // Glowing intensity
+            }
+
             const texture = this.towerTextures[t.baseType.name];
             if (texture) {
                 if (!t._sprite) {
@@ -463,13 +516,33 @@ export class TowerManager {
                 const baseScale = Math.min(targetSize / texture.width, targetSize / texture.height);
                 t._sprite.scale.set(baseScale * (1 - (t.recoil || 0) * 0.08), baseScale * (1 + (t.recoil || 0) * 0.12));
 
-                // Disrupted EMP tint
-                if (t.disruptedTimer > 0) {
-                    t._sprite.tint = 0x38bdf8;
+                // Status Tints & Damage Blinking (Faster & more urgent as HP drops)
+                if (t.isDestroyed || curHp <= 0) {
+                    t._sprite.tint = isBlinkOff ? 0xf43f5e : 0x475569; // Flashes between red warning and dark grey
+                    t._sprite.alpha = isBlinkOff ? 0.9 : 0.4;
+                } else if (isDamaged) {
+                    // Lower HP blinks more aggressively between warning red/amber and normal tint
+                    const warningColor = hpRatio > 0.5 ? 0xfef08a : (hpRatio > 0.25 ? 0xfb923c : 0xf87171);
+                    t._sprite.tint = isBlinkOff ? warningColor : 0xffffff;
+                    t._sprite.alpha = isBlinkOff ? (0.55 + 0.45 * hpRatio) : 1.0;
+                } else if (t.disruptedTimer > 0) {
+                    t._sprite.tint = 0x38bdf8; // EMP Blue
+                    t._sprite.alpha = 1.0;
                 } else {
                     t._sprite.tint = 0xffffff;
+                    t._sprite.alpha = 1.0;
                 }
                 t._sprite.visible = true;
+            }
+
+            // Flashing Damage Border on Damaged Towers
+            if (isDamaged && blinkAlpha > 0) {
+                const boxColor = hpRatio > 0.5 ? 0xfacc15 : 0xf43f5e;
+                graphics.lineStyle(2, boxColor, Math.min(1.0, blinkAlpha * 1.2))
+                    .drawRoundedRect(t.x * this.tileSize + 2, t.y * this.tileSize + 2, this.tileSize - 4, this.tileSize - 4, 4);
+                graphics.beginFill(boxColor, blinkAlpha * 0.25)
+                    .drawRoundedRect(t.x * this.tileSize + 2, t.y * this.tileSize + 2, this.tileSize - 4, this.tileSize - 4, 4)
+                    .endFill();
             }
 
             const radius = this.tileSize * 0.42;
@@ -492,6 +565,32 @@ export class TowerManager {
             // EMP Disrupted Arc
             if (t.disruptedTimer > 0) {
                 graphics.lineStyle(2, 0x38bdf8, 0.8).drawCircle(cx, cy, radius * 1.2);
+            }
+
+            // Mini Health Bar & Destroyed Overlay
+            if (isDamaged) {
+                const barW = this.tileSize - 10;
+                const barH = 4.5;
+                const barX = cx - barW / 2;
+                const barY = cy - this.tileSize / 2 + 1;
+                const barColor = hpRatio > 0.5 ? 0x10b981 : (hpRatio > 0.25 ? 0xfacc15 : 0xf43f5e);
+
+                // Background
+                graphics.beginFill(0x0f172a, 0.9).drawRoundedRect(barX - 1, barY - 1, barW + 2, barH + 2, 2).endFill();
+                // HP Fill
+                if (hpRatio > 0) {
+                    graphics.beginFill(barColor, 0.95).drawRoundedRect(barX, barY, barW * hpRatio, barH, 2).endFill();
+                }
+
+                // Destroyed / Need Repair Icon
+                if (t.isDestroyed || curHp <= 0) {
+                    // Pulsing Warning Wrench / Cross Indicator
+                    const flash = Math.sin(nowTime * 0.015) > 0 ? 0.95 : 0.45;
+                    graphics.lineStyle(2, 0xf43f5e, flash).drawCircle(cx, cy, radius * 0.7);
+                    graphics.lineStyle(2.5, 0xffffff, flash);
+                    graphics.moveTo(cx - 5, cy - 5).lineTo(cx + 5, cy + 5);
+                    graphics.moveTo(cx + 5, cy - 5).lineTo(cx - 5, cy + 5);
+                }
             }
         }
 

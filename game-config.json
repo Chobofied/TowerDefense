@@ -13,8 +13,51 @@
     "airWaveCountDivisor": 4,
     "upgradeCostMultiplier": 0.7,
     "sellRefundRatio": 0.5,
-    "sellGracePeriodSeconds": 5
+    "sellGracePeriodSeconds": 5,
+    "towerBaseHp": 250,
+    "towerHpPerLevel": 75,
+    "towerRepairCostRatio": 0.4
   },
+  "difficulties": [
+    {
+      "id": 1,
+      "name": "Normal",
+      "subtitle": "Recruit Defense",
+      "icon": "🌱",
+      "desc": "100 Waves of balanced combat. Ideal for designing intricate winding mazes.",
+      "hpMult": 1.0,
+      "speedMult": 1.0,
+      "rewardMult": 1.0,
+      "bossAttackInterval": 2.2,
+      "bossAttackDamage": 50
+    },
+    {
+      "id": 2,
+      "name": "Veteran",
+      "subtitle": "Hardened Frontline",
+      "icon": "⚔️",
+      "desc": "100 Waves. +40% enemy HP, +10% speed, frequent Boss raids, -10% gold rewards.",
+      "hpMult": 1.4,
+      "speedMult": 1.1,
+      "rewardMult": 0.9,
+      "bossAttackInterval": 1.6,
+      "bossAttackDamage": 75,
+      "requiredDifficulty": 1
+    },
+    {
+      "id": 3,
+      "name": "Nightmare",
+      "subtitle": "Insane Onslaught",
+      "icon": "💀",
+      "desc": "100 Waves. +100% enemy HP, +25% speed, relentless Boss strikes, -20% gold rewards.",
+      "hpMult": 2.0,
+      "speedMult": 1.25,
+      "rewardMult": 0.8,
+      "bossAttackInterval": 1.2,
+      "bossAttackDamage": 110,
+      "requiredDifficulty": 2
+    }
+  ],
   "maps": [
     {
       "id": "plains",
@@ -752,22 +795,23 @@
   "boss": {
     "name": "Boss",
     "baseSpeed": 1.1,
-    "baseHp": 300,
+    "baseHp": 220,
     "reward": 100,
     "color": "0xf2e96d",
     "element": "physical",
     "image": "Boss_Enemy.png",
     "waveScaling": {
-      "hp": 0.34,
+      "hp": 0.35,
       "speed": 0.03
     },
     "abilities": {
-      "enrageHpThreshold": 0.3,
-      "enrageSpeedMult": 1.35,
+      "enrageHpThreshold": 0.35,
+      "enrageSpeedMult": 1.45,
       "summonMinionsHpThreshold": 0.5,
-      "empCooldown": 10.0,
-      "empRadius": 130,
-      "empDuration": 2.5
+      "empCooldown": 8.0,
+      "empRadius": 140,
+      "empDuration": 2.5,
+      "splashRadiusTiles": 1
     },
     "elementalProperties": {
       "weaknesses": {},
@@ -867,7 +911,7 @@
   "items": [
     {
       "name": "Gold",
-      "value": 35,
+      "value": 12,
       "color": "0xfacc15",
       "weight": 100
     }

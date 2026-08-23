@@ -5,6 +5,9 @@ export class MetaProgressionManager {
         this.relicsConfig = relicsConfig;
         this.stars = 0;
         this.relicRanks = {};
+        this.unlockedDifficulties = [1];
+        this.beatenDifficulties = [];
+        this.currentDifficulty = 1;
         this.runStats = this.createNewRunStats();
         this.highScores = [];
 
@@ -21,6 +24,12 @@ export class MetaProgressionManager {
 
             const savedScores = localStorage.getItem('td_high_scores');
             if (savedScores) this.highScores = JSON.parse(savedScores) || [];
+
+            const savedDiffs = localStorage.getItem('td_unlocked_difficulties');
+            if (savedDiffs) this.unlockedDifficulties = JSON.parse(savedDiffs) || [1];
+
+            const savedBeaten = localStorage.getItem('td_beaten_difficulties');
+            if (savedBeaten) this.beatenDifficulties = JSON.parse(savedBeaten) || [];
         } catch (e) {
             console.warn('Failed to load meta state:', e);
         }
@@ -31,9 +40,51 @@ export class MetaProgressionManager {
             localStorage.setItem('td_meta_stars', this.stars);
             localStorage.setItem('td_meta_relics', JSON.stringify(this.relicRanks));
             localStorage.setItem('td_high_scores', JSON.stringify(this.highScores));
+            localStorage.setItem('td_unlocked_difficulties', JSON.stringify(this.unlockedDifficulties));
+            localStorage.setItem('td_beaten_difficulties', JSON.stringify(this.beatenDifficulties));
         } catch (e) {
             console.warn('Failed to save meta state:', e);
         }
+    }
+
+    isDifficultyUnlocked(diffId) {
+        return this.unlockedDifficulties.includes(parseInt(diffId, 10));
+    }
+
+    unlockDifficulty(diffId) {
+        const id = parseInt(diffId, 10);
+        if (!this.unlockedDifficulties.includes(id)) {
+            this.unlockedDifficulties.push(id);
+            this.addStar(5); // +5 Star Tokens reward for unlocking a new difficulty!
+            this.saveState();
+            return true;
+        }
+        return false;
+    }
+
+    recordDifficultyBeaten(diffId) {
+        const id = parseInt(diffId, 10);
+        if (!this.beatenDifficulties.includes(id)) {
+            this.beatenDifficulties.push(id);
+            this.saveState();
+        }
+        // Unlock next tier
+        if (id < 3) {
+            this.unlockDifficulty(id + 1);
+        }
+    }
+
+    getDifficulty() {
+        return this.currentDifficulty;
+    }
+
+    setDifficulty(diffId) {
+        const id = parseInt(diffId, 10);
+        if (this.isDifficultyUnlocked(id)) {
+            this.currentDifficulty = id;
+            return true;
+        }
+        return false;
     }
 
     createNewRunStats() {

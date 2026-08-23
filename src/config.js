@@ -11,6 +11,7 @@ export let MAPS = [];
 export let RELICS = [];
 export let STATUS_CONFIG = {};
 export let SPECIALIZATIONS = {};
+export let DIFFICULTIES = [];
 
 export async function loadConfig() {
     try {
@@ -32,6 +33,7 @@ export async function loadConfig() {
         RELICS = CONFIG.relics || [];
         STATUS_CONFIG = CONFIG.statusEffects || {};
         SPECIALIZATIONS = CONFIG.towerSpecializations || {};
+        DIFFICULTIES = CONFIG.difficulties || [];
 
         return CONFIG;
     } catch (err) {

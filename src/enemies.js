@@ -13,7 +13,7 @@ export class EnemyManager {
     }
 
     createEnemy(config, startPos, endPos, path, waveNum = 1) {
-        const isBoss = config.name === 'Boss';
+        const isBoss = config.name === 'Boss' || !!config.isBoss;
         const isFlying = !!config.flying;
         const hp = config.hp || config.baseHp || 45;
         const speed = config.speed || config.baseSpeed || 1.0;
@@ -21,6 +21,7 @@ export class EnemyManager {
         const enemy = {
             id: 'e_' + Math.random().toString(36).substr(2, 9),
             type: config,
+            wave: waveNum || 1,
             x: startPos.x * this.tileSize + this.tileSize / 2,
             y: startPos.y * this.tileSize + this.tileSize / 2,
             hp: hp,
@@ -52,12 +53,17 @@ export class EnemyManager {
             healCooldown: config.healCooldown || 2.5,
             healTimer: 0,
 
-            // Boss Phases
+            // Boss Phases & Combat
             isBoss,
             bossAbilities: config.abilities || null,
             enraged: false,
             minionsSummoned: false,
             empTimer: 0,
+            bossTowerAttackTimer: isBoss ? 2.5 : 0,
+
+            // Momentum & Path Acceleration Physics
+            momentum: 1.0,
+            straightRun: 0,
 
             _sprite: null,
             _emojiText: null
@@ -97,7 +103,7 @@ export class EnemyManager {
     }
 
     // --- Update Enemies ---
-    update(delta, pathfinding, effects, audio, meta, onEnemyReachExit, onEnemyKilled, onSpawnMinions, onEmpDisrupt) {
+    update(delta, pathfinding, effects, audio, meta, onEnemyReachExit, onEnemyKilled, onSpawnMinions, onEmpDisrupt, towersManager = null, difficultyConfig = null, onBossAttackTower = null) {
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             const e = this.enemies[i];
             if (!e.alive || isNaN(e.x) || isNaN(e.y) || isNaN(e.hp)) {
@@ -143,7 +149,7 @@ export class EnemyManager {
                 }
             }
 
-            // Smooth chip damage health bar transition
+            // Trailing damage health bar chip decay
             if (e.chipHp > e.hp) {
                 e.chipHp = Math.max(e.hp, e.chipHp - (e.maxHp * 0.015 * delta));
             } else {
@@ -181,32 +187,127 @@ export class EnemyManager {
                 }
             }
 
-            // --- Boss Mechanics & Phases ---
-            if (e.isBoss && e.bossAbilities && !isStunned) {
+            // --- Boss Mechanics & Tower Attacks ---
+            if (e.isBoss && !isStunned) {
                 const hpRatio = e.hp / e.maxHp;
 
                 // 1. Enrage sprint at < 30% HP
-                if (!e.enraged && hpRatio <= (e.bossAbilities.enrageHpThreshold || 0.3)) {
+                if (e.bossAbilities && !e.enraged && hpRatio <= (e.bossAbilities.enrageHpThreshold || 0.3)) {
                     e.enraged = true;
                     effects.triggerShake(8, 20);
                     audio.playBossAlarm();
                 }
 
                 // 2. Summon Minions at 50% HP
-                if (!e.minionsSummoned && hpRatio <= (e.bossAbilities.summonMinionsHpThreshold || 0.5)) {
+                if (e.bossAbilities && !e.minionsSummoned && hpRatio <= (e.bossAbilities.summonMinionsHpThreshold || 0.5)) {
                     e.minionsSummoned = true;
                     onSpawnMinions(e.x, e.y);
                     audio.playBossAlarm();
                 }
 
                 // 3. EMP Shockwave Pulse
-                e.empTimer += delta / 60;
-                if (e.empTimer >= (e.bossAbilities.empCooldown || 10)) {
-                    e.empTimer = 0;
-                    const empRadius = e.bossAbilities.empRadius || 130;
-                    effects.addEmpShockwave(e.x, e.y, empRadius, 30);
-                    audio.playEmp();
-                    onEmpDisrupt(e.x, e.y, empRadius, e.bossAbilities.empDuration || 2.5);
+                if (e.bossAbilities) {
+                    e.empTimer += delta / 60;
+                    if (e.empTimer >= (e.bossAbilities.empCooldown || 10)) {
+                        e.empTimer = 0;
+                        const empRadius = e.bossAbilities.empRadius || 130;
+                        effects.addEmpShockwave(e.x, e.y, empRadius, 30);
+                        audio.playEmp();
+                        onEmpDisrupt(e.x, e.y, empRadius, e.bossAbilities.empDuration || 2.5);
+                    }
+                }
+
+                // 4. Boss Attacks on Towers (Frequent Omnidirectional 360° Ground Shockwave + Artillery Mortars)
+                if (towersManager && towersManager.towers && towersManager.towers.length > 0) {
+                    e.bossTowerAttackTimer = (e.bossTowerAttackTimer || 0) + (delta / 60);
+                    const waveNum = e.wave || 1;
+                    const waveProgressionMult = 1 + (waveNum - 1) * 0.025;
+                    const baseInterval = (difficultyConfig && difficultyConfig.bossAttackInterval) || 2.2;
+                    const enrageSpeedMult = e.enraged ? 0.65 : 1.0;
+                    const attackInterval = Math.max(0.85, (baseInterval * enrageSpeedMult) / Math.sqrt(waveProgressionMult));
+                    const baseDamage = (difficultyConfig && difficultyConfig.bossAttackDamage) || 55;
+                    const attackDamage = Math.round(baseDamage * waveProgressionMult);
+
+                    if (e.bossTowerAttackTimer >= attackInterval) {
+                        const activeTowers = towersManager.towers.filter(t => !t.isDestroyed);
+                        if (activeTowers.length > 0) {
+                            // 360° Omnidirectional Check: All towers around the Boss within 130px (covers top, bottom, left, right, diagonals)
+                            const omniRadius = 130;
+                            const nearbyTowersAllAround = [];
+                            let nearestTower = null;
+                            let minDistance = Infinity;
+
+                            for (const t of activeTowers) {
+                                const tcx = t.x * this.tileSize + this.tileSize / 2;
+                                const tcy = t.y * this.tileSize + this.tileSize / 2;
+                                const dist = Math.hypot(tcx - e.x, tcy - e.y);
+                                if (dist <= omniRadius) {
+                                    nearbyTowersAllAround.push(t);
+                                }
+                                if (dist < minDistance) {
+                                    minDistance = dist;
+                                    nearestTower = t;
+                                }
+                            }
+
+                            // If there are towers around the Boss, slam ALL of them in 360 degrees!
+                            if (nearbyTowersAllAround.length > 0) {
+                                e.bossTowerAttackTimer = 0;
+                                for (const hitTower of nearbyTowersAllAround) {
+                                    const tcx = hitTower.x * this.tileSize + this.tileSize / 2;
+                                    const tcy = hitTower.y * this.tileSize + this.tileSize / 2;
+                                    towersManager.damageTower(hitTower, attackDamage);
+                                    effects.addDamageNumber(tcx, tcy - 16, `-${attackDamage} HP 💥`, false, 'fire');
+                                    if (onBossAttackTower) onBossAttackTower(hitTower, attackDamage);
+                                }
+
+                                // 360° Omnidirectional Fiery Shockwave centered directly on Boss
+                                effects.splashEffects.push({
+                                    x: e.x, y: e.y,
+                                    radius: 0,
+                                    maxRadius: omniRadius,
+                                    color: 0xf43f5e,
+                                    alpha: 1,
+                                    duration: 25
+                                });
+                                audio.playHit(true);
+                                effects.triggerShake(7, 18);
+                            } else if (nearestTower && minDistance <= 240) {
+                                // Range mortar attack if no towers are directly adjacent
+                                e.bossTowerAttackTimer = 0;
+                                const targetTx = nearestTower.x;
+                                const targetTy = nearestTower.y;
+                                const targetCx = targetTx * this.tileSize + this.tileSize / 2;
+                                const targetCy = targetTy * this.tileSize + this.tileSize / 2;
+
+                                const splashTiles = 1;
+                                const splashTowers = activeTowers.filter(t =>
+                                    Math.abs(t.x - targetTx) <= splashTiles && Math.abs(t.y - targetTy) <= splashTiles
+                                );
+
+                                for (const hitTower of splashTowers) {
+                                    const tcx = hitTower.x * this.tileSize + this.tileSize / 2;
+                                    const tcy = hitTower.y * this.tileSize + this.tileSize / 2;
+                                    const dmg = (hitTower === nearestTower) ? attackDamage : Math.round(attackDamage * 0.85);
+
+                                    towersManager.damageTower(hitTower, dmg);
+                                    effects.addDamageNumber(tcx, tcy - 16, `-${dmg} HP 💥`, false, 'fire');
+                                    if (onBossAttackTower) onBossAttackTower(hitTower, dmg);
+                                }
+
+                                effects.splashEffects.push({
+                                    x: targetCx, y: targetCy,
+                                    radius: 0,
+                                    maxRadius: (splashTiles + 0.5) * this.tileSize,
+                                    color: 0xf43f5e,
+                                    alpha: 1,
+                                    duration: 25
+                                });
+                                audio.playHit(true);
+                                effects.triggerShake(5, 14);
+                            }
+                        }
+                    }
                 }
             }
 
@@ -287,7 +388,41 @@ export class EnemyManager {
                 const dx = tx - e.x;
                 const dy = ty - e.y;
                 const dist = Math.hypot(dx, dy);
-                const spd = currentSpeed * delta * 2.2;
+
+                // --- Straightaway Acceleration vs Corner Braking Physics ---
+                if (e.path && e.pathIdx < e.path.length) {
+                    const currNode = e.path[e.pathIdx];
+                    const prevNode = e.path[Math.max(0, e.pathIdx - 1)] || { x: Math.round((e.x - this.tileSize / 2) / this.tileSize), y: Math.round((e.y - this.tileSize / 2) / this.tileSize) };
+                    const nextNode = e.path[e.pathIdx + 1];
+
+                    const curDirX = currNode.x - prevNode.x;
+                    const curDirY = currNode.y - prevNode.y;
+
+                    if (nextNode) {
+                        const nextDirX = nextNode.x - currNode.x;
+                        const nextDirY = nextNode.y - currNode.y;
+                        const isStraight = (curDirX === nextDirX && curDirY === nextDirY);
+
+                        if (isStraight) {
+                            // Accelerate smoothly along straightaway up to 1.45x sprint speed
+                            e.momentum = Math.min(1.45, (e.momentum || 1.0) + (delta * 0.012));
+                            e.straightRun = (e.straightRun || 0) + 1;
+                        } else {
+                            // Approaching corner turn: decelerate into the bend down to 0.70x
+                            const distToTurn = dist;
+                            if (distToTurn < this.tileSize * 0.85) {
+                                e.momentum = Math.max(0.70, (e.momentum || 1.0) - (delta * 0.035));
+                            }
+                            e.straightRun = 0;
+                        }
+                    } else {
+                        // Near final exit
+                        e.momentum = Math.min(1.3, (e.momentum || 1.0) + (delta * 0.01));
+                    }
+                }
+
+                const effectiveSpeed = currentSpeed * (e.momentum || 1.0);
+                const spd = effectiveSpeed * delta * 2.2;
 
                 let moveDist = 0;
                 if (dist < spd) {
@@ -322,16 +457,18 @@ export class EnemyManager {
                 const currSin = Math.sin(e.walkPhase);
                 const prevSin = Math.sin(prevPhase);
                 if ((prevSin < 0 && currSin >= 0) || (prevSin > 0 && currSin <= 0)) {
-                    effects.dustParticles.push({
-                        x: e.x + (e.facing > 0 ? -5 : 5),
-                        y: e.y + (e.isBoss ? this.tileSize * 0.42 : this.tileSize * 0.34),
-                        vx: (Math.random() - 0.5) * 0.7 - (dx / (dist || 1)) * 0.3,
-                        vy: -0.35 - Math.random() * 0.35,
-                        radius: e.isBoss ? 3.6 + Math.random() * 2 : 2.2 + Math.random() * 1.4,
-                        duration: e.isBoss ? 20 : 14,
-                        maxDuration: e.isBoss ? 20 : 14,
-                        color: 0xa0aec0
-                    });
+                    if (effects && effects.dustParticles) {
+                        effects.dustParticles.push({
+                            x: e.x + (e.facing > 0 ? -5 : 5),
+                            y: e.y + (e.isBoss ? this.tileSize * 0.42 : this.tileSize * 0.34),
+                            vx: (Math.random() - 0.5) * 0.7 - (dx / (dist || 1)) * 0.3,
+                            vy: -0.35 - Math.random() * 0.35,
+                            radius: e.isBoss ? 3.6 + Math.random() * 2 : 2.2 + Math.random() * 1.4,
+                            duration: e.isBoss ? 20 : 14,
+                            maxDuration: e.isBoss ? 20 : 14,
+                            color: 0xa0aec0
+                        });
+                    }
                 }
             }
         }

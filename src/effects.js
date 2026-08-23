@@ -96,7 +96,7 @@ export class EffectsManager {
         } else if (elementalEffect === 'resistance') {
             color = 0xff5555;
             prefix = '-';
-        } else if (elementalEffect === 'burn') {
+        } else if (elementalEffect === 'burn' || elementalEffect === 'fire') {
             color = 0xff5500;
             prefix = '🔥 ';
         } else if (elementalEffect === 'bleed') {
@@ -104,7 +104,14 @@ export class EffectsManager {
             prefix = '🩸 ';
         }
 
-        const displayText = prefix + Math.floor(damage);
+        let displayText;
+        if (typeof damage === 'string') {
+            displayText = damage;
+        } else if (typeof damage === 'number' && !isNaN(damage)) {
+            displayText = prefix + Math.floor(damage);
+        } else {
+            displayText = String(damage || '');
+        }
 
         this.damageNumbers.push({
             x: x + randX,
