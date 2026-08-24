@@ -16,9 +16,6 @@ export class MetaProgressionManager {
 
     loadState() {
         try {
-            const savedStars = localStorage.getItem('td_meta_stars');
-            if (savedStars !== null) this.stars = parseInt(savedStars, 10) || 0;
-
             const savedRelics = localStorage.getItem('td_meta_relics');
             if (savedRelics) this.relicRanks = JSON.parse(savedRelics) || {};
 
@@ -37,7 +34,6 @@ export class MetaProgressionManager {
 
     saveState() {
         try {
-            localStorage.setItem('td_meta_stars', this.stars);
             localStorage.setItem('td_meta_relics', JSON.stringify(this.relicRanks));
             localStorage.setItem('td_high_scores', JSON.stringify(this.highScores));
             localStorage.setItem('td_unlocked_difficulties', JSON.stringify(this.unlockedDifficulties));
@@ -55,7 +51,7 @@ export class MetaProgressionManager {
         const id = parseInt(diffId, 10);
         if (!this.unlockedDifficulties.includes(id)) {
             this.unlockedDifficulties.push(id);
-            this.addStar(5); // +5 Star Tokens reward for unlocking a new difficulty!
+            this.addStar(5); // +5 Star Tokens reward for unlocking a new difficulty in this run!
             this.saveState();
             return true;
         }
@@ -109,9 +105,20 @@ export class MetaProgressionManager {
         this.runStats = this.createNewRunStats();
     }
 
+    resetStars() {
+        this.stars = 0;
+    }
+
+    resetRelics() {
+        this.relicRanks = {};
+    }
+
+    setStars(amount = 0) {
+        this.stars = Math.max(0, parseInt(amount, 10) || 0);
+    }
+
     addStar(amount = 1) {
-        this.stars += amount;
-        this.saveState();
+        this.stars = Math.max(0, this.stars + amount);
     }
 
     getStars() {
@@ -127,12 +134,11 @@ export class MetaProgressionManager {
         if (!relic) return false;
         const currentRank = this.getRelicRank(relicId);
         if (currentRank >= relic.maxRank) return false;
-        const cost = relic.costPerRank * (currentRank + 1);
+        const cost = 1; // 1 Star per rank upgrade
         if (this.stars < cost) return false;
 
         this.stars -= cost;
         this.relicRanks[relicId] = currentRank + 1;
-        this.saveState();
         return true;
     }
 

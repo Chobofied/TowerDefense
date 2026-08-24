@@ -217,7 +217,43 @@ export class EnemyManager {
                     }
                 }
 
-                // 4. Boss Attacks on Towers (Frequent Omnidirectional 360° Ground Shockwave + Artillery Mortars)
+                // 4. Boss 15-Second Enrage 'Mega Attack' (Obliterates all towers in 1-block radius)
+                e.bossAliveTimer = (e.bossAliveTimer || 0) + (delta / 60);
+                if (e.bossAliveTimer >= 15.0 && !e.megaAttackFired) {
+                    e.megaAttackFired = true;
+                    const bossTx = Math.floor(e.x / this.tileSize);
+                    const bossTy = Math.floor(e.y / this.tileSize);
+
+                    if (towersManager && towersManager.towers) {
+                        const activeTowers = towersManager.towers.filter(t => !t.isDestroyed);
+                        const megaTargets = activeTowers.filter(t =>
+                            Math.abs(t.x - bossTx) <= 1 && Math.abs(t.y - bossTy) <= 1
+                        );
+
+                        for (const target of megaTargets) {
+                            const tcx = target.x * this.tileSize + this.tileSize / 2;
+                            const tcy = target.y * this.tileSize + this.tileSize / 2;
+                            towersManager.damageTower(target, 999999);
+                            effects.addDamageNumber(tcx, tcy - 16, '💥 OBLITERATED!', true, 'fire');
+                            if (onBossAttackTower) onBossAttackTower(target, 999999);
+                        }
+                    }
+
+                    // Screen-shaking Crimson Nova shockwave
+                    effects.addDamageNumber(e.x, e.y - 32, '⚠️ MEGA ATTACK! 💥', true, 'fire');
+                    effects.splashEffects.push({
+                        x: e.x, y: e.y,
+                        radius: 0,
+                        maxRadius: this.tileSize * 2.5,
+                        color: 0xff0055,
+                        alpha: 1,
+                        duration: 45
+                    });
+                    effects.triggerShake(14, 35);
+                    audio.playBossAlarm();
+                }
+
+                // 5. Boss Attacks on Towers (Frequent Omnidirectional 360° Ground Shockwave + Artillery Mortars)
                 if (towersManager && towersManager.towers && towersManager.towers.length > 0) {
                     e.bossTowerAttackTimer = (e.bossTowerAttackTimer || 0) + (delta / 60);
                     const waveNum = e.wave || 1;
@@ -226,7 +262,10 @@ export class EnemyManager {
                     const enrageSpeedMult = e.enraged ? 0.65 : 1.0;
                     const attackInterval = Math.max(0.85, (baseInterval * enrageSpeedMult) / Math.sqrt(waveProgressionMult));
                     const baseDamage = (difficultyConfig && difficultyConfig.bossAttackDamage) || 55;
-                    const attackDamage = Math.round(baseDamage * waveProgressionMult);
+                    const scaledDamage = baseDamage * waveProgressionMult;
+                    // Random variance (+/- 30%)
+                    const randomFactor = 0.70 + Math.random() * 0.60;
+                    const attackDamage = Math.max(10, Math.round(scaledDamage * randomFactor));
 
                     if (e.bossTowerAttackTimer >= attackInterval) {
                         const activeTowers = towersManager.towers.filter(t => !t.isDestroyed);

@@ -9,7 +9,7 @@
     "version": "0.3.0",
     "backgroundImage": "Game_Images/Background.png",
     "bossLifePenalty": 3,
-    "airWaveSpeedMultiplier": 0.75,
+    "airWaveSpeedMultiplier": 0.38,
     "airWaveCountDivisor": 4,
     "upgradeCostMultiplier": 0.7,
     "sellRefundRatio": 0.5,
@@ -247,7 +247,7 @@
       "cost": 30,
       "range": 120,
       "fireRate": 0.8,
-      "damage": 5,
+      "damage": 4,
       "damageVariation": 0.2,
       "critChance": 0.1,
       "critMultiplier": 2.0,
@@ -263,7 +263,7 @@
       "cost": 70,
       "range": 50,
       "fireRate": 0.4,
-      "damage": 20,
+      "damage": 14,
       "damageVariation": 0.15,
       "critChance": 0.15,
       "critMultiplier": 1.8,
@@ -279,7 +279,7 @@
       "cost": 100,
       "range": 120,
       "fireRate": 1.2,
-      "damage": 20,
+      "damage": 14,
       "damageVariation": 0.25,
       "critChance": 0.08,
       "critMultiplier": 2.5,
@@ -339,7 +339,7 @@
       "cost": 150,
       "range": 300,
       "fireRate": 2.0,
-      "damage": 70,
+      "damage": 48,
       "damageVariation": 0.15,
       "critChance": 0.3,
       "critMultiplier": 3.0,
@@ -356,7 +356,7 @@
       "cost": 140,
       "range": 85,
       "fireRate": 0.3,
-      "damage": 12,
+      "damage": 16,
       "damageVariation": 0.2,
       "critChance": 0.15,
       "critMultiplier": 1.7,
@@ -373,7 +373,7 @@
       "cost": 140,
       "range": 85,
       "fireRate": 0.3,
-      "damage": 12,
+      "damage": 16,
       "damageVariation": 0.2,
       "critChance": 0.15,
       "critMultiplier": 1.7,
@@ -390,7 +390,7 @@
       "cost": 140,
       "range": 85,
       "fireRate": 0.3,
-      "damage": 12,
+      "damage": 16,
       "damageVariation": 0.2,
       "critChance": 0.15,
       "critMultiplier": 1.7,
@@ -639,10 +639,11 @@
       },
       "elementalProperties": {
         "weaknesses": {
-          "water": 0.5
+          "water": 1.5
         },
         "resistances": {
-          "fire": 0.5
+          "fire": 0.7,
+          "earth": 0.7
         }
       }
     },
@@ -661,10 +662,11 @@
       },
       "elementalProperties": {
         "weaknesses": {
-          "earth": 0.5
+          "earth": 1.5
         },
         "resistances": {
-          "water": 0.5
+          "water": 0.7,
+          "fire": 0.7
         }
       }
     },
@@ -683,10 +685,11 @@
       },
       "elementalProperties": {
         "weaknesses": {
-          "fire": 0.5
+          "fire": 1.5
         },
         "resistances": {
-          "earth": 0.5
+          "earth": 0.7,
+          "water": 0.7
         }
       }
     },
@@ -709,8 +712,8 @@
     },
     {
       "name": "Flying",
-      "baseSpeed": 1.2,
-      "baseHp": 30,
+      "baseSpeed": 0.6,
+      "baseHp": 15,
       "reward": 12,
       "color": "0xaaddff",
       "flying": true,
@@ -784,10 +787,10 @@
       },
       "elementalProperties": {
         "weaknesses": {
-          "fire": 0.5
+          "fire": 1.5
         },
         "resistances": {
-          "earth": 0.5
+          "earth": 0.7
         }
       }
     }
@@ -918,9 +921,9 @@
   ],
   "boost": {
     "key": "B",
-    "speedMultiplier": 2.0,
-    "duration": 5,
-    "cooldown": 25
+    "speedMultiplier": 2.2,
+    "duration": 2.5,
+    "cooldown": 0
   },
   "bomb": {
     "name": "Explosive Bomb",
@@ -931,53 +934,7 @@
     "key": "X",
     "color": "0xff3300"
   },
-  "relics": [
-    {
-      "id": "starterTreasury",
-      "name": "Starter Treasury",
-      "icon": "🪙",
-      "desc": "+50 starting gold per rank.",
-      "maxRank": 5,
-      "costPerRank": 1,
-      "goldPerRank": 50
-    },
-    {
-      "id": "fortifiedCore",
-      "name": "Fortified Core",
-      "icon": "❤️",
-      "desc": "+2 starting lives per rank.",
-      "maxRank": 5,
-      "costPerRank": 1,
-      "livesPerRank": 2
-    },
-    {
-      "id": "engineeringGuild",
-      "name": "Engineering Guild",
-      "icon": "🛠️",
-      "desc": "6% cheaper tower upgrade costs per rank.",
-      "maxRank": 5,
-      "costPerRank": 2,
-      "discountPerRank": 0.06
-    },
-    {
-      "id": "merchantContract",
-      "name": "Merchant Contract",
-      "icon": "📜",
-      "desc": "10% cheaper Shop unlock costs per rank.",
-      "maxRank": 4,
-      "costPerRank": 2,
-      "shopDiscountPerRank": 0.10
-    },
-    {
-      "id": "overclockReactor",
-      "name": "Overclock Reactor",
-      "icon": "⚡",
-      "desc": "Global Boost duration increased by +1s per rank.",
-      "maxRank": 3,
-      "costPerRank": 2,
-      "boostDurationBonus": 1.0
-    }
-  ],
+  "relics": [],
   "elements": {
     "physical": {
       "name": "Physical",

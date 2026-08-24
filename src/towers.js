@@ -1,5 +1,7 @@
 // src/towers.js - Tower Entities, Targeting AI, Specializations, Projectiles & Overlays
 
+import { CONFIG } from './config.js';
+
 export class TowerManager {
     constructor(tileSize = 48, specializationsConfig = {}, elementsConfig = {}) {
         this.tileSize = tileSize;
@@ -58,6 +60,17 @@ export class TowerManager {
 
         this.towers.push(tower);
         return tower;
+    }
+
+    upgradeTower(tower) {
+        if (!tower) return;
+        tower.level++;
+        const baseHp = (CONFIG && CONFIG.gameSettings && CONFIG.gameSettings.towerBaseHp) || 250;
+        const hpPerLevel = (CONFIG && CONFIG.gameSettings && CONFIG.gameSettings.towerHpPerLevel) || 75;
+        const oldMax = tower.maxHp || baseHp;
+        tower.maxHp = baseHp + (tower.level - 1) * hpPerLevel;
+        const hpGain = tower.maxHp - oldMax;
+        tower.hp = Math.min(tower.maxHp, (tower.hp || oldMax) + hpGain);
     }
 
     getRepairCost(tower) {
@@ -176,13 +189,14 @@ export class TowerManager {
     // --- Calculate Combat Damage with Elements & Crits ---
     calculateDamage(tower, target) {
         const baseDamage = tower.type.damage * tower.level;
-        const variation = tower.type.damageVariation || 0.15;
+        const variation = tower.type.damageVariation !== undefined ? tower.type.damageVariation : 0.15;
         const minDamage = baseDamage * (1 - variation);
         const maxDamage = baseDamage * (1 + variation);
         let rolledDamage = minDamage + Math.random() * (maxDamage - minDamage);
 
         // Check Critical Hit
-        const isCritical = Math.random() < (tower.type.critChance || 0.1);
+        const critChance = tower.type.critChance !== undefined ? tower.type.critChance : 0.1;
+        const isCritical = Math.random() < critChance;
         if (isCritical) {
             rolledDamage *= (tower.type.critMultiplier || 2.0);
         }
@@ -263,6 +277,11 @@ export class TowerManager {
             // Filter in-range enemies
             let validTargets = enemies.filter(e => {
                 if (!e.alive) return false;
+                // Only Anti-Air and Slow towers can target air/flying enemies
+                if (e.flying) {
+                    const canAttackAir = (tower.baseType.name === 'Anti-Air' || tower.baseType.name === 'Slow');
+                    if (!canAttackAir) return false;
+                }
                 if (tower.type.flyingOnly && !e.flying) return false;
                 if (tower.type.name === 'Melee' && e.flying) return false;
                 return Math.hypot(e.x - tcx, e.y - tcy) <= tower.type.range;
@@ -442,6 +461,10 @@ export class TowerManager {
                     const splashDmg = p.damage * p.splashDamageRatio;
                     for (const other of enemies) {
                         if (other !== p.target && other.alive && Math.hypot(other.x - p.x, other.y - p.y) <= p.splashRadius) {
+                            if (other.flying) {
+                                const canAttackAir = (p.originTower.baseType.name === 'Anti-Air' || p.originTower.baseType.name === 'Slow');
+                                if (!canAttackAir) continue;
+                            }
                             other.hp -= splashDmg;
                             other.hitFlash = 5;
                             p.originTower.lifetimeDamage += splashDmg;

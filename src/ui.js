@@ -104,52 +104,93 @@ export class UIManager {
         if (modal) modal.style.display = 'none';
     }
 
-    // --- Star Relic Shop Modal ---
-    openRelicModal(metaManager) {
+    // --- Star Market Modal ---
+    openRelicModal(metaManager, gameInstance = null) {
         const modal = document.getElementById('relic-modal');
         if (!modal) return;
 
+        const starCount = metaManager.getStars();
         const starsCountEl = document.getElementById('relic-stars-display');
-        if (starsCountEl) starsCountEl.textContent = metaManager.getStars();
+        if (starsCountEl) starsCountEl.textContent = starCount;
 
         const container = document.getElementById('relic-list-container');
         if (container) {
             container.innerHTML = '';
-            metaManager.relicsConfig.forEach(relic => {
-                const rank = metaManager.getRelicRank(relic.id);
-                const isMax = rank >= relic.maxRank;
-                const cost = relic.costPerRank * (rank + 1);
-                const canAfford = metaManager.getStars() >= cost && !isMax;
 
-                const card = document.createElement('div');
-                card.className = 'relic-card';
-                card.innerHTML = `
-                    <div class="relic-icon-wrapper">${relic.icon}</div>
-                    <div class="relic-info">
-                        <div class="relic-title-row">
-                            <span class="relic-name">${relic.name}</span>
-                            <span class="relic-rank-badge">Rank ${rank}/${relic.maxRank}</span>
-                        </div>
-                        <div class="relic-desc">${relic.desc}</div>
+            const wave = gameInstance ? (gameInstance.wave || 1) : 1;
+            const goldForStar = 50 + (5 * wave);
+            const canAfford = starCount >= 1;
+
+            const marketWrapper = document.createElement('div');
+            marketWrapper.style.cssText = 'display:flex; flex-direction:column; gap:12px; padding:4px 0;';
+
+            // Item 1: Buy +1 Life
+            const lifeCard = document.createElement('div');
+            lifeCard.className = 'relic-card';
+            lifeCard.style.cssText = 'display:flex; align-items:center; justify-content:space-between; background:rgba(30,41,59,0.85); border:1px solid rgba(239,68,68,0.3); border-radius:10px; padding:14px;';
+            lifeCard.innerHTML = `
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <div style="font-size:2em; background:rgba(239,68,68,0.15); width:50px; height:50px; border-radius:10px; display:flex; align-items:center; justify-content:center; border:1px solid rgba(239,68,68,0.4);">
+                        ❤️
                     </div>
-                    <button class="relic-buy-btn ${canAfford ? 'can-afford' : ''}" ${isMax ? 'disabled' : ''}>
-                        ${isMax ? 'MAXED' : `⭐ ${cost}`}
-                    </button>
-                `;
+                    <div>
+                        <div style="font-weight:800; font-size:1.05em; color:#fff;">+1 Defense Life</div>
+                        <div style="font-size:0.82em; color:var(--text-secondary); margin-top:2px;">Instantly adds +1 Life to your core defense.</div>
+                    </div>
+                </div>
+                <button class="relic-buy-btn ${canAfford ? 'can-afford' : ''}" style="background:${canAfford ? '#ef4444' : '#475569'}; color:#fff; font-weight:800; padding:10px 18px; border-radius:8px; border:none; cursor:${canAfford ? 'pointer' : 'not-allowed'}; min-width:95px;" ${!canAfford ? 'disabled' : ''}>
+                    ⭐ 1 Star
+                </button>
+            `;
 
-                const btn = card.querySelector('.relic-buy-btn');
-                if (btn && !isMax) {
-                    btn.onclick = () => {
-                        if (metaManager.upgradeRelic(relic.id)) {
-                            this.showToast(`Upgraded ${relic.name}!`, '#10b981');
-                            this.openRelicModal(metaManager);
-                            if (this.callbacks.onRelicUpgraded) this.callbacks.onRelicUpgraded();
-                        }
-                    };
-                }
+            const lifeBtn = lifeCard.querySelector('button');
+            if (lifeBtn && canAfford && gameInstance) {
+                lifeBtn.onclick = () => {
+                    if (metaManager.getStars() >= 1) {
+                        metaManager.addStar(-1);
+                        gameInstance.lives++;
+                        this.showToast(`+1 Life Purchased! (❤️ ${gameInstance.lives})`, '#ef4444');
+                        gameInstance.updateUI();
+                        this.openRelicModal(metaManager, gameInstance);
+                    }
+                };
+            }
+            marketWrapper.appendChild(lifeCard);
 
-                container.appendChild(card);
-            });
+            // Item 2: Buy Gold (50 + 5 * wave)
+            const goldCard = document.createElement('div');
+            goldCard.className = 'relic-card';
+            goldCard.style.cssText = 'display:flex; align-items:center; justify-content:space-between; background:rgba(30,41,59,0.85); border:1px solid rgba(234,179,8,0.3); border-radius:10px; padding:14px;';
+            goldCard.innerHTML = `
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <div style="font-size:2em; background:rgba(234,179,8,0.15); width:50px; height:50px; border-radius:10px; display:flex; align-items:center; justify-content:center; border:1px solid rgba(234,179,8,0.4);">
+                        🪙
+                    </div>
+                    <div>
+                        <div style="font-weight:800; font-size:1.05em; color:#fff;">+${goldForStar}g Gold Supply</div>
+                        <div style="font-size:0.82em; color:var(--text-secondary); margin-top:2px;">Instant gold injection (Formula: 50 + 5 × Wave ${wave}).</div>
+                    </div>
+                </div>
+                <button class="relic-buy-btn ${canAfford ? 'can-afford' : ''}" style="background:${canAfford ? '#eab308' : '#475569'}; color:${canAfford ? '#0f172a' : '#fff'}; font-weight:800; padding:10px 18px; border-radius:8px; border:none; cursor:${canAfford ? 'pointer' : 'not-allowed'}; min-width:95px;" ${!canAfford ? 'disabled' : ''}>
+                    ⭐ 1 Star
+                </button>
+            `;
+
+            const goldBtn = goldCard.querySelector('button');
+            if (goldBtn && canAfford && gameInstance) {
+                goldBtn.onclick = () => {
+                    if (metaManager.getStars() >= 1) {
+                        metaManager.addStar(-1);
+                        gameInstance.gold += goldForStar;
+                        this.showToast(`+${goldForStar}g Gold Purchased!`, '#facc15');
+                        gameInstance.updateUI();
+                        this.openRelicModal(metaManager, gameInstance);
+                    }
+                };
+            }
+            marketWrapper.appendChild(goldCard);
+
+            container.appendChild(marketWrapper);
         }
 
         modal.style.display = 'flex';
@@ -316,9 +357,11 @@ export class UIManager {
         const modal = document.getElementById('load-modal');
         if (!modal) return;
 
+        this.saveSortOption = this.saveSortOption || 'date-desc';
+
         const container = document.getElementById('load-list-container');
         if (container) {
-            const slots = saveManager.getSaveIndex();
+            let slots = saveManager.getSaveIndex();
             container.innerHTML = '';
 
             if (slots.length === 0) {
@@ -328,6 +371,43 @@ export class UIManager {
                     </div>
                 `;
             } else {
+                // Top Sorting Control Bar
+                const sortBar = document.createElement('div');
+                sortBar.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding:7px 12px; background:rgba(15,23,42,0.7); border:1px solid var(--border-subtle); border-radius:var(--radius-md);';
+                sortBar.innerHTML = `
+                    <span style="font-size:0.82em; font-weight:800; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px;">
+                        Sort Saves:
+                    </span>
+                    <select id="save-sort-select" style="background:#1e293b; color:#38bdf8; border:1px solid #334155; border-radius:6px; padding:4px 10px; font-size:0.82em; font-weight:700; cursor:pointer;">
+                        <option value="date-desc" ${this.saveSortOption === 'date-desc' ? 'selected' : ''}>📅 Date: Newest First</option>
+                        <option value="date-asc" ${this.saveSortOption === 'date-asc' ? 'selected' : ''}>📅 Date: Oldest First</option>
+                        <option value="wave-desc" ${this.saveSortOption === 'wave-desc' ? 'selected' : ''}>🌊 Wave: Highest First</option>
+                        <option value="wave-asc" ${this.saveSortOption === 'wave-asc' ? 'selected' : ''}>🌊 Wave: Lowest First</option>
+                    </select>
+                `;
+
+                const sortSelect = sortBar.querySelector('#save-sort-select');
+                if (sortSelect) {
+                    sortSelect.onchange = (e) => {
+                        this.saveSortOption = e.target.value;
+                        this.openLoadModal(saveManager, game);
+                    };
+                }
+                container.appendChild(sortBar);
+
+                // Sort Slots
+                if (this.saveSortOption === 'date-asc') {
+                    slots.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+                } else if (this.saveSortOption === 'wave-desc') {
+                    slots.sort((a, b) => (b.wave || 0) - (a.wave || 0));
+                } else if (this.saveSortOption === 'wave-asc') {
+                    slots.sort((a, b) => (a.wave || 0) - (b.wave || 0));
+                } else {
+                    // Default 'date-desc'
+                    slots.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+                }
+
+                // Render Slot Cards
                 slots.forEach(slot => {
                     const card = document.createElement('div');
                     card.className = 'save-slot-card';
@@ -337,15 +417,65 @@ export class UIManager {
                                 <strong>Wave ${slot.wave} • ${slot.mapName || 'Map'}</strong>
                             </div>
                             <div class="save-slot-meta">
-                                <span>🪙 ${slot.gold}g</span> • <span>❤️ ${slot.lives} lives</span> • <span>🏰 ${(slot.towers || []).length} towers</span>
+                                <span>🪙 ${slot.gold}g</span> • <span>❤️ ${slot.lives} lives</span> • <span>⭐ ${slot.stars || 0} stars</span> • <span>🏰 ${(slot.towers || []).length} towers</span>
                             </div>
-                            <div class="save-slot-date">${slot.dateStr}</div>
+                            <div class="save-desc-section" style="margin-top:4px; font-size:0.82em;">
+                                <div class="save-desc-display" style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                                    <span class="save-desc-text" style="color:${slot.description ? '#cbd5e1' : '#64748b'}; font-style:italic; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:240px;">
+                                        ${slot.description ? `📝 "${slot.description}"` : '✏️ Add description...'}
+                                    </span>
+                                    <button class="save-desc-edit-btn" title="Edit Description" style="background:transparent; border:none; color:#38bdf8; cursor:pointer; font-size:0.85em; padding:0 2px;">✏️</button>
+                                </div>
+                                <div class="save-desc-form" style="display:none; align-items:center; gap:4px; margin-top:3px;">
+                                    <input type="text" class="save-desc-input" value="${slot.description || ''}" placeholder="Enter save note..." maxlength="60" style="flex:1; background:#0f172a; border:1px solid #38bdf8; border-radius:4px; color:#fff; padding:3px 6px; font-size:0.82em;">
+                                    <button class="save-desc-save-btn" style="background:#10b981; color:#fff; border:none; border-radius:4px; padding:3px 8px; font-size:0.78em; font-weight:800; cursor:pointer;">Save</button>
+                                    <button class="save-desc-cancel-btn" style="background:#64748b; color:#fff; border:none; border-radius:4px; padding:3px 6px; font-size:0.78em; cursor:pointer;">✕</button>
+                                </div>
+                            </div>
+                            <div class="save-slot-date" style="font-size:0.72em; color:var(--text-muted); margin-top:4px;">${slot.dateStr}</div>
                         </div>
                         <div class="save-slot-actions">
                             <button class="save-btn-load">Load</button>
                             <button class="save-btn-del" title="Delete Save">✕</button>
                         </div>
                     `;
+
+                    // Description Inline Edit Handlers
+                    const descDisplay = card.querySelector('.save-desc-display');
+                    const descForm = card.querySelector('.save-desc-form');
+                    const descInput = card.querySelector('.save-desc-input');
+                    const descSaveBtn = card.querySelector('.save-desc-save-btn');
+                    const descCancelBtn = card.querySelector('.save-desc-cancel-btn');
+
+                    const startEditing = () => {
+                        descDisplay.style.display = 'none';
+                        descForm.style.display = 'flex';
+                        descInput.focus();
+                        descInput.select();
+                    };
+
+                    const cancelEditing = () => {
+                        descForm.style.display = 'none';
+                        descDisplay.style.display = 'flex';
+                    };
+
+                    const saveDescription = () => {
+                        const newDesc = descInput.value.trim();
+                        saveManager.updateDescription(slot.id, newDesc);
+                        this.showToast('Save description updated!', '#10b981', 1200);
+                        this.openLoadModal(saveManager, game);
+                    };
+
+                    if (descDisplay) descDisplay.onclick = (e) => { e.stopPropagation(); startEditing(); };
+                    if (descCancelBtn) descCancelBtn.onclick = (e) => { e.stopPropagation(); cancelEditing(); };
+                    if (descSaveBtn) descSaveBtn.onclick = (e) => { e.stopPropagation(); saveDescription(); };
+                    if (descInput) {
+                        descInput.onclick = (e) => e.stopPropagation();
+                        descInput.onkeydown = (e) => {
+                            if (e.key === 'Enter') saveDescription();
+                            if (e.key === 'Escape') cancelEditing();
+                        };
+                    }
 
                     // Load click
                     card.querySelector('.save-btn-load').onclick = () => {

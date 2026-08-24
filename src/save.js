@@ -14,7 +14,7 @@ export class SaveManager {
         }
     }
 
-    saveGame(game) {
+    saveGame(game, customDescription = '') {
         const slots = this.getSaveIndex();
         const id = 'save_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
 
@@ -23,6 +23,7 @@ export class SaveManager {
             id,
             ts: Date.now(),
             dateStr: new Date().toLocaleString(),
+            description: (customDescription || '').trim(),
             mapId: currentMap ? currentMap.id : 'plains',
             mapName: currentMap ? currentMap.name : 'Open Plains',
             wave: game.wave,
@@ -30,6 +31,7 @@ export class SaveManager {
             lives: game.lives,
             bombCount: game.bombCount,
             stars: game.meta.getStars(),
+            relicRanks: { ...(game.meta.relicRanks || {}) },
             purchasedTowerNames: game.CONFIG.towers
                 .filter(t => !(game.BASE_TOWERS || []).some(bt => bt.name === t.name))
                 .map(t => t.name),
@@ -56,6 +58,22 @@ export class SaveManager {
             console.error('Failed to save game:', e);
             return null;
         }
+    }
+
+    updateDescription(id, description) {
+        const slots = this.getSaveIndex();
+        const slot = slots.find(s => s.id === id);
+        if (slot) {
+            slot.description = (description || '').trim();
+            try {
+                localStorage.setItem(this.STORAGE_KEY, JSON.stringify(slots));
+                return true;
+            } catch (e) {
+                console.error('Failed to update save description:', e);
+                return false;
+            }
+        }
+        return false;
     }
 
     loadSaveById(id) {
@@ -95,6 +113,10 @@ export class SaveManager {
         game.gold = snapshot.gold || 500;
         game.lives = snapshot.lives || 20;
         game.bombCount = snapshot.bombCount || 0;
+        if (game.meta) {
+            game.meta.setStars(snapshot.stars || 0);
+            game.meta.relicRanks = { ...(snapshot.relicRanks || {}) };
+        }
         game.isGameRunning = false;
         game.spawningWave = false;
         game.isPaused = false;
@@ -124,6 +146,10 @@ export class SaveManager {
                 if (towerType) {
                     const tower = game.towers.createTower(towerType, savedTower.x, savedTower.y, game.wave, false);
                     tower.level = savedTower.level || 1;
+                    const baseHp = game.CONFIG.gameSettings.towerBaseHp || 250;
+                    const hpPerLevel = game.CONFIG.gameSettings.towerHpPerLevel || 75;
+                    tower.maxHp = baseHp + (tower.level - 1) * hpPerLevel;
+                    tower.hp = tower.maxHp;
                     tower.targetingMode = savedTower.targetingMode || 'first';
                     tower.lifetimeDamage = savedTower.lifetimeDamage || 0;
                     tower.lifetimeKills = savedTower.lifetimeKills || 0;

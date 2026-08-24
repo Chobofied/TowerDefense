@@ -830,7 +830,7 @@ class TowerDefenseGame {
         }
 
         this.gold -= cost;
-        tower.level++;
+        this.towers.upgradeTower(tower);
         Audio.playUpgrade();
         this.updateUI();
         this.showTowerStatsModal(tower);
@@ -929,7 +929,7 @@ class TowerDefenseGame {
             const cost = this.towers.getUpgradeCost(t, mult, discount);
             if (this.gold >= cost) {
                 this.gold -= cost;
-                t.level++;
+                this.towers.upgradeTower(t);
                 totalCost += cost;
                 upgradedCount++;
             }
@@ -1034,6 +1034,8 @@ class TowerDefenseGame {
         this.isGameRunning = true;
         this.spawningWave = true;
         this.isPaused = false; // Always unpause cleanly when starting wave
+        this.boostUsedThisWave = false;
+        this.boostActive = false;
         Audio.playWaveStart();
 
         const count = 8 + this.wave * 2;
@@ -1201,10 +1203,16 @@ class TowerDefenseGame {
 
     // --- Abilities & Boost ---
     activateBoost() {
-        if (this.boostActive || this.boostCooldown > 0) return;
+        if (this.boostActive) return;
+        if (this.boostUsedThisWave) {
+            Audio.playLifeLost();
+            this.ui.showToast('⚡ Boost already used this round! Resets next wave.', '#f87171', 2000);
+            return;
+        }
+
         this.boostActive = true;
-        const extraDur = this.meta.getBoostDurationBonus();
-        const durationSec = (BOOST_CONFIG.duration || 5) + extraDur;
+        this.boostUsedThisWave = true;
+        const durationSec = (BOOST_CONFIG && BOOST_CONFIG.duration) || 2.5;
 
         Audio.playShoot('Anti-Air');
         this.ui.showToast(`⚡ BOOST ACTIVATED (${durationSec}s)!`, '#38bdf8');
@@ -1212,7 +1220,6 @@ class TowerDefenseGame {
 
         setTimeout(() => {
             this.boostActive = false;
-            this.boostCooldown = BOOST_CONFIG.cooldown || 25;
             this.updateUI();
         }, durationSec * 1000);
     }
@@ -1255,13 +1262,6 @@ class TowerDefenseGame {
     gameLoop(delta) {
         const effectiveDelta = this.isPaused ? 0 : delta * this.gameSpeed;
 
-        // Boost cooldown
-        if (!this.boostActive && this.boostCooldown > 0) {
-            this.boostCooldown -= (delta / 60);
-            if (this.boostCooldown <= 0) this.boostCooldown = 0;
-            this.updateUI();
-        }
-
         // Process Spawning Queue (Deterministic delta timer, pause-safe & speed-scaled)
         if (this.spawningWave && this.enemySpawnQueue.length > 0) {
             this.spawnTimer -= (effectiveDelta / 60);
@@ -1278,12 +1278,24 @@ class TowerDefenseGame {
         // Check Wave Clear
         if (this.isGameRunning && !this.spawningWave && this.enemies.enemies.length === 0) {
             this.isGameRunning = false;
+            this.boostUsedThisWave = false;
+            this.boostActive = false;
             const diff = this.getDifficultyConfig();
             const reward = Math.round((CONFIG.gameSettings.waveCompleteGold || 50) * (diff.rewardMult || 1.0));
             this.gold += reward;
             this.meta.recordWaveComplete(this.wave, reward);
+
+            const wavePattern = this.getWavePattern(this.wave);
+            const isBossWave = (wavePattern && wavePattern.name === 'Boss Wave');
+            const starsEarned = isBossWave ? 3 : 1;
+            this.meta.addStar(starsEarned);
+
             Audio.playWaveClear();
-            this.ui.showToast(`Wave ${this.wave} Cleared! +${reward}g`, '#10b981');
+            if (isBossWave) {
+                this.ui.showToast(`👑 Boss Wave ${this.wave} Defeated! +${reward}g & +3 ⭐ Stars!`, '#facc15', 3000);
+            } else {
+                this.ui.showToast(`Wave ${this.wave} Cleared! +${reward}g & +1 ⭐ Star!`, '#10b981');
+            }
 
             // 100-Wave Campaign Victory & Endless Choice Check
             if (this.wave === 100 && !this.endlessMode) {
@@ -1601,7 +1613,7 @@ class TowerDefenseGame {
 
         // Star Relic Vault Trigger
         const relicBtn = document.getElementById('relic-vault-btn');
-        if (relicBtn) relicBtn.onclick = () => this.ui.openRelicModal(this.meta);
+        if (relicBtn) relicBtn.onclick = () => this.ui.openRelicModal(this.meta, this);
         const relicClose = document.getElementById('relic-close-btn');
         if (relicClose) relicClose.onclick = () => this.ui.closeRelicModal();
 
@@ -1707,13 +1719,19 @@ class TowerDefenseGame {
         if (boostBtn) {
             if (this.boostActive) {
                 boostBtn.innerHTML = '⚡ BOOST ACTIVE!';
-                boostBtn.style.background = '#38bdf8';
-            } else if (this.boostCooldown > 0) {
-                boostBtn.innerHTML = `⚡ Boost (${Math.ceil(this.boostCooldown)}s)`;
-                boostBtn.style.background = '#334155';
+                boostBtn.style.background = '#eab308';
+                boostBtn.style.opacity = '1';
+                boostBtn.style.pointerEvents = 'none';
+            } else if (this.boostUsedThisWave) {
+                boostBtn.innerHTML = '⚡ Boost Used (1/Wave)';
+                boostBtn.style.background = '#475569';
+                boostBtn.style.opacity = '0.6';
+                boostBtn.style.pointerEvents = 'none';
             } else {
-                boostBtn.innerHTML = '⚡ Boost [B]';
+                boostBtn.innerHTML = '⚡ Boost [B] (1/Wave)';
                 boostBtn.style.background = '#10b981';
+                boostBtn.style.opacity = '1';
+                boostBtn.style.pointerEvents = 'auto';
             }
         }
     }
@@ -1738,10 +1756,13 @@ class TowerDefenseGame {
         // Specialization choice cards if level >= 4 and no spec chosen yet
         let specHtml = '';
         const specs = SPECIALIZATIONS[tower.baseType.name] || [];
+        const currentStars = this.meta ? this.meta.getStars() : 0;
+        const canAffordSpec = currentStars >= 1;
+
         if (tower.level >= 4 && !tower.specialization && specs.length > 0) {
             specHtml = `
                 <div class="spec-prompt-box">
-                    <div class="spec-prompt-title">🌟 CHOOSE SPECIALIZATION</div>
+                    <div class="spec-prompt-title">🌟 CHOOSE SPECIALIZATION (Cost: 1 ⭐ Star)</div>
                     <div class="spec-cards-container">
                         ${specs.map(s => `
                             <div class="spec-card">
@@ -1749,7 +1770,7 @@ class TowerDefenseGame {
                                     <span>${s.icon} <strong>${s.name}</strong></span>
                                 </div>
                                 <div class="spec-card-desc">${s.desc}</div>
-                                <button class="spec-choose-btn" data-spec="${s.id}">Choose Specialization</button>
+                                <button class="spec-choose-btn" data-spec="${s.id}" ${!canAffordSpec ? 'style="opacity:0.6;"' : ''}>Unlock (1 ⭐ Star)</button>
                             </div>
                         `).join('')}
                     </div>
@@ -1811,9 +1832,16 @@ class TowerDefenseGame {
             content.querySelectorAll('.spec-choose-btn').forEach(btn => {
                 btn.onclick = () => {
                     const specId = btn.dataset.spec;
+                    if (!this.meta || this.meta.getStars() < 1) {
+                        this.ui.showToast('Not enough Stars! (Needs 1 ⭐)', '#f43f5e');
+                        Audio.playLifeLost();
+                        return;
+                    }
                     if (this.towers.applySpecialization(tower, specId)) {
+                        this.meta.addStar(-1);
                         Audio.playUpgrade();
-                        this.ui.showToast(`Specialization unlocked!`, '#10b981');
+                        this.ui.showToast(`Specialization unlocked (-1 ⭐ Star)!`, '#10b981');
+                        this.updateUI();
                         this.showTowerStatsModal(tower);
                     }
                 };
@@ -1913,11 +1941,11 @@ class TowerDefenseGame {
             if (unspec.length > 0 && specs.length > 0) {
                 specHtml = `
                     <div style="background:rgba(236,72,153,0.15); border:1px solid rgba(236,72,153,0.3); border-radius:6px; padding:6px; margin:4px 0;">
-                        <div style="font-size:0.75em; font-weight:800; color:#f472b6; margin-bottom:4px;">🌟 ${unspec.length} UNCHOSEN SPECIALIZATION(S)</div>
+                        <div style="font-size:0.75em; font-weight:800; color:#f472b6; margin-bottom:4px;">🌟 ${unspec.length} UNCHOSEN SPECIALIZATION(S) (Cost: 1 ⭐ / Tower)</div>
                         <div style="display:flex; gap:4px;">
                             ${specs.map(s => `
                                 <button class="spec-group-choose-btn" data-type="${name}" data-spec="${s.id}" style="flex:1; background:#ec4899; color:#fff; border:none; padding:4px; font-size:0.72em; font-weight:800; border-radius:4px; cursor:pointer;">
-                                    ${s.icon} ${s.name}
+                                    ${s.icon} ${s.name} (${unspec.length} ⭐)
                                 </button>
                             `).join('')}
                         </div>
@@ -2019,9 +2047,17 @@ class TowerDefenseGame {
                     const gName = btn.dataset.type;
                     const specId = btn.dataset.spec;
                     const unspec = this.selectedTowers.filter(t => t.baseType.name === gName && t.level >= 4 && !t.specialization);
+                    const neededStars = unspec.length;
+                    if (!this.meta || this.meta.getStars() < neededStars) {
+                        this.ui.showToast(`Not enough Stars! (Needs ${neededStars} ⭐ for ${unspec.length} towers)`, '#f43f5e');
+                        Audio.playLifeLost();
+                        return;
+                    }
+                    this.meta.addStar(-neededStars);
                     unspec.forEach(t => this.towers.applySpecialization(t, specId));
                     Audio.playUpgrade();
-                    this.ui.showToast(`Applied specialization to ${unspec.length} ${gName} tower(s)!`, '#10b981');
+                    this.ui.showToast(`Applied specialization to ${unspec.length} ${gName} tower(s) (-${neededStars} ⭐)!`, '#10b981');
+                    this.updateUI();
                     this.showMultiTowerStatsModal(this.selectedTowers);
                 };
             });
@@ -2117,7 +2153,71 @@ class TowerDefenseGame {
         if (container) {
             container.innerHTML = '';
 
-            // 1. Explosive Bomb Card
+            // 1. Star Exchange: +1 Life
+            const starCount = this.meta ? this.meta.getStars() : 0;
+            const canAffordLife = starCount >= 1;
+            const lifeCard = document.createElement('div');
+            lifeCard.className = 'shop-bomb-item';
+            lifeCard.style.background = 'rgba(239, 68, 68, 0.12)';
+            lifeCard.style.borderColor = 'rgba(239, 68, 68, 0.35)';
+            lifeCard.innerHTML = `
+                <div class="bomb-preview">❤️</div>
+                <div class="shop-tower-info">
+                    <div class="shop-tower-name" style="color:#f87171;">Buy +1 Life [⭐ Star Market]</div>
+                    <div class="shop-tower-stats">
+                        Instantly gain +1 base life.<br>
+                        Current Lives: <strong>${this.lives}</strong> | Your Stars: <strong>${starCount} ⭐</strong>
+                    </div>
+                </div>
+                <button class="shop-tower-price" style="background:#ef4444;" ${!canAffordLife ? 'disabled' : ''}>
+                    Exchange: 1 ⭐ Star
+                </button>
+            `;
+            lifeCard.querySelector('button').onclick = () => {
+                if (this.meta && this.meta.getStars() >= 1) {
+                    this.meta.addStar(-1);
+                    this.lives++;
+                    Audio.playBuy();
+                    this.ui.showToast(`+1 Life Purchased! (❤️ ${this.lives})`, '#ef4444');
+                    this.updateUI();
+                    this.toggleShopModal(true);
+                }
+            };
+            container.appendChild(lifeCard);
+
+            // 2. Star Exchange: Gold (50 + 5 * wave)
+            const goldForStar = 50 + (5 * this.wave);
+            const canAffordGold = starCount >= 1;
+            const goldCard = document.createElement('div');
+            goldCard.className = 'shop-bomb-item';
+            goldCard.style.background = 'rgba(250, 204, 21, 0.12)';
+            goldCard.style.borderColor = 'rgba(250, 204, 21, 0.35)';
+            goldCard.innerHTML = `
+                <div class="bomb-preview">🪙</div>
+                <div class="shop-tower-info">
+                    <div class="shop-tower-name" style="color:#facc15;">Buy +${goldForStar}g Gold [⭐ Star Market]</div>
+                    <div class="shop-tower-stats">
+                        Scales with Wave ${this.wave} (50 + 5 × Wave).<br>
+                        Current Gold: <strong>${Math.floor(this.gold)}g</strong> | Your Stars: <strong>${starCount} ⭐</strong>
+                    </div>
+                </div>
+                <button class="shop-tower-price" style="background:#eab308; color:#0f172a;" ${!canAffordGold ? 'disabled' : ''}>
+                    Exchange: 1 ⭐ Star
+                </button>
+            `;
+            goldCard.querySelector('button').onclick = () => {
+                if (this.meta && this.meta.getStars() >= 1) {
+                    this.meta.addStar(-1);
+                    this.gold += goldForStar;
+                    Audio.playCoin();
+                    this.ui.showToast(`+${goldForStar}g Gold Purchased!`, '#facc15');
+                    this.updateUI();
+                    this.toggleShopModal(true);
+                }
+            };
+            container.appendChild(goldCard);
+
+            // 3. Explosive Bomb Card
             const bombCard = document.createElement('div');
             bombCard.className = 'shop-bomb-item';
             const bombPrice = BOMB_CONFIG.shopPrice || 300;
@@ -2263,8 +2363,12 @@ class TowerDefenseGame {
         this.updateWorldTransform();
 
         this.meta.resetRunStats();
+        this.meta.resetStars();
+        this.meta.resetRelics();
         CONFIG.towers = JSON.parse(JSON.stringify(BASE_TOWERS));
         try { localStorage.removeItem('purchasedTowers'); } catch { }
+        try { localStorage.removeItem('td_meta_stars'); } catch { }
+        try { localStorage.removeItem('td_meta_relics'); } catch { }
         this.initStartingResources();
         this.refreshGrid();
         this.renderTowerSelect();
